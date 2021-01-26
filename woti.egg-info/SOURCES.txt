@@ -1,0 +1,8 @@
+README.md
+setup.py
+woti/__init__.py
+woti/integration.py
+woti.egg-info/PKG-INFO
+woti.egg-info/SOURCES.txt
+woti.egg-info/dependency_links.txt
+woti.egg-info/top_level.txt
