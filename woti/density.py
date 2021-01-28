@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from cvxopt import matrix, solvers
 from awkde import GaussianKDE
 from scipy.stats import multivariate_normal
 import math
+from scipy import sparse
+import osqp
 
 
 def _gaussian_kernel_matrix(x: np.ndarray, scale: float = 1, alpha: float = 0.5):
@@ -20,33 +21,41 @@ def _gaussian_kernel_matrix(x: np.ndarray, scale: float = 1, alpha: float = 0.5)
     return K_np
 
 
-def normal_kernel_weights(x: np.ndarray, scale: float = 1, alpha: float = 0.5):
+def normal_kernel_weights(
+    x: np.ndarray, scale: float = 1, alpha_kde: float = 0.5, alpha_qp: float = 1.0
+):
 
     assert scale > 0, "sigma must be positive."
-    assert 0 < alpha < 1, "alpha must be in [0,1]"
+    assert 0 < alpha_kde < 1, "alpha_kde must be in (0,1)"
+    assert 0 < alpha_qp < 2, "alpha_qp must be in (0,2)"
 
-    K = _gaussian_kernel_matrix(x, scale, alpha)
-    return _optimal_weights(x, K)
+    K = _gaussian_kernel_matrix(x, scale, alpha_kde)
+    return _optimal_weights(x, K, alpha_qp)
 
 
-def _optimal_weights(x: np.ndarray, K: np.ndarray):
+def _optimal_weights(x: np.ndarray, K: np.ndarray, alpha_qp: float = 1.0, eps=1e-9):
     """ Computes optimal weights given K pairwise kernel matrix. """
 
     # Cost matrix
-    M_np = K.mean(axis=1)
-    KM_np = K - M_np
-    P_np = np.dot(KM_np.T, KM_np)
-    n = len(P_np)
-    P = matrix(P_np, (n, n))
-    p = matrix([1.0 / n] * n, (n, 1))  # alpha vector
+    M = K.mean(axis=1)
+    KM = K - M
+    P = sparse.csc_matrix(2 * np.dot(KM.T, KM))  # Compensate the 1/2 in QP formulation
+    n = len(KM)
 
-    # Inequality constraints
-    G = matrix(np.vstack((np.diag([-1.0] * n), KM_np)), (2 * n, n))
-    h = matrix([0.0] * n + [1 / (n * math.sqrt(2 * math.pi))] * n, (2 * n, 1))
+    # Define problem data
+    q = np.array([0] * n)
+    A = np.identity(n)
+    A = sparse.csc_matrix(np.vstack((A, np.array([1] * n))))
+    l = np.array([0] * n + [1])
+    u = np.array([1] * (n + 1))
 
-    # Equality constraints
-    A = matrix([1.0] * n, (1, n))
-    b = matrix(1.0, (1, 1))
+    # Create an OSQP object
+    prob = osqp.OSQP()
 
-    sol = solvers.qp(P, p, G, h, A, b, verbose=False)
-    return np.array(sol["x"]).reshape(-1)
+    # Setup workspace and change alpha parameter
+    prob.setup(P, q, A, l, u, alpha=alpha_qp, verbose=False)
+
+    # Solve problem
+    x = prob.solve().x
+    x = np.clip(x, eps, 1)
+    return x / x.sum()
