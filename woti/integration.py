@@ -46,11 +46,13 @@ def ot_transform(
     assert n >= 0, "Source matrix cannot be empty."
     assert m >= 0, "Reference matrix cannot be empty."
     assert n == len(ws), "Weights size does not coincidate with source points."
-    assert m == len(vs), "Weights size does not coincidate with reference points."
+    assert m == len(
+        vs), "Weights size does not coincidate with reference points."
 
     # Computing weights
     M = cost_function(xs, yt)
-    assert M.shape == (n, m), "Cost function should return a pairwise (n,m) matrix."
+    assert M.shape == (
+        n, m), "Cost function should return a pairwise (n,m) matrix."
     M /= M.max()
 
     # Normalization of weights
@@ -167,7 +169,8 @@ def wot_transform(
     assert m >= 0, "Reference matrix cannot be empty."
     if verbose:
         print("WOTi > Computing source distribution weights...")
-    ws = normal_kernel_weights(xs, scale=scale, alpha_kde=alpha_kde, alpha_qp=alpha_qp)
+    ws = normal_kernel_weights(
+        xs, scale=scale, alpha_kde=alpha_kde, alpha_qp=alpha_qp)
     if verbose:
         print("WOTi > Computing reference distribution weights...")
     vs = normal_kernel_weights(

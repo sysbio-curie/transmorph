@@ -20,5 +20,12 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    install_requires=[
+        'numpy',
+        'pot',
+        'scipy',
+        'osqp',
+        'awkde @ git+https://github.com/mennthor/awkde',
+    ],
     python_requires=">=3.6",
 )

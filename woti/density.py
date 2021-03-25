@@ -3,10 +3,8 @@
 import numpy as np
 from awkde import GaussianKDE
 from scipy.stats import multivariate_normal
-import math
 from scipy import sparse
 import osqp
-
 
 def _gaussian_kernel_matrix(x: np.ndarray, scale: float = 1, alpha: float = 0.5):
     """ Computes the (n,n) pairwise kernel matrix k_j(x_i) """
