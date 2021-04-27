@@ -9,7 +9,7 @@ setuptools.setup(
     name="woti",  # Replace with your own username
     version="0.0.1",
     author="Aziz Fouché",
-    author_email="aziz.focuche@curie.fr",
+    author_email="aziz.fouche@curie.fr",
     description="Unbalanced optimal transport dataset integration.",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -25,7 +25,6 @@ setuptools.setup(
         'pot',
         'scipy',
         'osqp',
-        'awkde @ git+https://github.com/mennthor/awkde',
     ],
     python_requires=">=3.6",
 )

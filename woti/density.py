@@ -1,37 +1,28 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from awkde import GaussianKDE
-from scipy.stats import multivariate_normal
+from scipy.stats import norm
+from scipy.spatial.distance import cdist
 from scipy import sparse
 import osqp
 
-def _gaussian_kernel_matrix(x: np.ndarray, scale: float = 1, alpha: float = 0.5):
-    """ Computes the (n,n) pairwise kernel matrix k_j(x_i) """
-    kde = GaussianKDE(glob_bw="silverman", alpha=alpha, diag_cov=True)
-    m, S = kde.fit(x)
-    li = kde._inv_loc_bw
-
-    n = len(x)
-    K_np = np.zeros((n, n))
-    for i in range(n):
-        K_np[:, i] = multivariate_normal.pdf(x, mean=x[i], cov=li[i] * S * scale)
-    return K_np
-
-
 def normal_kernel_weights(
-    x: np.ndarray, scale: float = 1, alpha_kde: float = 0.5, alpha_qp: float = 1.0
+    x: np.ndarray, scale: float = 1, alpha_qp: float = 1.0
 ):
 
     assert scale > 0, "sigma must be positive."
-    assert 0 < alpha_kde < 1, "alpha_kde must be in (0,1)"
     assert 0 < alpha_qp < 2, "alpha_qp must be in (0,2)"
 
-    K = _gaussian_kernel_matrix(x, scale, alpha_kde)
-    return _optimal_weights(x, K, alpha_qp)
+    Dmatrix = cdist(x, x)
+
+    assert Dmatrix.max() > 0, "All points are equal in x."
+    Dmatrix /= Dmatrix.std()
+    
+    K = norm.pdf(-Dmatrix, loc=0, scale=scale)
+    return _optimal_weights(K, alpha_qp)
 
 
-def _optimal_weights(x: np.ndarray, K: np.ndarray, alpha_qp: float = 1.0, eps=1e-9):
+def _optimal_weights(K: np.ndarray, alpha_qp: float = 1.0, eps=1e-9):
     """ Computes optimal weights given K pairwise kernel matrix. """
 
     # Cost matrix

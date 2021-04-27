@@ -8,7 +8,7 @@ from typing import Callable
 from .density import normal_kernel_weights
 
 
-def _ot_transform(
+def _gw_transform(
     xs: np.ndarray,
     yt: np.ndarray,
     ws: np.ndarray,
@@ -18,7 +18,7 @@ def _ot_transform(
     verbose: bool = False,
 ) -> np.ndarray:
     """
-    Optimal transport-based dataset integration.
+    Gromov-Wasserstein-based dataset integration.
 
     Returns:
     -------
@@ -50,10 +50,15 @@ def _ot_transform(
         vs), "Weights size does not coincidate with reference points."
 
     # Computing weights
-    M = cost_function(xs, yt)
-    assert M.shape == (
-        n, m), "Cost function should return a pairwise (n,m) matrix."
-    M /= M.max()
+    Ms = cost_function(xs, xs)
+    assert Ms.shape == (
+        n, n), "Cost function should return a pairwise (n,m) matrix."
+    Ms /= Ms.max()
+
+    Mt = cost_function(yt, yt)
+    assert Mt.shape == (
+        m, m), "Cost function should return a pairwise (n,m) matrix."
+    Mt /= Mt.max()
 
     # Normalization of weights
     assert abs(np.sum(ws) - 1) < 1e-9 and all(
@@ -64,15 +69,15 @@ def _ot_transform(
     ), "Reference weights must be in the probability simplex."
 
     if verbose:
-        print("WOTi > Computing optimal transport plan...")
-    transport_plan = ot.emd(ws, vs, M, numItermax=max_iter)
+        print("WOTi > Computing Gromov-Wasserstein plan...")
+    transport_plan = ot.gromov.gromov_wasserstein(Ms, Mt, ws, vs, 'square_loss', numItermax=max_iter)
 
     if verbose:
         print("WOTi > Projecting source dataset...")
     return np.diag(1 / ws) @ transport_plan @ yt
 
 
-def bot_transform(
+def bgw_transform(
     xs: np.ndarray,
     yt: np.ndarray,
     max_iter: int = 1e7,
@@ -80,7 +85,7 @@ def bot_transform(
     verbose: bool = False,
 ):
     """
-    Balanced optimal transport dataset integration (equal weights).
+    Balanced Gromov-Wasserstein dataset integration (equal weights).
 
     Returns:
     -------
@@ -110,12 +115,12 @@ def bot_transform(
     ws /= np.sum(ws)
     vs /= np.sum(vs)
 
-    return _ot_transform(
+    return _gw_transform(
         xs, yt, ws, vs, max_iter=max_iter, cost_function=cost_function, verbose=verbose
     )
 
 
-def ot_transform(
+def gw_transform(
     xs: np.ndarray,
     yt: np.ndarray,
     max_iter: int = 1e7,
@@ -126,7 +131,7 @@ def ot_transform(
     verbose: bool = False,
 ):
     """
-    Optimal transport-based dataset integration.
+    Gromov-Wasserstein-based dataset integration.
 
     Returns:
     -------
@@ -176,6 +181,6 @@ def ot_transform(
         yt, scale=scale_ref, alpha_qp=alpha_qp
     )
 
-    return _ot_transform(
+    return _gw_transform(
         xs, yt, ws, vs, max_iter=max_iter, cost_function=cost_function, verbose=verbose
     )
