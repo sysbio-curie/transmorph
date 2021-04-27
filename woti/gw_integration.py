@@ -74,7 +74,7 @@ def _gw_transform(
 
     if verbose:
         print("WOTi > Projecting source dataset...")
-    return np.diag(1 / ws) @ transport_plan @ yt
+    return np.array(np.diag(1 / ws) @ transport_plan @ yt)
 
 
 def bgw_transform(
