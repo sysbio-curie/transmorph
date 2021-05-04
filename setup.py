@@ -2,7 +2,7 @@
 #
 import setuptools
 
-with open("README.org", "r", encoding="utf-8") as fh:
+with open("Readme.org", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
