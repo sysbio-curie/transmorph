@@ -1,1 +1,28 @@
 #+TITLE: Weighted Optimal Tranport Integration
+
+This python package aims to provide an easy interface for integrating
+datasets using optimal transport (OT)- and Gromov-Wasserstein (GW)-based
+methods. *Warning:* This package is still in an early stage. Feel free to
+open an issue in case of unexpected behvior.
+
+* Installation
+
+#+begin_src shell
+git clone https://github.com/Risitop/WOTi
+pip install ./woti
+#+end_src
+
+* Examples
+
+See three example notebooks in =examples/= directory.
+
+* Usage
+
+This package offers four main integration techniques, two based on
+OT and two based on GW. Both OT and GW comes in two variants, balanced
+(similar to SCOT technique) and unbalanced, using a quadratic program
+in order to estimate reasonable weights.
+
+* Reference
+
+Placeholder for now, a preprint is coming soon.
