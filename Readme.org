@@ -25,4 +25,4 @@ in order to estimate reasonable weights.
 
 * Reference
 
-Placeholder for now, a preprint is coming soon.
+https://www.biorxiv.org/content/10.1101/2021.05.12.443561v1
