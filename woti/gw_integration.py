@@ -7,18 +7,20 @@ from typing import Callable
 
 from .density import normal_kernel_weights
 
-
-def _gw_transform(
+def gw_integration(
     xs: np.ndarray,
     yt: np.ndarray,
-    ws: np.ndarray,
-    vs: np.ndarray,
-    max_iter: int = 1e7,
-    cost_function: Callable = ot.dist,
+    wx: np.ndarray,
+    wy: np.ndarray,
+    Mx: np.ndarray = None,
+    My: np.ndarray = None,
+    max_iter: int = 1000,
+    solver: str = 'gw_entropy',
+    hreg: float = 1e-4,
     verbose: bool = False,
 ) -> np.ndarray:
     """
-    Gromov-Wasserstein-based dataset integration.
+    Optimal transport-based dataset integration.
 
     Returns:
     -------
@@ -27,65 +29,81 @@ def _gw_transform(
     Parameters:
     ----------
     xs: array (n,d)
-        Source cloud point.
+        Source disribution points.
     yt: array (m,d)
-        Reference cloud point.
-    ws: array (n,1)
-        Source cloud point weights for the discrete optimal transport
-    vs: array (m,1)
-        Reference cloud point weights for the discrete optimal transport
+        Target distribution points.
+    wx: array (n,1)
+        Source weights histogram (sum to 1).
+    wy: array (m,1)
+        Target weights histogram (sum to 1).
+    Mx: array (n,n)
+        Cost matrix, M_ij = cost(xi, xj). If null, Euclidean distance by default.
+    My: array (m,m)
+        Cost matrix, M_ij = cost(yi, yj). If null, Euclidean distance by default.
     max_iter: int
-        Maximum number of iterations for the OT problem
-    cost_function: Callable ( array (n,d), array(m,d) ) -> array (n,m)
-        This function computes the paiwise cost matrix between xs and yt records.
-        Default: Euclidean distance
+        Maximum number of iterations for the OT solver.
+    solver: str
+        Belongs to {'emd', 'sinkhorn'}. Choose the exact/approximate solver.
+    hreg: float
+        Entropy regularizer for Sinkhorn's solver.
     verbose: bool
         Displays information in the standard output.
     """
     n, m = len(xs), len(yt)
     assert n >= 0, "Source matrix cannot be empty."
     assert m >= 0, "Reference matrix cannot be empty."
-    assert n == len(ws), "Weights size does not coincidate with source points."
-    assert m == len(
-        vs), "Weights size does not coincidate with reference points."
+    assert n == len(wx), "Weights size does not coincidate with source points."
+    assert m == len(wy), "Weights size does not coincidate with reference points."
 
     # Computing weights
-    Ms = cost_function(xs, xs)
-    assert Ms.shape == (
-        n, n), "Cost function should return a pairwise (n,m) matrix."
-    Ms /= Ms.max()
+    if Mx is None:
+        Mx = ot.dist(xs, xs)
+    if My is None:
+        My = ot.dist(yt, yt)
+    assert Mx.shape == (n, n), "Cost function should return a pairwise (n,m) matrix."
+    assert My.shape == (m, m), "Cost function should return a pairwise (n,m) matrix."
+    Mx /= Mx.max()
+    My /= My.max()
 
-    Mt = cost_function(yt, yt)
-    assert Mt.shape == (
-        m, m), "Cost function should return a pairwise (n,m) matrix."
-    Mt /= Mt.max()
-
-    # Normalization of weights
-    assert abs(np.sum(ws) - 1) < 1e-9 and all(
-        ws >= 0
+    # Normalized weights
+    assert abs(np.sum(wx) - 1) < 1e-9 and all(
+        wx >= 0
     ), "Source weights must be in the probability simplex."
-    assert abs(np.sum(vs) - 1) < 1e-9 and all(
-        vs >= 0
+    assert abs(np.sum(wy) - 1) < 1e-9 and all(
+        wy >= 0
     ), "Reference weights must be in the probability simplex."
 
     if verbose:
         print("WOTi > Computing Gromov-Wasserstein plan...")
-    transport_plan = ot.gromov.gromov_wasserstein(Ms, Mt, ws, vs, 'square_loss', numItermax=max_iter)
+    if solver == 'gw':
+        transport_plan = ot.gromov.gromov_wasserstein(Mx, My, wx, wy, 'square_loss', numItermax=max_iter)
+    elif solver == 'gw_entropy':
+        transport_plan = ot.gromov.entropic_gromov_wasserstein(Mx, My, wx, wy, 'square_loss', hreg, numItermax=max_iter)
+    else:
+        print("Unrecognized solver: %s (valid are 'gw', 'gw_entropy')" % solver)
+        raise ValueError
 
     if verbose:
         print("WOTi > Projecting source dataset...")
-    return np.array(np.diag(1 / ws) @ transport_plan @ yt)
+    return np.array(np.diag(1 / wx) @ transport_plan @ yt)
 
 
-def bgw_transform(
+def gw_transform(
     xs: np.ndarray,
     yt: np.ndarray,
-    max_iter: int = 1e7,
-    cost_function: Callable = ot.dist,
+    Mx: np.ndarray = None,
+    My: np.ndarray = None,
+    max_iter: int = 1000,
+    solver: str = 'gw_entropy',
+    hreg: float = 1e-4,
+    weighted: bool = True,
+    scale_src: float = 1,
+    scale_ref: float = 1,
+    alpha_qp: float = 1.0,
     verbose: bool = False,
-):
+) -> np.ndarray:
     """
-    Balanced Gromov-Wasserstein dataset integration (equal weights).
+    Optimal transport dataset integration.
 
     Returns:
     -------
@@ -94,14 +112,29 @@ def bgw_transform(
     Parameters:
     ----------
     xs: array (n,d)
-        Source cloud point.
+        Source disribution points.
     yt: array (m,d)
-        Reference cloud point.
+        Target distribution points.
+    wx: array (n,1)
+        Source weights histogram (sum to 1).
+    wy: array (m,1)
+        Target weights histogram (sum to 1).
+    M: array (n,m)
+        Cost matrix, M_ij = cost(xi, yj). If null, Euclidean disance by default.
     max_iter: int
-        Maximum number of iterations for the OT problem
-    cost_function: Callable ( array (n,d), array(m,d) ) -> array (n,m)
-        This function computes the paiwise cost matrix between xs and yt records.
-        Default: Euclidean distance
+        Maximum number of iterations for the OT solver.
+    solver: str
+        Belongs to {'emd', 'sinkhorn'}. Choose the exact/approximate solver.
+    hreg: float
+        Entropy regularizer for Sinkhorn's solver.
+    weighted: bool
+        Use the unsupervised weight selection
+    scale_src: float
+       Standard deviation of the Gaussian kernel used for source density correction.
+    scale_ref: float
+       Standard deviation of the Gaussian kernel used for target density correction.
+    alpha_qp: float
+        Parameter to provide to the quadratic program solver.
     verbose: bool
         Displays information in the standard output.
     """
@@ -109,78 +142,20 @@ def bgw_transform(
     n, m = len(xs), len(yt)
     assert n >= 0, "Source matrix cannot be empty."
     assert m >= 0, "Reference matrix cannot be empty."
-    ws, vs = np.array([1 / n] * n), np.array([1 / m] * m)
+    if weighted:
+        if verbose:
+            print("WOTi > Computing source distribution weights...")
+        wx = normal_kernel_weights(xs, scale=scale_src, alpha_qp=alpha_qp)
+        if verbose:
+            print("WOTi > Computing reference distribution weights...")
+        wy = normal_kernel_weights(yt, scale=scale_ref, alpha_qp=alpha_qp)
+    else:
+        wx, wy = np.array([1 / n] * n), np.array([1 / m] * m)
 
     # Adjusting for approximation
-    ws /= np.sum(ws)
-    vs /= np.sum(vs)
+    wx /= np.sum(wx)
+    wy /= np.sum(wy)
 
-    return _gw_transform(
-        xs, yt, ws, vs, max_iter=max_iter, cost_function=cost_function, verbose=verbose
-    )
-
-
-def gw_transform(
-    xs: np.ndarray,
-    yt: np.ndarray,
-    max_iter: int = 1e7,
-    cost_function: Callable = ot.dist,
-    scale: float = 1,
-    scale_ref: float = -1,
-    alpha_qp: float = 1.0,
-    verbose: bool = False,
-):
-    """
-    Gromov-Wasserstein-based dataset integration.
-
-    Returns:
-    -------
-    np.ndarray (n,d) -- Projection of $xs onto $yt.
-
-    Parameters:
-    ----------
-    xs: array (n,d)
-        Source cloud point.
-    yt: array (m,d)
-        Reference cloud point.
-    ws: array (n,1)
-        Source cloud point weights for the discrete optimal transport
-    vs: array (m,1)
-        Reference cloud point weights for the discrete optimal transport
-    max_iter: int
-        Maximum number of iterations for the OT problem
-    cost_function: Callable ( array (n,d), array(m,d) ) -> array (n,m)
-        This function computes the paiwise cost matrix between xs and yt records.
-        Default: Euclidean distance
-    scale: float
-        Kernels scaling for density correction. If $scale_ref = -1, $scale affects
-        both source and reference kernels. Otherwise, it affects only source distribution.
-    scale_ref: float
-        Kernels scaling for density correction, affects reference distribution.
-    alpha_kde: float
-        Alpha parameter for KDE bandwith selection, between 0 and 1.
-    alpha_qp: float
-        Alpha parameter for OSQP solver, between 0 and 2.
-    verbose: bool
-        Displays information in the standard output.
-    """
-
-    if scale_ref == -1:
-        scale_ref = scale
-
-    n, m = len(xs), len(yt)
-    assert n >= 0, "Source matrix cannot be empty."
-    assert m >= 0, "Reference matrix cannot be empty."
-    if verbose:
-        print("WOTi > Computing source distribution weights...")
-    ws = normal_kernel_weights(
-        xs, scale=scale, alpha_qp=alpha_qp)
-    if verbose:
-        print("WOTi > Computing reference distribution weights...")
-    vs = normal_kernel_weights(
-        yt, scale=scale_ref, alpha_qp=alpha_qp
-    )
-
-    return _gw_transform(
-        xs, yt, ws, vs, max_iter=max_iter, cost_function=cost_function, verbose=verbose
+    return gw_integration(
+        xs, yt, wx, wy, Mx, My, max_iter=max_iter, solver=solver, verbose=verbose
     )

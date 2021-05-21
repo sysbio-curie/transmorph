@@ -8,13 +8,15 @@ from typing import Callable
 from .density import normal_kernel_weights
 
 
-def _ot_transform(
+def ot_integration(
     xs: np.ndarray,
     yt: np.ndarray,
-    ws: np.ndarray,
-    vs: np.ndarray,
+    wx: np.ndarray,
+    wy: np.ndarray,
+    M: np.ndarray = None,
     max_iter: int = 1e7,
-    cost_function: Callable = ot.dist,
+    solver: str = 'sinkhorn',
+    hreg: float = 1e-3,
     verbose: bool = False,
 ) -> np.ndarray:
     """
@@ -27,60 +29,77 @@ def _ot_transform(
     Parameters:
     ----------
     xs: array (n,d)
-        Source cloud point.
+        Source disribution points.
     yt: array (m,d)
-        Reference cloud point.
-    ws: array (n,1)
-        Source cloud point weights for the discrete optimal transport
-    vs: array (m,1)
-        Reference cloud point weights for the discrete optimal transport
+        Target distribution points.
+    wx: array (n,1)
+        Source weights histogram (sum to 1).
+    wy: array (m,1)
+        Target weights histogram (sum to 1).
+    M: array (n,m)
+        Cost matrix, M_ij = cost(xi, yj). If null, Euclidean distance by default.
     max_iter: int
-        Maximum number of iterations for the OT problem
-    cost_function: Callable ( array (n,d), array(m,d) ) -> array (n,m)
-        This function computes the paiwise cost matrix between xs and yt records.
-        Default: Euclidean distance
+        Maximum number of iterations for the OT solver.
+    solver: str
+        Belongs to {'emd', 'sinkhorn'}. Choose the exact/approximate solver.
+    hreg: float
+        Entropy regularizer for Sinkhorn's solver.
     verbose: bool
         Displays information in the standard output.
     """
     n, m = len(xs), len(yt)
     assert n >= 0, "Source matrix cannot be empty."
     assert m >= 0, "Reference matrix cannot be empty."
-    assert n == len(ws), "Weights size does not coincidate with source points."
-    assert m == len(
-        vs), "Weights size does not coincidate with reference points."
+    assert n == len(wx), "Weights size does not coincidate with source points."
+    assert m == len(wy), "Weights size does not coincidate with reference points."
 
     # Computing weights
-    M = cost_function(xs, yt)
-    assert M.shape == (
-        n, m), "Cost function should return a pairwise (n,m) matrix."
+    if M is None:
+        M = ot.dist(xs, yt)
+    assert M.shape == (n, m), "Cost function should return a pairwise (n,m) matrix."
     M /= M.max()
 
     # Normalization of weights
-    assert abs(np.sum(ws) - 1) < 1e-9 and all(
-        ws >= 0
+    assert abs(np.sum(wx) - 1) < 1e-9 and all(
+        wx >= 0
     ), "Source weights must be in the probability simplex."
-    assert abs(np.sum(vs) - 1) < 1e-9 and all(
-        vs >= 0
+    assert abs(np.sum(wy) - 1) < 1e-9 and all(
+        wy >= 0
     ), "Reference weights must be in the probability simplex."
 
     if verbose:
         print("WOTi > Computing optimal transport plan...")
-    transport_plan = ot.emd(ws, vs, M, numItermax=max_iter)
+
+    if solver == 'emd':
+        transport_plan = ot.emd(wx, wy, M, numItermax=max_iter)
+    elif solver == 'sinkhorn':
+        transport_plan = ot.sinkhorn(wx, wy, M, hreg, numItermax=max_iter)
+    else:
+        print("Unrecognized solver: %s (valid are 'emd', 'sinkhorn')" % solver)
+        raise ValueError
 
     if verbose:
         print("WOTi > Projecting source dataset...")
-    return np.array(np.diag(1 / ws) @ transport_plan @ yt)
+
+    # Casting to an array to ensure no ArrayView is returned.
+    return np.array(np.diag(1 / wx) @ transport_plan @ yt)
 
 
-def bot_transform(
+def ot_transform(
     xs: np.ndarray,
     yt: np.ndarray,
+    M: np.ndarray = None,
     max_iter: int = 1e7,
-    cost_function: Callable = ot.dist,
+    solver: str = 'sinkhorn',
+    hreg: float = 1e-3,
+    weighted: bool = True,
+    scale_src: float = 1,
+    scale_ref: float = 1,
+    alpha_qp: float = 1.0,
     verbose: bool = False,
 ):
     """
-    Balanced optimal transport dataset integration (equal weights).
+    Optimal transport dataset integration.
 
     Returns:
     -------
@@ -89,14 +108,29 @@ def bot_transform(
     Parameters:
     ----------
     xs: array (n,d)
-        Source cloud point.
+        Source disribution points.
     yt: array (m,d)
-        Reference cloud point.
+        Target distribution points.
+    wx: array (n,1)
+        Source weights histogram (sum to 1).
+    wy: array (m,1)
+        Target weights histogram (sum to 1).
+    M: array (n,m)
+        Cost matrix, M_ij = cost(xi, yj). If null, Euclidean disance by default.
     max_iter: int
-        Maximum number of iterations for the OT problem
-    cost_function: Callable ( array (n,d), array(m,d) ) -> array (n,m)
-        This function computes the paiwise cost matrix between xs and yt records.
-        Default: Euclidean distance
+        Maximum number of iterations for the OT solver.
+    solver: str
+        Belongs to {'emd', 'sinkhorn'}. Choose the exact/approximate solver.
+    hreg: float
+        Entropy regularizer for Sinkhorn's solver.
+    weighted: bool
+        Use the unsupervised weight selection
+    scale_src: float
+       Standard deviation of the Gaussian kernel used for source density correction.
+    scale_ref: float
+       Standard deviation of the Gaussian kernel used for target density correction.
+    alpha_qp: float
+        Parameter to provide to the quadratic program solver.
     verbose: bool
         Displays information in the standard output.
     """
@@ -104,78 +138,25 @@ def bot_transform(
     n, m = len(xs), len(yt)
     assert n >= 0, "Source matrix cannot be empty."
     assert m >= 0, "Reference matrix cannot be empty."
-    ws, vs = np.array([1 / n] * n), np.array([1 / m] * m)
 
-    # Adjusting for approximation
-    ws /= np.sum(ws)
-    vs /= np.sum(vs)
+    if not weighted:
+        wx, wy = np.array([1 / n] * n), np.array([1 / m] * m)
+    else:
+        if verbose:
+            print("WOTi > Computing source distribution weights...")
+        wx = normal_kernel_weights(
+            xs, scale=scale_src, alpha_qp=alpha_qp
+        )
+        if verbose:
+            print("WOTi > Computing reference distribution weights...")
+        wy = normal_kernel_weights(
+            yt, scale=scale_ref, alpha_qp=alpha_qp
+        )
 
-    return _ot_transform(
-        xs, yt, ws, vs, max_iter=max_iter, cost_function=cost_function, verbose=verbose
-    )
+    # Adjusting for approximation error
+    wx /= np.sum(wx)
+    wy /= np.sum(wy)
 
-
-def ot_transform(
-    xs: np.ndarray,
-    yt: np.ndarray,
-    max_iter: int = 1e7,
-    cost_function: Callable = ot.dist,
-    scale: float = 1,
-    scale_ref: float = -1,
-    alpha_qp: float = 1.0,
-    verbose: bool = False,
-):
-    """
-    Optimal transport-based dataset integration.
-
-    Returns:
-    -------
-    np.ndarray (n,d) -- Projection of $xs onto $yt.
-
-    Parameters:
-    ----------
-    xs: array (n,d)
-        Source cloud point.
-    yt: array (m,d)
-        Reference cloud point.
-    ws: array (n,1)
-        Source cloud point weights for the discrete optimal transport
-    vs: array (m,1)
-        Reference cloud point weights for the discrete optimal transport
-    max_iter: int
-        Maximum number of iterations for the OT problem
-    cost_function: Callable ( array (n,d), array(m,d) ) -> array (n,m)
-        This function computes the paiwise cost matrix between xs and yt records.
-        Default: Euclidean distance
-    scale: float
-        Kernels scaling for density correction. If $scale_ref = -1, $scale affects
-        both source and reference kernels. Otherwise, it affects only source distribution.
-    scale_ref: float
-        Kernels scaling for density correction, affects reference distribution.
-    alpha_kde: float
-        Alpha parameter for KDE bandwith selection, between 0 and 1.
-    alpha_qp: float
-        Alpha parameter for OSQP solver, between 0 and 2.
-    verbose: bool
-        Displays information in the standard output.
-    """
-
-    if scale_ref == -1:
-        scale_ref = scale
-
-    n, m = len(xs), len(yt)
-    assert n >= 0, "Source matrix cannot be empty."
-    assert m >= 0, "Reference matrix cannot be empty."
-    if verbose:
-        print("WOTi > Computing source distribution weights...")
-    ws = normal_kernel_weights(
-        xs, scale=scale, alpha_qp=alpha_qp)
-    if verbose:
-        print("WOTi > Computing reference distribution weights...")
-    vs = normal_kernel_weights(
-        yt, scale=scale_ref, alpha_qp=alpha_qp
-    )
-
-    return _ot_transform(
-        xs, yt, ws, vs, max_iter=max_iter, cost_function=cost_function, verbose=verbose
+    return ot_integration(
+        xs, yt, wx, wy, M=M, max_iter=max_iter, solver=solver, hreg=hreg, verbose=verbose
     )
