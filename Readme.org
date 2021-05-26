@@ -23,6 +23,28 @@ OT and two based on GW. Both OT and GW comes in two variants, balanced
 (similar to SCOT technique) and unbalanced, using a quadratic program
 in order to estimate reasonable weights.
 
+Assuming two numpy arrays *X* and *Y* representing source and target
+datasets, WOTi can be used in the following way. First, create a
+Woti object. The scale parameter adjusts kernel bandwidth, and needs
+some tuning according to cloud sparsity.
+
+#+begin_src python
+import woti
+
+X, Y = ... # datasets, np.ndarray
+integration = woti.Woti(method='ot', scale=0.5)
+#+end_src
+
+Then, simply apply the integration method to project *X* onto *Y*.
+
+#+begin_src python
+X_integrated = integration.transform(X, Y)
+#+end_src
+
 * Reference
 
 https://www.biorxiv.org/content/10.1101/2021.05.12.443561v1
+
+* Documentation
+
+Work in progress.
