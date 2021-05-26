@@ -7,17 +7,15 @@ from scipy import sparse
 import osqp
 
 def normal_kernel_weights(
-    x: np.ndarray, scale: float = 1, alpha_qp: float = 1.0
+        x: np.ndarray, alpha_qp: float = 1.0, scale=1
 ):
 
-    assert scale > 0, "sigma must be positive."
     assert 0 < alpha_qp < 2, "alpha_qp must be in (0,2)"
 
-    Dmatrix = cdist(x, x)
-
+    xnorm = (x / x.std(axis=0))
+    Dmatrix = cdist(xnorm, xnorm)
     assert Dmatrix.max() > 0, "All points are equal in x."
-    Dmatrix /= Dmatrix.std()
-    
+
     K = norm.pdf(-Dmatrix, loc=0, scale=scale)
     return _optimal_weights(K, alpha_qp)
 

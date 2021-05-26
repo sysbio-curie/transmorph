@@ -93,9 +93,8 @@ def ot_transform(
     solver: str = 'sinkhorn',
     hreg: float = 1e-3,
     weighted: bool = True,
-    scale_src: float = 1,
-    scale_ref: float = 1,
     alpha_qp: float = 1.0,
+    scale: float = 1,
     verbose: bool = False,
 ):
     """
@@ -125,10 +124,6 @@ def ot_transform(
         Entropy regularizer for Sinkhorn's solver.
     weighted: bool
         Use the unsupervised weight selection
-    scale_src: float
-       Standard deviation of the Gaussian kernel used for source density correction.
-    scale_ref: float
-       Standard deviation of the Gaussian kernel used for target density correction.
     alpha_qp: float
         Parameter to provide to the quadratic program solver.
     verbose: bool
@@ -138,6 +133,7 @@ def ot_transform(
     n, m = len(xs), len(yt)
     assert n >= 0, "Source matrix cannot be empty."
     assert m >= 0, "Reference matrix cannot be empty."
+    assert scale > 0, "Scale must be posiive."
 
     if not weighted:
         wx, wy = np.array([1 / n] * n), np.array([1 / m] * m)
@@ -145,12 +141,12 @@ def ot_transform(
         if verbose:
             print("WOTi > Computing source distribution weights...")
         wx = normal_kernel_weights(
-            xs, scale=scale_src, alpha_qp=alpha_qp
+            xs, alpha_qp=alpha_qp, scale=scale
         )
         if verbose:
             print("WOTi > Computing reference distribution weights...")
         wy = normal_kernel_weights(
-            yt, scale=scale_ref, alpha_qp=alpha_qp
+            yt, alpha_qp=alpha_qp, scale=scale
         )
 
     # Adjusting for approximation error

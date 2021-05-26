@@ -43,7 +43,7 @@ def gw_integration(
     max_iter: int
         Maximum number of iterations for the OT solver.
     solver: str
-        Belongs to {'emd', 'sinkhorn'}. Choose the exact/approximate solver.
+        Belongs to {'gw', 'sinkhorn'}. Choose the exact/approximate solver.
     hreg: float
         Entropy regularizer for Sinkhorn's solver.
     verbose: bool
@@ -97,9 +97,8 @@ def gw_transform(
     solver: str = 'gw_entropy',
     hreg: float = 1e-4,
     weighted: bool = True,
-    scale_src: float = 1,
-    scale_ref: float = 1,
     alpha_qp: float = 1.0,
+    scale: float = 1.0,
     verbose: bool = False,
 ) -> np.ndarray:
     """
@@ -124,15 +123,11 @@ def gw_transform(
     max_iter: int
         Maximum number of iterations for the OT solver.
     solver: str
-        Belongs to {'emd', 'sinkhorn'}. Choose the exact/approximate solver.
+        Belongs to {'gw', 'sinkhorn'}. Choose the exact/approximate solver.
     hreg: float
         Entropy regularizer for Sinkhorn's solver.
     weighted: bool
         Use the unsupervised weight selection
-    scale_src: float
-       Standard deviation of the Gaussian kernel used for source density correction.
-    scale_ref: float
-       Standard deviation of the Gaussian kernel used for target density correction.
     alpha_qp: float
         Parameter to provide to the quadratic program solver.
     verbose: bool
@@ -142,13 +137,14 @@ def gw_transform(
     n, m = len(xs), len(yt)
     assert n >= 0, "Source matrix cannot be empty."
     assert m >= 0, "Reference matrix cannot be empty."
+    assert scale > 0, "Scale must be positive."
     if weighted:
         if verbose:
             print("WOTi > Computing source distribution weights...")
-        wx = normal_kernel_weights(xs, scale=scale_src, alpha_qp=alpha_qp)
+        wx = normal_kernel_weights(xs, alpha_qp=alpha_qp, scale=scale)
         if verbose:
             print("WOTi > Computing reference distribution weights...")
-        wy = normal_kernel_weights(yt, scale=scale_ref, alpha_qp=alpha_qp)
+        wy = normal_kernel_weights(yt, alpha_qp=alpha_qp, scale=scale)
     else:
         wx, wy = np.array([1 / n] * n), np.array([1 / m] * m)
 
