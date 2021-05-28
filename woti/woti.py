@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from .integration import ot_integration, ot_transform
-from .gw_integration import gw_integration, gw_transform
+from .integration import ot_transform, gw_transform
 
 class Woti:
 
@@ -62,3 +61,11 @@ class Woti:
                 scale=self.scale, verbose=self.verbose
             )
 
+    def label_transfer(
+            xs: np.ndarray,
+            yt: np.ndarray,
+            labels: np.ndarray,
+            Mx: np.ndarray = None,
+            My: np.ndarray = None,
+            Mxy: np.ndarray = None) -> np.ndarray:
+        return
