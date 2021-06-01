@@ -20,7 +20,7 @@ See three example notebooks in =examples/= directory.
 
 This package offers four main integration techniques, two based on
 OT and two based on GW. Both OT and GW comes in two variants, balanced
-(similar to SCOT technique) and unbalanced, using a quadratic program
+(similar to [[https://github.com/rsinghlab/SCOT][SCOT]] technique) and unbalanced, using a quadratic program
 in order to estimate data points weights. These weights are chosen
 so that the weighted Gaussian mixture distribution is close to be
 uniform over the dataset.
