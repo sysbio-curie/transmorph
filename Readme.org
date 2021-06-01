@@ -21,7 +21,9 @@ See three example notebooks in =examples/= directory.
 This package offers four main integration techniques, two based on
 OT and two based on GW. Both OT and GW comes in two variants, balanced
 (similar to SCOT technique) and unbalanced, using a quadratic program
-in order to estimate reasonable weights.
+in order to estimate data points weights. These weights are chosen
+so that the weighted Gaussian mixture distribution is close to be
+uniform over the dataset.
 
 Assuming two numpy arrays *X* and *Y* representing source and target
 datasets, WOTi can be used in the following way. First, create a
