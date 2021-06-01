@@ -8,11 +8,22 @@ from scipy.sparse import csr_matrix
 
 from .density import normal_kernel_weights
 
-def _transform(wx, yt, P):
+def _transform(wx: np.ndarray, yt: np.ndarray, P: np.ndarray) -> np.ndarray:
     """
-    wx: weights
-    yt: target distribution
-    P: optimal transport plan
+    Optimal transport integration (Ferradans 2013)
+
+    Returns:
+    --------
+    diag(1 /. wx) @ P @ yt
+
+    Parameters:
+    -----------
+    wx: (n,1) np.ndarray
+        Optimal transport weights
+    yt: (m,d) np.ndarray
+        Target distribution
+    P:  (n,m) np.ndarray
+        Optimal transport plan
     """
     n = wx.shape[0]
     m = yt.shape[0]
@@ -37,11 +48,11 @@ def _compute_transport(
     verbose: bool = False,
 ) -> np.ndarray:
     """
-    Optimal transport plan between xs and yt
+    Returns the ptimal transport plan between xs and yt
 
     Returns:
     -------
-    np.ndarray (n,d) -- Projection of $xs onto $yt.
+    csr_matrix (n,d) -- Projection of $xs onto $yt.
 
     Parameters:
     ----------
@@ -87,6 +98,9 @@ def _compute_transport(
     if method == 'ot':
 
         if Mxy is None:
+            assert xs.shape[1] == yt.shape[1], "Dimensionality error.\
+                xs has shape (%i,%i) and yt has shape (%i,%i), with no cost matrix\
+                provided. Impossible to use Euclidean distance." % (*xs.shape, *yt.shape)
             Mxy = ot.dist(xs, yt)
         assert Mxy.shape == (n, m), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (n, m, *Mxy.shape)

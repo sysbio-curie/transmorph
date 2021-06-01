@@ -32,13 +32,13 @@ some tuning according to cloud sparsity.
 import woti
 
 X, Y = ... # datasets, np.ndarray
-integration = woti.Woti(method='ot', scale=0.5)
+integration = woti.Woti(method='ot')
 #+end_src
 
 Then, simply apply the integration method to project *X* onto *Y*.
 
 #+begin_src python
-X_integrated = integration.transform(X, Y)
+X_integrated = integration.fit_transform()
 #+end_src
 
 * Reference

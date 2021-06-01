@@ -7,7 +7,7 @@ from scipy import sparse
 import osqp
 
 def normal_kernel_weights(
-        x: np.ndarray, alpha_qp: float = 1.0, scale=1
+        x: np.ndarray, alpha_qp: float = 1.0, scale: float = 1
 ):
 
     assert 0 < alpha_qp < 2, "alpha_qp must be in (0,2)"

@@ -5,6 +5,57 @@ from .integration import _compute_transport, _transform
 from .density import normal_kernel_weights
 
 class Woti:
+    """
+    Weighted Optimal Transport Integration
+
+    This class implements a set of methods related to optimal transport-based
+    unsupervised and semi-supervised learning, with the option of using an
+    unsupervised heuristic to estimate data points weights prior to optimal
+    transport in order to correct for dataset classes unbalance.
+
+    By default, the optimal transport plan will be computed using
+    Gromov-Wasserstein metric, but it can be changed to rather use optimal
+    transport (Wasserstein distance).
+
+    Parameters:
+    -----------
+    method: str in ('ot', 'gromov')
+        Method to use in order to compute optimal transport plan.
+        OT stands for optimal transport, and requires to define a metric
+            between points in different distributions. It is in general
+            more reliable in the case of datasets presenting symmetries.
+        Gromov stands for Gromov-Wasserstein (GW), and only requires the metric
+            in both spaces. It is in this sense more general, but is
+            invariant to dataset isometries which can lead to poor
+            integration.
+
+    max_iter: int
+        Maximum number of iterations for OT/GW.
+
+    entropy: bool
+        Enables the entropy regularization for OT/GW problem, solving it
+        approximately but more efficiently using Sinkhorn's algorithm
+        (Cuturi 2013)
+
+    hreg: float
+        Entropic regularization parameter. The lower the more accurate the result
+        will be, at a cost of extra computation time.
+
+    weighted: bool
+        Enables the weights correction to deal with unbalanced datasets. It requires
+        to solve a QP of dimensionality equal to dataset size, so it does not scale
+        for now above 10^4 data points.
+
+    alpha_qp: float
+        Parameter for the QP solver (osqp)
+
+    scale: float
+        Standard deviation of Gaussian RBFs used in the weights selection. May need
+        some tuning.
+
+    verbose: bool
+        Enable logging.
+    """
 
     def __init__(self,
                  method: str = 'gromov',
@@ -13,7 +64,7 @@ class Woti:
                  hreg: float = 1e-3,
                  weighted: bool = True,
                  alpha_qp: float = 1.0,
-                 scale: float = 1.0,
+                 scale: float = 5e-2,
                  verbose: bool = True):
         assert method in ('ot', 'gromov'), "Unrecognized method: %s. \
                                             Available methods are 'ot', 'gromov'"
@@ -32,10 +83,10 @@ class Woti:
         self.wx = None
         self.yt = None
         if verbose:
-            self.print("Successfully initialized.\n%s" % str(self))
+            self._print("Successfully initialized.\n%s" % str(self))
 
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "(Woti) %s based -- max_iter: %i -- %s -- %s" % (
             self.method,
             self.max_iter,
@@ -45,10 +96,12 @@ class Woti:
               if self.weighted else "unweighted")
         )
 
-    def print(self, s):
+    def _print(self, s: str) -> None:
+        # Only prints for now, can later be pipelined into other streams
         print("WOTi > %s" % s)
 
-    def is_fitted(self):
+    def is_fitted(self) -> bool:
+        # Shortcut to know if fit() has been called
         return not (
             self.transport_plan is None
             or self.wx is None
@@ -59,8 +112,32 @@ class Woti:
             yt: np.ndarray,
             Mx: np.ndarray = None,
             My: np.ndarray = None,
-            Mxy: np.ndarray = None) -> np.ndarray:
+            Mxy: np.ndarray = None) -> None:
+        """
+        Computes the optimal transport plan between two empirical distributions,
+        with parameters specified during initialization.
 
+
+        Parameters:
+        -----------
+        xs: (n,d0) np.ndarray
+            Source data points cloud.
+
+        yt: (m,d1) np.ndarray
+            Target data points cloud.
+
+        Mx: (n,n) np.ndarray
+            Pairwise metric matrix for xs. Only relevant for GW. If
+            None, Euclidean distance is used.
+
+        My: (m,m) np.ndarray
+            Pairwise metric matrix for yt. Only relevant for GW. If
+            None, Euclidean distance is used.
+
+        Mxy: (n,m) np.ndarray
+            Pairwise metric matrix between xs and yt. Only relevant for OT.
+            If None, Euclidean distance is used.
+        """
         # Computing weights
         n, m = len(xs), len(yt)
         assert n > 0, "Empty source matrix."
@@ -70,12 +147,12 @@ class Woti:
             self.wx, wy = np.array([1 / n] * n), np.array([1 / m] * m)
         else:
             if self.verbose:
-                self.print("Computing source distribution weights...")
+                self._print("Computing source distribution weights...")
             self.wx = normal_kernel_weights(
                 xs, alpha_qp=self.alpha_qp, scale=self.scale
             )
             if self.verbose:
-                self.print("Computing reference distribution weights...")
+                self._print("Computing reference distribution weights...")
             wy = normal_kernel_weights(
                 yt, alpha_qp=self.alpha_qp, scale=self.scale
             )
@@ -86,26 +163,33 @@ class Woti:
 
         if self.verbose:
             if self.method == "ot":
-                self.print("Computing optimal transport plan...")
+                self._print("Computing optimal transport plan...")
             if self.method == "gromov":
-                self.print("Computing Gromov-Wasserstein plan...")
+                self._print("Computing Gromov-Wasserstein plan...")
 
             self.transport_plan = _compute_transport(
                 xs, yt, self.wx, wy, method=self.method, Mxy=Mxy, Mx=Mx, My=My,
                 max_iter=self.max_iter, entropy=self.entropy,
                 hreg=self.hreg, verbose=self.verbose)
 
-        self.print("WOTi fitted.")
+        self._print("WOTi fitted.")
 
 
     def transform(self) -> np.ndarray:
+        """
+        Applies optimal transport integration. WOTi must be fitted beforehand.
+
+        Returns:
+        --------
+        (n,d1) np.ndarray, of xs integrated onto yt.
+        """
         assert self.is_fitted(), "WOTi must be fitted first."
         m, d = self.yt.shape
         n, mP = self.transport_plan.shape
         nw = len(self.wx)
         assert m == mP, "Inconsistent dimension between reference and transport."
         assert n == nw, "Inconsistent dimension between weights and transport."
-        self.print("Projecting dataset...")
+        self._print("Projecting dataset...")
         return _transform(self.wx, self.yt, self.transport_plan)
 
 
@@ -115,15 +199,17 @@ class Woti:
             Mx: np.ndarray = None,
             My: np.ndarray = None,
             Mxy: np.ndarray = None) -> np.ndarray:
+        """
+        Shortcut, fit() -> transform()
+        """
         self.fit(xs, yt, Mx, My, Mxy)
         return self.transform()
 
 
-    def label_transfer(
-            xs: np.ndarray,
-            yt: np.ndarray,
-            labels: np.ndarray,
-            Mx: np.ndarray = None,
-            My: np.ndarray = None,
-            Mxy: np.ndarray = None) -> np.ndarray:
-        return
+    def label_transfer(self, y_labels: np.ndarray) -> np.ndarray:
+        """
+        Uses the optimal tranport plan to infer xs labels based
+        on yt ones in a semi-supervised fashion.
+        """
+        assert self.is_fitted(), "WOTi must be fitted first."
+        return y_labels[np.argmax(self.transport_plan.toarray(), axis=1)]
