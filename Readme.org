@@ -2,7 +2,9 @@
 
 This python package aims to provide an easy interface for integrating
 datasets using optimal transport (OT)- and Gromov-Wasserstein (GW)-based
-methods. *Warning:* This package is still in an early stage. Feel free to
+methods. We plan to extend the package beyond data integration, with
+additional OT-related unsupervised and semi-supervised methods.
+*Warning:* This package is still in an early stage. Feel free to
 open an issue in case of unexpected behvior.
 
 * Installation
