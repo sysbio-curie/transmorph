@@ -40,7 +40,7 @@ integration = woti.Woti(method='ot')
 Then, simply apply the integration method to project *X* onto *Y*.
 
 #+begin_src python
-X_integrated = integration.fit_transform()
+X_integrated = integration.fit_transform(X, Y)
 #+end_src
 
 * Reference
