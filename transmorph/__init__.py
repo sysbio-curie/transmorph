@@ -1,3 +1,3 @@
 #!/usr/bin/env python3
 
-from .woti import Woti
+from .transmorph import Transmorph
