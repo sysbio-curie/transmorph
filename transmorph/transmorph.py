@@ -4,9 +4,9 @@ import numpy as np
 from .integration import _compute_transport, _transform
 from .density import normal_kernel_weights, _get_density
 
-class Woti:
+class Transmorph:
     """
-    Weighted Optimal Transport Integration
+    Optimal transport-related tools for dataset integration.
 
     This class implements a set of methods related to optimal transport-based
     unsupervised and semi-supervised learning, with the option of using an
@@ -88,7 +88,7 @@ class Woti:
 
 
     def __str__(self) -> str:
-        return "(Woti) %s based -- max_iter: %i -- %s -- %s" % (
+        return "(Transmorph) %s based -- max_iter: %i -- %s -- %s" % (
             self.method,
             self.max_iter,
             ( ("entropy regularized, hreg: %f" % self.hreg)
@@ -99,7 +99,7 @@ class Woti:
 
     def _print(self, s: str) -> None:
         # Only prints for now, can later be pipelined into other streams
-        print("WOTi > %s" % s)
+        print("Transmorph > %s" % s)
 
     def is_fitted(self) -> bool:
         # Shortcut to know if fit() has been called
@@ -185,18 +185,18 @@ class Woti:
                 max_iter=self.max_iter, entropy=self.entropy,
                 hreg=self.hreg, verbose=self.verbose)
 
-        self._print("WOTi fitted.")
+        self._print("Transmorph fitted.")
 
 
     def transform(self) -> np.ndarray:
         """
-        Applies optimal transport integration. WOTi must be fitted beforehand.
+        Applies optimal transport integration. Transmorph must be fitted beforehand.
 
         Returns:
         --------
         (n,d1) np.ndarray, of xs integrated onto yt.
         """
-        assert self.is_fitted(), "WOTi must be fitted first."
+        assert self.is_fitted(), "Transmorph must be fitted first."
         m, d = self.yt.shape
         n, mP = self.transport_plan.shape
         nw = len(self.wx)
@@ -224,5 +224,5 @@ class Woti:
         Uses the optimal tranport plan to infer xs labels based
         on yt ones in a semi-supervised fashion.
         """
-        assert self.is_fitted(), "WOTi must be fitted first."
+        assert self.is_fitted(), "Transmorph must be fitted first."
         return y_labels[np.argmax(self.transport_plan.toarray(), axis=1)]

@@ -6,14 +6,14 @@ with open("Readme.org", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="woti",  # Replace with your own username
+    name="transmorph",  # Replace with your own username
     version="0.0.1",
     author="Aziz Fouché",
     author_email="aziz.fouche@curie.fr",
-    description="Unbalanced optimal transport dataset integration.",
+    description="Optimal transport-based tools for data integration.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/pypa/sampleproject",
+    url="https://github.com/Risitop/transmorph",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
