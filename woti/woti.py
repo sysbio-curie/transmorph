@@ -2,7 +2,7 @@
 
 import numpy as np
 from .integration import _compute_transport, _transform
-from .density import normal_kernel_weights
+from .density import normal_kernel_weights, _get_density
 
 class Woti:
     """
@@ -81,6 +81,7 @@ class Woti:
         # Cache
         self.transport_plan = None
         self.wx = None
+        self.wy = None
         self.yt = None
         if verbose:
             self._print("Successfully initialized.\n%s" % str(self))
@@ -106,6 +107,18 @@ class Woti:
             self.transport_plan is None
             or self.wx is None
             or self.yt is None)
+
+    def get_wx(self): return self.wx;
+
+    def get_wy(self): return self.wy;
+
+    def get_K(self, xs: np.ndarray):
+        return _get_density(xs, self.scale)
+
+    def get_density(self, x: np.ndarray, w: np.ndarray = None):
+        if w is None:
+            w = np.array([1/len(x)]*len(x))
+        return self.get_K(x) @ w
 
     def fit(self,
             xs: np.ndarray,
@@ -144,7 +157,7 @@ class Woti:
         assert m > 0, "Empty reference matrix."
         self.yt = yt
         if not self.weighted:
-            self.wx, wy = np.array([1 / n] * n), np.array([1 / m] * m)
+            self.wx, self.wy = np.array([1 / n] * n), np.array([1 / m] * m)
         else:
             if self.verbose:
                 self._print("Computing source distribution weights...")
@@ -153,13 +166,13 @@ class Woti:
             )
             if self.verbose:
                 self._print("Computing reference distribution weights...")
-            wy = normal_kernel_weights(
+            self.wy = normal_kernel_weights(
                 yt, alpha_qp=self.alpha_qp, scale=self.scale
             )
 
         # Correcting approximation error
         self.wx /= np.sum(self.wx)
-        wy /= np.sum(wy)
+        self.wy /= np.sum(self.wy)
 
         if self.verbose:
             if self.method == "ot":
@@ -168,7 +181,7 @@ class Woti:
                 self._print("Computing Gromov-Wasserstein plan...")
 
             self.transport_plan = _compute_transport(
-                xs, yt, self.wx, wy, method=self.method, Mxy=Mxy, Mx=Mx, My=My,
+                xs, yt, self.wx, self.wy, method=self.method, Mxy=Mxy, Mx=Mx, My=My,
                 max_iter=self.max_iter, entropy=self.entropy,
                 hreg=self.hreg, verbose=self.verbose)
 

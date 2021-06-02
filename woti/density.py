@@ -9,15 +9,18 @@ import osqp
 def normal_kernel_weights(
         x: np.ndarray, alpha_qp: float = 1.0, scale: float = 1
 ):
+    ## Shortcut get_density -> optimal weights
+    assert 0 < alpha_qp < 2, "alpha_qp must be in (0,2), found %f" % alpha_qp
+    K = _get_density(x, scale)
+    return _optimal_weights(K, alpha_qp)
 
-    assert 0 < alpha_qp < 2, "alpha_qp must be in (0,2)"
 
+def _get_density(x: np.ndarray, scale: float = 1) -> np.ndarray:
+    assert scale > 0, "scale must be positive, found %f" % scale
     xnorm = (x / x.std(axis=0))
     Dmatrix = cdist(xnorm, xnorm)
     assert Dmatrix.max() > 0, "All points are equal in x."
-
-    K = norm.pdf(-Dmatrix, loc=0, scale=scale)
-    return _optimal_weights(K, alpha_qp)
+    return norm.pdf(-Dmatrix, loc=0, scale=scale)
 
 
 def _optimal_weights(K: np.ndarray, alpha_qp: float = 1.0, eps=1e-9):
