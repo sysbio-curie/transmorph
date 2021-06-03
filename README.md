@@ -1,5 +1,7 @@
 # Transmorph (anciently WOTi)
 
+*Warning* This package will soon be released on PyPi. It is unstable right now due to structural changes needed to do so.
+
 This python package aims to provide an easy interface for integrating
 datasets using optimal transport (OT)- and Gromov-Wasserstein (GW)-based
 methods. We plan to extend the package beyond data integration, with
