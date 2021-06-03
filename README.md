@@ -4,57 +4,83 @@
 
 ![](img/logo.png)
 
-This python package aims to provide an easy interface for integrating
-datasets using optimal transport (OT)- and Gromov-Wasserstein (GW)-based
-methods. We plan to extend the package beyond data integration, with
-additional OT-related unsupervised and semi-supervised methods.
-***Warning:*** This package is still in an early stage. Feel free to
-open an issue in case of unexpected behvior.
+**Transmorph** is a python toolbox dedicated to transportation theory-based
+data analysis. Originally consisting in a data integration pipeline
+based on optimal transport and correcting for density, we are now adding 
+extra features relevant in single-cell data analysis such as label transfer 
+(already implemented), applications of Wasserstein barycenters, trajectory 
+analysis and more.
+
+***Warning:*** This package is still in a very early stage of its
+development. Feel free to open an issue in case of unexpected behvior.
 
 ## Installation
 
-Install from source (latest version, may be unstable)
+### Requirements
+
+These packages should be installed automatically by pip.
++ numpy 
++ scipy 
++ [osqp](https://github.com/osqp/osqp-python) (quadratic program solver)
++ [POT](https://github.com/PythonOT/POT) (optimal transport in python)
+
+### Install from source (latest version)
 ```sh
 git clone https://github.com/Risitop/transmorph
 pip install ./transmorph
 ```
 
-Install from PyPi (stable version)
+### Install from PyPi (recommended, latest stable version)
 
 ``` sh
 pip install transmorph
 ```
-## Examples
-
-See three example notebooks in `examples/` directory.
 
 ## Usage
 
-This package offers four main integration techniques, two based on
-OT and two based on GW. Both OT and GW comes in two variants, balanced
-(similar to [SCOT](https://github.com/rsinghlab/SCOT "SCOT project")) 
-and unbalanced, using a quadratic program
-in order to estimate data points weights. These weights are chosen
-so that the weighted Gaussian mixture distribution is close to be
-uniform over the dataset.
+### Model fitting
 
-Assuming two numpy arrays *X* and *Y* representing source and target
-datasets, WOTi can be used in the following way. First, create a
-Woti object. The scale parameter adjusts kernel bandwidth, and needs
-some tuning according to cloud sparsity.
+We choose to adopt a philosophy similar to `sklearn`'s package, 
+with a numerical method encapsulated in a python object. The main
+class here is the `Transmorph`, and should be fitted prior to any 
+analysis. First, you need to create a Transmorph object, selecting 
+its parameters (transportation technique, entropic regularization,
+density correction...).
 
 ``` python
 import transmorph as tr
 
-X, Y = ... # datasets, np.ndarray
 t = tr.Transmorph(method='ot')
 ```
 
-Then, simply apply the integration method to project *X* onto *Y*.
+You can then load your two datasets and fit the Transmorph. You can
+provide extra arguments such as custom cost matrix (default is Euclidean
+distance).
 
 ``` python
-X_integrated = t.fit_transform(X, Y)
+X, Y = ... # datasets, np.ndarrays
+t.fit(X, Y)
 ```
+
+### Data integration
+
+Once the Transmorph is fitted, data integration is very straightforward through
+the `transform` method, following ([Ferradans 2013](https://hal.archives-ouvertes.fr/hal-00797078/document)).
+methodology. 
+
+``` python
+X_integrated = t.transform()
+```
+
+### Label transfer
+
+Label transfer can be carried out to transfer labels from a dataset to the other
+in a semi-supervised fashion according to the optimal transport plan, following
+([Taherkhani 2020](https://link.springer.com/chapter/10.1007/978-3-030-58548-8_30)).
+
+## Examples
+
+See three example notebooks in `examples/` directory.
 
 ## Reference
 
