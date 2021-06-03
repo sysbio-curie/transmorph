@@ -25,11 +25,11 @@ Install from PyPi (stable version)
 ``` sh
 pip install transmorph
 ```
-# Examples
+## Examples
 
 See three example notebooks in `examples/` directory.
 
-# Usage
+## Usage
 
 This package offers four main integration techniques, two based on
 OT and two based on GW. Both OT and GW comes in two variants, balanced
@@ -57,10 +57,10 @@ Then, simply apply the integration method to project *X* onto *Y*.
 X_integrated = t.fit_transform(X, Y)
 ```
 
-# Reference
+## Reference
 
 https://www.biorxiv.org/content/10.1101/2021.05.12.443561v1
 
-# Documentation
+## Documentation
 
 Work in progress.
