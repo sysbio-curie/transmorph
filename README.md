@@ -1,4 +1,4 @@
-#+TITLE: Transmorph (anciently WOTi)
+# Transmorph (anciently WOTi)
 
 This python package aims to provide an easy interface for integrating
 datasets using optimal transport (OT)- and Gromov-Wasserstein (GW)-based
@@ -7,22 +7,29 @@ additional OT-related unsupervised and semi-supervised methods.
 *Warning:* This package is still in an early stage. Feel free to
 open an issue in case of unexpected behvior.
 
-* Installation
+## Installation
 
-#+begin_src shell
-git clone https://github.com/Risitop/WOTi
-pip install ./woti
-#+end_src
+Install from source (latest version, may be unstable)
+```sh
+git clone https://github.com/Risitop/transmorph
+pip install ./transmorph
+```
 
-* Examples
+Install from PyPi (stable version)
 
-See three example notebooks in =examples/= directory.
+``` sh
+pip install transmorph
+```
+# Examples
 
-* Usage
+See three example notebooks in `examples/` directory.
+
+# Usage
 
 This package offers four main integration techniques, two based on
 OT and two based on GW. Both OT and GW comes in two variants, balanced
-(similar to [[https://github.com/rsinghlab/SCOT][SCOT]] technique) and unbalanced, using a quadratic program
+(similar to [SCOT](https://github.com/rsinghlab/SCOT "SCOT project")) 
+and unbalanced, using a quadratic program
 in order to estimate data points weights. These weights are chosen
 so that the weighted Gaussian mixture distribution is close to be
 uniform over the dataset.
@@ -32,23 +39,23 @@ datasets, WOTi can be used in the following way. First, create a
 Woti object. The scale parameter adjusts kernel bandwidth, and needs
 some tuning according to cloud sparsity.
 
-#+begin_src python
-import woti
+``` python
+import transmorph as tr
 
 X, Y = ... # datasets, np.ndarray
-integration = woti.Woti(method='ot')
-#+end_src
+t = tr.Transmorph(method='ot')
+```
 
 Then, simply apply the integration method to project *X* onto *Y*.
 
-#+begin_src python
-X_integrated = integration.fit_transform(X, Y)
-#+end_src
+``` python
+X_integrated = t.fit_transform(X, Y)
+```
 
-* Reference
+# Reference
 
 https://www.biorxiv.org/content/10.1101/2021.05.12.443561v1
 
-* Documentation
+# Documentation
 
 Work in progress.

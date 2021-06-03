@@ -2,12 +2,12 @@
 #
 import setuptools
 
-with open("Readme.org", "r", encoding="utf-8") as fh:
+with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="transmorph",  # Replace with your own username
-    version="0.0.1",
+    version="0.0.2",
     author="Aziz Fouché",
     author_email="aziz.fouche@curie.fr",
     description="Optimal transport-based tools for data integration.",
@@ -20,6 +20,7 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    package_dir={"": "src"},
     install_requires=[
         'numpy',
         'pot',
