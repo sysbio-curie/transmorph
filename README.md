@@ -65,7 +65,7 @@ t.fit(X, Y)
 ### Data integration
 
 Once the Transmorph is fitted, data integration is very straightforward through
-the `transform` method, following ([Ferradans 2013](https://hal.archives-ouvertes.fr/hal-00797078/document)).
+the `transform` method, following ([Ferradans 2013](https://hal.archives-ouvertes.fr/hal-00797078/document))
 methodology. 
 
 ``` python
@@ -77,6 +77,11 @@ X_integrated = t.transform()
 Label transfer can be carried out to transfer labels from a dataset to the other
 in a semi-supervised fashion according to the optimal transport plan, following
 ([Taherkhani 2020](https://link.springer.com/chapter/10.1007/978-3-030-58548-8_30)).
+
+```python
+lY = ... # Gathering labels from Y dataset 
+lX = t.label_transfer(lY)
+```
 
 ## Examples
 
