@@ -65,7 +65,7 @@ class Transmorph:
                  weighted: bool = True,
                  alpha_qp: float = 1.0,
                  scale: float = 5e-2,
-                 verbose: bool = True):
+                 verbose: bool = False):
         assert method in ('ot', 'gromov'), "Unrecognized method: %s. \
                                             Available methods are 'ot', 'gromov'"
         assert max_iter > 0, "Negative number of iterations."
@@ -83,8 +83,10 @@ class Transmorph:
         self.wx = None
         self.wy = None
         self.yt = None
-        if verbose:
-            self._print("Successfully initialized.\n%s" % str(self))
+        # Cache datasets to avoid weights recomputation
+        self.x = None # Source dataset
+        self.y = None # Reference dataset
+        self._print("Successfully initialized.\n%s" % str(self))
 
 
     def __str__(self) -> str:
@@ -99,14 +101,13 @@ class Transmorph:
 
     def _print(self, s: str) -> None:
         # Only prints for now, can later be pipelined into other streams
+        if not self.verbose:
+            return
         print("Transmorph > %s" % s)
 
     def is_fitted(self) -> bool:
         # Shortcut to know if fit() has been called
-        return not (
-            self.transport_plan is None
-            or self.wx is None
-            or self.yt is None)
+        return self.transport_plan is not None
 
     def get_wx(self): return self.wx;
 
@@ -159,26 +160,29 @@ class Transmorph:
         if not self.weighted:
             self.wx, self.wy = np.array([1 / n] * n), np.array([1 / m] * m)
         else:
-            if self.verbose:
+            if not np.array_equal(xs, self.x): # Avoid recomputing weights
+                self.x = xs
                 self._print("Computing source distribution weights...")
-            self.wx = normal_kernel_weights(
-                xs, alpha_qp=self.alpha_qp, scale=self.scale
-            )
-            if self.verbose:
+                self.wx = normal_kernel_weights(
+                    xs, alpha_qp=self.alpha_qp, scale=self.scale
+                )
+            else:
+                self._print("Reusing previously computed source weights...")
+
+            if not np.array_equal(yt, self.y): # Avoid recomputing weights
+                self.y = yt
                 self._print("Computing reference distribution weights...")
-            self.wy = normal_kernel_weights(
-                yt, alpha_qp=self.alpha_qp, scale=self.scale
-            )
+                self.wy = normal_kernel_weights(
+                    yt, alpha_qp=self.alpha_qp, scale=self.scale
+                )
+            else:
+                self._print("Reusing previously computed reference weights...")
 
-        # Correcting approximation error
-        self.wx /= np.sum(self.wx)
-        self.wy /= np.sum(self.wy)
-
-        if self.verbose:
-            if self.method == "ot":
-                self._print("Computing optimal transport plan...")
-            if self.method == "gromov":
-                self._print("Computing Gromov-Wasserstein plan...")
+        # Projecting source to ref
+        if self.method == "ot":
+            self._print("Computing optimal transport plan...")
+        if self.method == "gromov":
+            self._print("Computing Gromov-Wasserstein plan...")
 
         self.transport_plan = _compute_transport(
             xs, yt, self.wx, self.wy, method=self.method, Mxy=Mxy, Mx=Mx, My=My,

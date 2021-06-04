@@ -12,7 +12,8 @@ def normal_kernel_weights(
     ## Shortcut get_density -> optimal weights
     assert 0 < alpha_qp < 2, "alpha_qp must be in (0,2), found %f" % alpha_qp
     K = _get_density(x, scale)
-    return _optimal_weights(K, alpha_qp)
+    w = _optimal_weights(K, alpha_qp)
+    return w / np.sum(w)
 
 
 def _get_density(x: np.ndarray, scale: float = 1) -> np.ndarray:
