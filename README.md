@@ -11,6 +11,8 @@ extra features relevant in single-cell data analysis such as label transfer
 (already implemented), applications of Wasserstein barycenters, trajectory 
 analysis and more.
 
+![](img/pipeline.png)
+
 ***Warning:*** This package is still in a very early stage of its
 development. Feel free to open an issue in case of unexpected behvior.
 
