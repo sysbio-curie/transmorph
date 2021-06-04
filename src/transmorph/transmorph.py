@@ -180,10 +180,10 @@ class Transmorph:
             if self.method == "gromov":
                 self._print("Computing Gromov-Wasserstein plan...")
 
-            self.transport_plan = _compute_transport(
-                xs, yt, self.wx, self.wy, method=self.method, Mxy=Mxy, Mx=Mx, My=My,
-                max_iter=self.max_iter, entropy=self.entropy,
-                hreg=self.hreg, verbose=self.verbose)
+        self.transport_plan = _compute_transport(
+            xs, yt, self.wx, self.wy, method=self.method, Mxy=Mxy, Mx=Mx, My=My,
+            max_iter=self.max_iter, entropy=self.entropy,
+            hreg=self.hreg, verbose=self.verbose)
 
         self._print("Transmorph fitted.")
 
