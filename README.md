@@ -68,6 +68,8 @@ Once the Transmorph is fitted, data integration is very straightforward through
 the `transform` method, following ([Ferradans 2013](https://hal.archives-ouvertes.fr/hal-00797078/document))
 methodology. 
 
+![](img/diagram.png)
+
 ``` python
 X_integrated = t.transform()
 ```
