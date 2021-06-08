@@ -12,7 +12,7 @@ def _kernel_var(xs, sigma):
     return entropy(p / p.sum())
 
 
-def sigma_search(xs, max_depth=10, base=2, init_s=1):
+def sigma_search(xs, max_depth=20, base=2, init_s=1, thr=1.01):
     # Searches for a sigma that maximizes density entropy
 
     # Initialization
@@ -32,14 +32,16 @@ def sigma_search(xs, max_depth=10, base=2, init_s=1):
 
     # Trichotomous search
     for i in range(max_depth):
-        mid0 = s0 + (s2 - s0)/3
-        mid1 = s0 + 2*(s2 - s0)/3
+        mid0 = s0 + 3*(s2 - s0)/8
+        mid1 = mid0 + (s2 - s0) / 4
         v0 = _kernel_var(xs, mid0)
         v1 = _kernel_var(xs, mid1)
         if v0 < v1:
             s0, s2 = s0, mid1
         else:
             s0, s2 = mid0, s2
+        if s2/s0 < thr:
+            break
 
     return (s0 + s2)/2
 
