@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="transmorph",  # Replace with your own username
-    version="0.0.3",
+    version="0.0.5",
     author="Aziz Fouché",
     author_email="aziz.fouche@curie.fr",
     description="Optimal transport-based tools for data integration.",

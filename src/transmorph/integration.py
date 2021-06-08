@@ -8,6 +8,13 @@ from scipy.sparse import csr_matrix
 
 from .density import normal_kernel_weights
 
+
+def rand_jitter(arr, std=.01):
+    # Adds a little bit of fluctuation
+    stdev = .01 * (np.max(arr, axis=0) - np.min(arr, axis=0))
+    return arr + np.random.randn(*arr.shape) * stdev
+
+
 def _transform(wx: np.ndarray, yt: np.ndarray, P: np.ndarray) -> np.ndarray:
     """
     Optimal transport integration (Ferradans 2013)
@@ -30,7 +37,7 @@ def _transform(wx: np.ndarray, yt: np.ndarray, P: np.ndarray) -> np.ndarray:
     assert P.shape == (n,m), "Dimension mismatch, (%i,%i) != (%i,%i)" % (
         *P.shape, n, m
     )
-    return np.array(np.diag(1 / wx) @ P @ yt)
+    return rand_jitter(np.array(np.diag(1 / wx) @ P @ yt))
 
 
 def _compute_transport(
@@ -45,7 +52,6 @@ def _compute_transport(
     max_iter: int = 1e7,
     entropy: bool = False,
     hreg: float = 1e-3,
-    verbose: bool = False,
 ) -> np.ndarray:
     """
     Returns the ptimal transport plan between xs and yt
@@ -78,8 +84,6 @@ def _compute_transport(
         Use the Sinkhorn method with entropy regularization
     hreg: float
         Entropy regularizer for Sinkhorn's solver.
-    verbose: bool
-        Displays information in the standard output.
     """
     n, m = len(xs), len(yt)
     assert n >= 0, "Source matrix cannot be empty."
@@ -105,8 +109,6 @@ def _compute_transport(
         assert Mxy.shape == (n, m), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (n, m, *Mxy.shape)
         Mxy /= Mxy.max()
-        if verbose:
-            print("WOTi > Computing optimal transport plan...")
         if entropy:
             transport_plan = ot.sinkhorn(wx, wy, Mxy, hreg, numItermax=max_iter)
         else:
@@ -125,8 +127,6 @@ def _compute_transport(
             Expected (%i,%i), found (%i,%i)." % (m, m, *My.shape)
         My /= My.max()
 
-        if verbose:
-            print("WOTi > Computing Gromov-Wasserstein plan...")
         if entropy:
             transport_plan = ot.gromov.entropic_gromov_wasserstein(Mx, My, wx, wy, 'square_loss', hreg, numItermax=max_iter)
         else:
