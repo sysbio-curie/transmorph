@@ -22,7 +22,9 @@ def sigma_search(xs, max_depth=20, base=2, init_s=1, thr=1.01):
     v2 = _kernel_var(xs, s2)
 
     # Log search
-    while v2 < v1:
+    for i in range(max_depth):
+        if v2 > v1:
+            break
         v0 = v1
         s0 = s1
         v1 = v2
