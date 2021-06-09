@@ -11,11 +11,16 @@ from .density import normal_kernel_weights
 
 def rand_jitter(arr, std=.01):
     # Adds a little bit of fluctuation
-    stdev = .01 * (np.max(arr, axis=0) - np.min(arr, axis=0))
+    stdev = std * (np.max(arr, axis=0) - np.min(arr, axis=0))
     return arr + np.random.randn(*arr.shape) * stdev
 
 
-def _transform(wx: np.ndarray, yt: np.ndarray, P: np.ndarray) -> np.ndarray:
+def _transform(
+        wx: np.ndarray,
+        yt: np.ndarray,
+        P: np.ndarray,
+        jitter: bool = True,
+        jitter_std: float = .01) -> np.ndarray:
     """
     Optimal transport integration (Ferradans 2013)
 
@@ -37,7 +42,10 @@ def _transform(wx: np.ndarray, yt: np.ndarray, P: np.ndarray) -> np.ndarray:
     assert P.shape == (n,m), "Dimension mismatch, (%i,%i) != (%i,%i)" % (
         *P.shape, n, m
     )
-    return rand_jitter(np.array(np.diag(1 / wx) @ P @ yt))
+    xt = np.array(np.diag(1 / wx) @ P @ yt)
+    if jitter:
+        xt = rand_jitter(xt, jitter_std)
+    return xt
 
 
 def _compute_transport(

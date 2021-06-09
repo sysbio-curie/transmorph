@@ -101,15 +101,18 @@ class Transmorph:
 
 
     def __str__(self) -> str:
-        return "(Transmorph) %s based -- max_iter: %i -- %s -- %s" % (
+        return "(Transmorph) %s based -- max_iter: %i -- %s -- %s -- %s" % (
             self.method,
             self.max_iter,
             ( ("entropy regularized, hreg: %f" % self.hreg)
-              if self.entropy else "no entropy"),
+              if self.entropy else "no entropy"
+            ),
             ( ("weighted, alpha_qp: %f, scale: %s" % (
                 self.alpha_qp,
                 str(self.scale) if self.scale != -1 else 'adaptive'))
-              if self.weighted else "unweighted")
+              if self.weighted else "unweighted"
+            ),
+            ( ("jitter: %r, std: %f") % (self.jitter, self.jitter_std) )
         )
 
     def _print(self, s: str, end: str = '\n', header: bool = True) -> None:
@@ -262,7 +265,8 @@ class Transmorph:
         assert m == mP, "Inconsistent dimension between reference and transport."
         assert n == nw, "Inconsistent dimension between weights and transport."
         self._print("Projecting dataset...")
-        return _transform(self.wx, self.yt, self.transport_plan)
+        return _transform(self.wx, self.yt, self.transport_plan,
+                          jitter=self.jitter, jitter_std=self.jitter_std)
 
 
     def fit_transform(self,

@@ -7,7 +7,8 @@ from scipy import sparse
 import osqp
 
 
-def _kernel_var(xs, sigma):
+def _kernel_H(xs, sigma):
+    # Returns density entropy
     p = _get_density(xs, sigma).sum(axis=1)
     return entropy(p / p.sum())
 
@@ -17,9 +18,9 @@ def sigma_search(xs, max_depth=20, base=2, init_s=1, thr=1.01):
 
     # Initialization
     s0, s1, s2 = 1, 1/base, 1/(base*base)
-    v0 = _kernel_var(xs, s0)
-    v1 = _kernel_var(xs, s1)
-    v2 = _kernel_var(xs, s2)
+    v0 = _kernel_H(xs, s0)
+    v1 = _kernel_H(xs, s1)
+    v2 = _kernel_H(xs, s2)
 
     # Log search
     for i in range(max_depth):
@@ -30,19 +31,20 @@ def sigma_search(xs, max_depth=20, base=2, init_s=1, thr=1.01):
         v1 = v2
         s1 = s2
         s2 /= base
-        v2 = _kernel_var(xs, s2)
+        v2 = _kernel_H(xs, s2)
 
     # Trichotomous search
+    # s2 ---- m0 -- m1 ---- s0
     for i in range(max_depth):
-        mid0 = s0 + 3*(s2 - s0)/8
-        mid1 = mid0 + (s2 - s0) / 4
-        v0 = _kernel_var(xs, mid0)
-        v1 = _kernel_var(xs, mid1)
+        mid0 = s2 + 3*(s0 - s2)/8
+        mid1 = mid0 + (s0 - s2) / 4
+        v0 = _kernel_H(xs, mid0)
+        v1 = _kernel_H(xs, mid1)
         if v0 < v1:
-            s0, s2 = s0, mid1
+            s2, s0 = s2, mid1
         else:
-            s0, s2 = mid0, s2
-        if s2/s0 < thr:
+            s2, s0 = mid0, s0
+        if s0/s2 < thr:
             break
 
     return (s0 + s2)/2
@@ -65,7 +67,7 @@ def _get_density(x: np.ndarray, scale: float = 1) -> np.ndarray:
     xnorm = (x / std_arr)
     Dmatrix = cdist(xnorm, xnorm)
     assert Dmatrix.max() > 0, "All points are equal in x."
-    return norm.pdf(-Dmatrix, loc=0, scale=scale)
+    return norm.pdf(-Dmatrix, loc=0, scale=scale) # TODO: optimize this call
 
 
 def _optimal_weights(K: np.ndarray, alpha_qp: float = 1.0, eps=1e-9):
