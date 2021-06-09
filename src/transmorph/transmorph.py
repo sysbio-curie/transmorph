@@ -79,6 +79,7 @@ class Transmorph:
                                             Available methods are 'ot', 'gromov'"
         assert max_iter > 0, "Negative number of iterations."
         assert scale > 0 or scale == -1, "Scale must be positive."
+        self.fitted = False
         self.method = method
         self.max_iter = max_iter
         self.entropy = entropy
@@ -89,14 +90,14 @@ class Transmorph:
         self.scale = scale
         self.jitter = jitter
         self.jitter_std = jitter_std
-        # Cache
+        # Cache for transport plan
         self.transport_plan = None
+        # Cache for dataset weights
         self.wx = None
         self.wy = None
-        self.yt = None
         # Cache datasets to avoid weights recomputation
-        self.x = None # Source dataset
-        self.y = None # Reference dataset
+        self.xs = None # Source dataset
+        self.yt = None # Reference dataset
         self._print("Successfully initialized.\n%s" % str(self))
 
 
@@ -124,36 +125,6 @@ class Transmorph:
         else:
             print(s, end=end)
 
-    def is_fitted(self) -> bool:
-        """
-        Returns True if Transmorph has been fitted.
-        """
-        return self.transport_plan is not None
-
-    def get_wx(self):
-        """
-        Returns source transportation weights.
-        """
-        assert self.is_fitted(), "Transmorph must be fitted first."
-        return self.wx
-
-    def get_wy(self):
-        """
-        Returns reference transportation weights.
-        """
-        assert self.is_fitted(), "Transmorph must be fitted first."
-        return self.wy
-
-    def get_K(self, xs: np.ndarray):
-        """
-        Returns kernel matrix between points from xs.
-        """
-        if self.scale == -1:
-            sigma = self.sigma_search(xs)
-        else:
-            sigma = self.scale
-        return _get_density(xs, sigma)
-
     def sigma_search(self, xs):
         """
         Returns the RBF sigma maximizing density entropy.
@@ -163,13 +134,33 @@ class Transmorph:
         self._print("Found: %f" % sigma, header=False)
         return sigma
 
-    def get_density(self, xs: np.ndarray, w: np.ndarray = None):
+    def compute_weights(self, x: np.ndarray) -> np.ndarray:
         """
-        Reutns density per point.
         """
-        if w is None:
-            w = np.array([1/len(xs)]*len(xs))
-        return self.get_K(xs) @ w
+        assert len(x) > 0, "Empty array."
+
+        # Uniform case
+        if not self.weighted:
+            n = len(x)
+            return np.array([1 / n] * n)
+
+        # Search the cache
+        if x is self.xs:
+            self._print("Using cached values (wx).")
+            return self.wx
+        if x is self.yt:
+            self._print("Using cached values (wy).")
+            return self.wy
+
+        # Compute weights
+        if self.scale == -1:
+            sigma = self.sigma_search(x)
+        else:
+            sigma = self.scale
+        self._print("Solving the QP...")
+        return normal_kernel_weights(
+            x, alpha_qp=self.alpha_qp, scale=sigma
+        )
 
     def fit(self,
             xs: np.ndarray,
@@ -206,47 +197,25 @@ class Transmorph:
         n, m = len(xs), len(yt)
         assert n > 0, "Empty source matrix."
         assert m > 0, "Empty reference matrix."
-        self.yt = yt
-        if not self.weighted:
-            self.wx, self.wy = np.array([1 / n] * n), np.array([1 / m] * m)
-        else:
-            if not np.array_equal(xs, self.x): # Avoid recomputing weights
-                self.x = xs
-                if self.scale == -1:
-                    sigma = self.sigma_search(xs)
-                else:
-                    sigma = self.scale
-                self._print("Computing source distribution weights...")
-                self.wx = normal_kernel_weights(
-                    xs, alpha_qp=self.alpha_qp, scale=sigma
-                )
-            else:
-                self._print("Reusing previously computed source weights...")
 
-            if not np.array_equal(yt, self.y): # Avoid recomputing weights
-                self.y = yt
-                if self.scale == -1:
-                    sigma = self.sigma_search(yt)
-                else:
-                    sigma = self.scale
-                self._print("Computing reference distribution weights...")
-                self.wy = normal_kernel_weights(
-                    yt, alpha_qp=self.alpha_qp, scale=sigma
-                )
-            else:
-                self._print("Reusing previously computed reference weights...")
+        self.fitted = False
+
+        # Computing weights if necessary
+        self._print("Computing source weights...")
+        self.wx = self.compute_weights(xs)
+        self._print("Computing target weights...")
+        self.wy = self.compute_weights(yt)
+        self.xs = xs
+        self.yt = yt
 
         # Projecting source to ref
-        if self.method == "ot":
-            self._print("Computing optimal transport plan...")
-        if self.method == "gromov":
-            self._print("Computing Gromov-Wasserstein plan...")
-
+        self._print("Computing transport plan (%s)..." % self.method)
         self.transport_plan = _compute_transport(
             xs, yt, self.wx, self.wy, method=self.method, Mxy=Mxy, Mx=Mx, My=My,
             max_iter=self.max_iter, entropy=self.entropy,
             hreg=self.hreg)
 
+        self.fitted = True
         self._print("Transmorph fitted.")
 
 
@@ -258,7 +227,7 @@ class Transmorph:
         --------
         (n,d1) np.ndarray, of xs integrated onto yt.
         """
-        assert self.is_fitted(), "Transmorph must be fitted first."
+        assert self.fitted, "Transmorph must be fitted first."
         m, d = self.yt.shape
         n, mP = self.transport_plan.shape
         nw = len(self.wx)
@@ -287,5 +256,5 @@ class Transmorph:
         Uses the optimal tranport plan to infer xs labels based
         on yt ones in a semi-supervised fashion.
         """
-        assert self.is_fitted(), "Transmorph must be fitted first."
+        assert self.fitted, "Transmorph must be fitted first."
         return y_labels[np.argmax(self.transport_plan.toarray(), axis=1)]
