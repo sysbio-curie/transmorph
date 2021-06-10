@@ -5,6 +5,7 @@ import ot
 
 from typing import Callable
 from scipy.sparse import csr_matrix
+from scipy.spatial.distance import cdist
 
 from .density import normal_kernel_weights
 
@@ -49,18 +50,18 @@ def _transform(
 
 
 def _compute_transport(
-    xs: np.ndarray,
-    yt: np.ndarray,
-    wx: np.ndarray,
-    wy: np.ndarray,
-    method: str = 'ot',
-    Mxy: np.ndarray = None,
-    Mx: np.ndarray = None,
-    My: np.ndarray = None,
-    max_iter: int = 1e7,
-    entropy: bool = False,
-    hreg: float = 1e-3,
-) -> np.ndarray:
+        xs: np.ndarray,
+        yt: np.ndarray,
+        wx: np.ndarray,
+        wy: np.ndarray,
+        method: str = 'ot',
+        metric: str = 'cosine',
+        Mxy: np.ndarray = None,
+        Mx: np.ndarray = None,
+        My: np.ndarray = None,
+        max_iter: int = 1e7,
+        entropy: bool = False,
+        hreg: float = 1e-3) -> np.ndarray:
     """
     Returns the ptimal transport plan between xs and yt
 
@@ -80,6 +81,8 @@ def _compute_transport(
         Target weights histogram (sum to 1).
     method: str in {'ot', 'gromov'}
         Optimal transport or Gromov-Wasserstein integration
+    metric: str (see scipy.spatial.distance.cdist)
+        Default metric to use if distance matrices are None
     Mxy: array (n,m)
         Cost matrix, M_ij = cost(xi, yj). If null, Euclidean distance by default.
     Mx: array (n,n)
@@ -113,7 +116,7 @@ def _compute_transport(
             assert xs.shape[1] == yt.shape[1], "Dimensionality error.\
                 xs has shape (%i,%i) and yt has shape (%i,%i), with no cost matrix\
                 provided. Impossible to use Euclidean distance." % (*xs.shape, *yt.shape)
-            Mxy = ot.dist(xs, yt)
+            Mxy = cdist(xs, yt, metric=metric)
         assert Mxy.shape == (n, m), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (n, m, *Mxy.shape)
         Mxy /= Mxy.max()
@@ -125,12 +128,12 @@ def _compute_transport(
     if method == 'gromov':
 
         if Mx is None:
-            Mx = ot.dist(xs, xs)
+            Mx = cdist(xs, xs, metric=metric)
         assert Mx.shape == (n, n), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (n, n, *Mx.shape)
         Mx /= Mx.max()
         if My is None:
-            My = ot.dist(yt, yt)
+            My = cdist(yt, yt, metric=metric)
         assert Mx.shape == (m, m), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (m, m, *My.shape)
         My /= My.max()

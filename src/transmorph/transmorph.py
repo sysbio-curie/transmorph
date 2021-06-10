@@ -53,12 +53,8 @@ class Transmorph:
         Standard deviation of Gaussian RBFs used in the weights selection. May need
         some tuning. Set it to -1 to use an adaptive sigma.
 
-    jitter: bool, default = True
-        Adds a little bit of random scattering to the final results. Helps
-        downstream methods such as UMAP in some cases.
-
-    jitter_std: float, default = 0.01
-        Jittering standard deviation.
+    metric: str (see scipy.spatial.distance.cdist)
+        Default metric to use.
 
     verbose: bool, default = False
         Enable logging.
@@ -72,8 +68,7 @@ class Transmorph:
                  weighted: bool = True,
                  alpha_qp: float = 1.0,
                  scale: float = -1,
-                 jitter: bool = True,
-                 jitter_std: float = .01,
+                 metric: str = 'euclidean',
                  verbose: bool = False):
         assert method in ('ot', 'gromov'), "Unrecognized method: %s. \
                                             Available methods are 'ot', 'gromov'"
@@ -88,8 +83,7 @@ class Transmorph:
         self.alpha_qp = alpha_qp
         self.verbose = verbose
         self.scale = scale
-        self.jitter = jitter
-        self.jitter_std = jitter_std
+        self.metric = metric
         # Cache for transport plan
         self.transport_plan = None
         # Cache for dataset weights
@@ -102,7 +96,11 @@ class Transmorph:
 
 
     def __str__(self) -> str:
-        return "(Transmorph) %s based -- max_iter: %i -- %s -- %s -- %s" % (
+        return "(Transmorph) %s based \n \
+                -- max_iter: %i \n \
+                -- %s \n \
+                -- %s \n \
+                -- metric: %s" % (
             self.method,
             self.max_iter,
             ( ("entropy regularized, hreg: %f" % self.hreg)
@@ -113,7 +111,7 @@ class Transmorph:
                 str(self.scale) if self.scale != -1 else 'adaptive'))
               if self.weighted else "unweighted"
             ),
-            ( ("jitter: %r, std: %f") % (self.jitter, self.jitter_std) )
+            self.metric
         )
 
     def _print(self, s: str, end: str = '\n', header: bool = True) -> None:
@@ -136,6 +134,17 @@ class Transmorph:
 
     def compute_weights(self, x: np.ndarray) -> np.ndarray:
         """
+        Returns weights for points in x so that kernel density
+        is uniform over the dataset.
+
+        Returns:
+        --------
+        (n,) vector of positive real numbers that sums to 1.
+
+        Parameters:
+        -----------
+        x: np.ndarray (n,d)
+            Input dataset
         """
         assert len(x) > 0, "Empty array."
 
@@ -157,10 +166,11 @@ class Transmorph:
             sigma = self.sigma_search(x)
         else:
             sigma = self.scale
-        self._print("Solving the QP...")
+        self._print("Solving the QP...", end=' ')
         return normal_kernel_weights(
             x, alpha_qp=self.alpha_qp, scale=sigma
         )
+        self._print("Done.", header=False)
 
     def fit(self,
             xs: np.ndarray,
@@ -211,7 +221,8 @@ class Transmorph:
         # Projecting source to ref
         self._print("Computing transport plan (%s)..." % self.method)
         self.transport_plan = _compute_transport(
-            xs, yt, self.wx, self.wy, method=self.method, Mxy=Mxy, Mx=Mx, My=My,
+            xs, yt, self.wx, self.wy, method=self.method, metric=self.metric,
+            Mxy=Mxy, Mx=Mx, My=My,
             max_iter=self.max_iter, entropy=self.entropy,
             hreg=self.hreg)
 
@@ -219,9 +230,16 @@ class Transmorph:
         self._print("Transmorph fitted.")
 
 
-    def transform(self) -> np.ndarray:
+    def transform(self, jitter: bool = True, jitter_std: float = .01) -> np.ndarray:
         """
         Applies optimal transport integration. Transmorph must be fitted beforehand.
+
+        jitter: bool, default = True
+            Adds a little bit of random scattering to the final results. Helps
+            downstream methods such as UMAP in some cases.
+
+        jitter_std: float, default = 0.01
+            Jittering standard deviation.
 
         Returns:
         --------
@@ -235,20 +253,22 @@ class Transmorph:
         assert n == nw, "Inconsistent dimension between weights and transport."
         self._print("Projecting dataset...")
         return _transform(self.wx, self.yt, self.transport_plan,
-                          jitter=self.jitter, jitter_std=self.jitter_std)
+                          jitter=jitter, jitter_std=jitter_std)
 
 
     def fit_transform(self,
-            xs: np.ndarray,
-            yt: np.ndarray,
-            Mx: np.ndarray = None,
-            My: np.ndarray = None,
-            Mxy: np.ndarray = None) -> np.ndarray:
+                      xs: np.ndarray,
+                      yt: np.ndarray,
+                      Mx: np.ndarray = None,
+                      My: np.ndarray = None,
+                      Mxy: np.ndarray = None,
+                      jitter: bool = True,
+                      jitter_std: float = .01) -> np.ndarray:
         """
         Shortcut, fit() -> transform()
         """
         self.fit(xs, yt, Mx, My, Mxy)
-        return self.transform()
+        return self.transform(jitter=jitter, jitter_std=jitter_std)
 
 
     def label_transfer(self, y_labels: np.ndarray) -> np.ndarray:

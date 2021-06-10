@@ -22,7 +22,7 @@ def sigma_search(xs, max_depth=20, base=2, init_s=1, thr=1.01):
     v1 = _kernel_H(xs, s1)
     v2 = _kernel_H(xs, s2)
 
-    # Log search
+    # Log search -- TODO: other direction
     for i in range(max_depth):
         if v2 > v1:
             break
