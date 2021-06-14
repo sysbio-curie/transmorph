@@ -94,6 +94,18 @@ class Transmorph:
         self.yt = None # Reference dataset
         self._print("Successfully initialized.\n%s" % str(self))
 
+    def copy(self):
+        c = Transmorph(self.method, self.max_iter, self.entropy, self.hreg,
+                       self.weighted, self.alpha_qp, self.scale, self.metric,
+                       self.verbose)
+        c.fitted = self.fitted
+        c.transport_plan = self.transport_plan.copy()
+        c.wx = self.wx
+        c.wy = self.wy
+        c.xs = self.xs
+        c.yt = self.yt
+        return c
+
 
     def __str__(self) -> str:
         return "(Transmorph) %s based \n \
@@ -119,7 +131,7 @@ class Transmorph:
         if not self.verbose:
             return
         if header:
-            print("Transmorph > %s" % s, end=end)
+            print("(Transmorph) > %s" % s, end=end)
         else:
             print(s, end=end)
 
@@ -167,10 +179,11 @@ class Transmorph:
         else:
             sigma = self.scale
         self._print("Solving the QP...", end=' ')
-        return normal_kernel_weights(
+        w = normal_kernel_weights(
             x, alpha_qp=self.alpha_qp, scale=sigma
         )
         self._print("Done.", header=False)
+        return w
 
     def fit(self,
             xs: np.ndarray,
@@ -278,3 +291,10 @@ class Transmorph:
         """
         assert self.fitted, "Transmorph must be fitted first."
         return y_labels[np.argmax(self.transport_plan.toarray(), axis=1)]
+
+    def euclidean_barycenter(self):
+        assert self.fitted, "Transmorph must be fitted first."
+        return (
+            (np.diag(self.wx) @ self.xs).sum(axis=0),
+            (np.diag(self.wy) @ self.yt).sum(axis=0)
+        )

@@ -9,8 +9,8 @@ import osqp
 
 def _kernel_H(xs, sigma):
     # Returns density entropy
-    p = _get_density(xs, sigma).sum(axis=1)
-    return entropy(p / p.sum())
+    # vector is automatically normalized to sum up to 1.
+    return entropy(_get_density(xs, sigma).sum(axis=1))
 
 
 def sigma_search(xs, max_depth=20, base=2, init_s=1, thr=1.01):
