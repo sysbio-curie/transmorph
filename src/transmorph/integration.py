@@ -144,4 +144,3 @@ def _compute_transport(
             transport_plan = ot.gromov.gromov_wasserstein(Mx, My, wx, wy, 'square_loss', numItermax=max_iter)
 
     return csr_matrix(transport_plan)
-

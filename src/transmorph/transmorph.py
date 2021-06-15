@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
 import numpy as np
+from scipy.sparse import csr_matrix
+
 from .integration import _compute_transport, _transform
 from .density import normal_kernel_weights, _get_density, sigma_search
+from .tdata import TData
 
 class Transmorph:
     """
@@ -61,6 +64,9 @@ class Transmorph:
     """
 
     def __init__(self,
+                 xs: TData = None,
+                 yt: TData = None,
+                 transport_plan: np.array = None,
                  method: str = 'ot',
                  max_iter: int = 1e6,
                  entropy: bool = False,
@@ -85,25 +91,19 @@ class Transmorph:
         self.scale = scale
         self.metric = metric
         # Cache for transport plan
-        self.transport_plan = None
-        # Cache for dataset weights
-        self.wx = None
-        self.wy = None
-        # Cache datasets to avoid weights recomputation
-        self.xs = None # Source dataset
-        self.yt = None # Reference dataset
+        self.transport_plan = transport_plan.copy() if transport_plan is not None else None
+        # Cache for datasets (TData)
+        self.xs = xs.copy() if xs is not None else None
+        self.yt = yt.copy() if yt is not None else None
         self._print("Successfully initialized.\n%s" % str(self))
 
     def copy(self):
-        c = Transmorph(self.method, self.max_iter, self.entropy, self.hreg,
-                       self.weighted, self.alpha_qp, self.scale, self.metric,
-                       self.verbose)
+        c = Transmorph(
+            self.xs, self.yt, self.transport_plan,
+            self.method, self.max_iter, self.entropy, self.hreg,
+            self.weighted, self.alpha_qp, self.scale, self.metric,
+            self.verbose)
         c.fitted = self.fitted
-        c.transport_plan = self.transport_plan.copy()
-        c.wx = self.wx
-        c.wy = self.wy
-        c.xs = self.xs
-        c.yt = self.yt
         return c
 
 
@@ -134,56 +134,6 @@ class Transmorph:
             print("(Transmorph) > %s" % s, end=end)
         else:
             print(s, end=end)
-
-    def sigma_search(self, xs):
-        """
-        Returns the RBF sigma maximizing density entropy.
-        """
-        self._print("Sigma search...", end=' ')
-        sigma = sigma_search(xs)
-        self._print("Found: %f" % sigma, header=False)
-        return sigma
-
-    def compute_weights(self, x: np.ndarray) -> np.ndarray:
-        """
-        Returns weights for points in x so that kernel density
-        is uniform over the dataset.
-
-        Returns:
-        --------
-        (n,) vector of positive real numbers that sums to 1.
-
-        Parameters:
-        -----------
-        x: np.ndarray (n,d)
-            Input dataset
-        """
-        assert len(x) > 0, "Empty array."
-
-        # Uniform case
-        if not self.weighted:
-            n = len(x)
-            return np.array([1 / n] * n)
-
-        # Search the cache
-        if x is self.xs:
-            self._print("Using cached values (wx).")
-            return self.wx
-        if x is self.yt:
-            self._print("Using cached values (wy).")
-            return self.wy
-
-        # Compute weights
-        if self.scale == -1:
-            sigma = self.sigma_search(x)
-        else:
-            sigma = self.scale
-        self._print("Solving the QP...", end=' ')
-        w = normal_kernel_weights(
-            x, alpha_qp=self.alpha_qp, scale=sigma
-        )
-        self._print("Done.", header=False)
-        return w
 
     def fit(self,
             xs: np.ndarray,
@@ -224,17 +174,14 @@ class Transmorph:
         self.fitted = False
 
         # Computing weights if necessary
-        self._print("Computing source weights...")
-        self.wx = self.compute_weights(xs)
-        self._print("Computing target weights...")
-        self.wy = self.compute_weights(yt)
-        self.xs = xs
-        self.yt = yt
+        self.xs = TData(xs, None, self.weighted, self.scale, self.verbose)
+        self.yt = TData(yt, None, self.weighted, self.scale, self.verbose)
 
         # Projecting source to ref
         self._print("Computing transport plan (%s)..." % self.method)
         self.transport_plan = _compute_transport(
-            xs, yt, self.wx, self.wy, method=self.method, metric=self.metric,
+            xs, yt, self.xs.get_weights(), self.yt.get_weights(),
+            method=self.method, metric=self.metric,
             Mxy=Mxy, Mx=Mx, My=My,
             max_iter=self.max_iter, entropy=self.entropy,
             hreg=self.hreg)
@@ -259,13 +206,15 @@ class Transmorph:
         (n,d1) np.ndarray, of xs integrated onto yt.
         """
         assert self.fitted, "Transmorph must be fitted first."
-        m, d = self.yt.shape
+        wx = self.xs.get_weights()
+        yt = self.yt.x
+        m, d = yt.shape
         n, mP = self.transport_plan.shape
-        nw = len(self.wx)
+        nw = len(wx)
         assert m == mP, "Inconsistent dimension between reference and transport."
         assert n == nw, "Inconsistent dimension between weights and transport."
         self._print("Projecting dataset...")
-        return _transform(self.wx, self.yt, self.transport_plan,
+        return _transform(wx, yt, self.transport_plan,
                           jitter=jitter, jitter_std=jitter_std)
 
 
@@ -292,9 +241,3 @@ class Transmorph:
         assert self.fitted, "Transmorph must be fitted first."
         return y_labels[np.argmax(self.transport_plan.toarray(), axis=1)]
 
-    def euclidean_barycenter(self):
-        assert self.fitted, "Transmorph must be fitted first."
-        return (
-            (np.diag(self.wx) @ self.xs).sum(axis=0),
-            (np.diag(self.wy) @ self.yt).sum(axis=0)
-        )
