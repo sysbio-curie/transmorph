@@ -64,9 +64,6 @@ class Transmorph:
     """
 
     def __init__(self,
-                 xs: TData = None,
-                 yt: TData = None,
-                 transport_plan: np.array = None,
                  method: str = 'ot',
                  max_iter: int = 1e6,
                  entropy: bool = False,
@@ -91,19 +88,21 @@ class Transmorph:
         self.scale = scale
         self.metric = metric
         # Cache for transport plan
-        self.transport_plan = transport_plan.copy() if transport_plan is not None else None
+        self.transport_plan = None
         # Cache for datasets (TData)
-        self.xs = xs.copy() if xs is not None else None
-        self.yt = yt.copy() if yt is not None else None
+        self.xs = None
+        self.yt = None
         self._print("Successfully initialized.\n%s" % str(self))
 
     def copy(self):
         c = Transmorph(
-            self.xs, self.yt, self.transport_plan,
             self.method, self.max_iter, self.entropy, self.hreg,
             self.weighted, self.alpha_qp, self.scale, self.metric,
             self.verbose)
         c.fitted = self.fitted
+        c.transport_plan = self.transport_plan.copy()
+        c.xs = self.xs.copy()
+        c.yt = self.yt.copy()
         return c
 
 
@@ -173,9 +172,12 @@ class Transmorph:
 
         self.fitted = False
 
-        # Computing weights if necessary
-        self.xs = TData(xs, None, self.weighted, self.scale, self.verbose)
-        self.yt = TData(yt, None, self.weighted, self.scale, self.verbose)
+        # Creating TData objects if necessary
+        if self.xs is None or not np.array_equal(self.xs.x, xs):
+            self.xs = TData(xs, None, self.weighted, self.scale, self.verbose)
+
+        if self.yt is None or not np.array_equal(self.yt.x, yt):
+            self.yt = TData(yt, None, self.weighted, self.scale, self.verbose)
 
         # Projecting source to ref
         self._print("Computing transport plan (%s)..." % self.method)
