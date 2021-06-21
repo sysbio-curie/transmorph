@@ -17,7 +17,7 @@ def rand_jitter(arr, std=.01):
 
 
 def _transform(
-        wx: np.ndarray,
+        wy: np.ndarray,
         yt: np.ndarray,
         P: np.ndarray,
         jitter: bool = True,
@@ -31,19 +31,15 @@ def _transform(
 
     Parameters:
     -----------
-    wx: (n,1) np.ndarray
+    wy: (n,1) np.ndarray
         Optimal transport weights
     yt: (m,d) np.ndarray
         Target distribution
     P:  (n,m) np.ndarray
         Optimal transport plan
     """
-    n = wx.shape[0]
-    m = yt.shape[0]
-    assert P.shape == (n,m), "Dimension mismatch, (%i,%i) != (%i,%i)" % (
-        *P.shape, n, m
-    )
-    xt = np.array(np.diag(1 / wx) @ P @ yt)
+    T = np.array(P @ np.diag(1/wy))
+    xt = np.diag(1 / T.sum(axis=1)) @ T @ yt
     if jitter:
         xt = rand_jitter(xt, jitter_std)
     return xt

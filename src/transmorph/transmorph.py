@@ -208,15 +208,15 @@ class Transmorph:
         (n,d1) np.ndarray, of xs integrated onto yt.
         """
         assert self.fitted, "Transmorph must be fitted first."
-        wx = self.xs.get_weights()
+        wy = self.yt.get_weights()
         yt = self.yt.x
         m, d = yt.shape
         n, mP = self.transport_plan.shape
-        nw = len(wx)
+        mw = len(wx)
         assert m == mP, "Inconsistent dimension between reference and transport."
-        assert n == nw, "Inconsistent dimension between weights and transport."
+        assert mP == mw, "Inconsistent dimension between weights and transport."
         self._print("Projecting dataset...")
-        return _transform(wx, yt, self.transport_plan,
+        return _transform(wy, yt, self.transport_plan,
                           jitter=jitter, jitter_std=jitter_std)
 
 
