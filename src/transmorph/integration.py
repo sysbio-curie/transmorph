@@ -3,17 +3,9 @@
 import numpy as np
 import ot
 
-from typing import Callable
 from scipy.sparse import csr_matrix
-from scipy.spatial.distance import cdist
 
 from .density import normal_kernel_weights
-
-
-def rand_jitter(arr, std=.01):
-    # Adds a little bit of fluctuation
-    stdev = std * (np.max(arr, axis=0) - np.min(arr, axis=0))
-    return arr + np.random.randn(*arr.shape) * stdev
 
 
 def _transform(
@@ -27,21 +19,23 @@ def _transform(
 
     Returns:
     --------
-    diag(1 /. wx) @ P @ yt
+    N @ (P @ diag(1 /. wy)) @ yt,
+    with N the row-normalizer N = diag( (P @ diag(1 /. wy)) @ 1 )^-1
 
     Parameters:
     -----------
     wy: (n,1) np.ndarray
-        Optimal transport weights
+        Reference dataset weights used during OT
     yt: (m,d) np.ndarray
-        Target distribution
+        Target distribution points
     P:  (n,m) np.ndarray
         Optimal transport plan
     """
-    T = np.array(P @ np.diag(1/wy))
+    T = P.toarray() @ np.diag(1 / wy)
     xt = np.diag(1 / T.sum(axis=1)) @ T @ yt
     if jitter:
-        xt = rand_jitter(xt, jitter_std)
+        stdev = jitter_std * (np.max(xt, axis=0) - np.min(xt, axis=0))
+        xt = xt + np.random.randn(*xt.shape) * stdev
     return xt
 
 
@@ -51,7 +45,6 @@ def _compute_transport(
         wx: np.ndarray,
         wy: np.ndarray,
         method: str = 'ot',
-        metric: str = 'cosine',
         Mxy: np.ndarray = None,
         Mx: np.ndarray = None,
         My: np.ndarray = None,
@@ -59,7 +52,8 @@ def _compute_transport(
         entropy: bool = False,
         hreg: float = 1e-3) -> np.ndarray:
     """
-    Returns the ptimal transport plan between xs and yt
+    Returns the optimal transport plan between xs and yt, interfaces the
+    POT methods: https://github.com/PythonOT/POT
 
     Returns:
     -------
@@ -77,14 +71,12 @@ def _compute_transport(
         Target weights histogram (sum to 1).
     method: str in {'ot', 'gromov'}
         Optimal transport or Gromov-Wasserstein integration
-    metric: str (see scipy.spatial.distance.cdist)
-        Default metric to use if distance matrices are None
     Mxy: array (n,m)
-        Cost matrix, M_ij = cost(xi, yj). If null, Euclidean distance by default.
+        Cost matrix, M_ij = cost(xi, yj).
     Mx: array (n,n)
-        Cost matrix, M_ij = cost(xi, xj). If null, Euclidean distance by default.
+        Cost matrix, M_ij = cost(xi, xj).
     My: array (m,m)
-        Cost matrix, M_ij = cost(yi, yj). If null, Euclidean distance by default.
+        Cost matrix, M_ij = cost(yi, yj).
     max_iter: int
         Maximum number of iterations for the OT solver.
     entropy: bool
@@ -108,13 +100,10 @@ def _compute_transport(
 
     if method == 'ot':
 
-        if Mxy is None:
-            assert xs.shape[1] == yt.shape[1], "Dimensionality error.\
-                xs has shape (%i,%i) and yt has shape (%i,%i), with no cost matrix\
-                provided. Impossible to use Euclidean distance." % (*xs.shape, *yt.shape)
-            Mxy = cdist(xs, yt, metric=metric)
+        assert Mxy is not None, "No cost matrix provided."
         assert Mxy.shape == (n, m), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (n, m, *Mxy.shape)
+
         Mxy /= Mxy.max()
         if entropy:
             transport_plan = ot.sinkhorn(wx, wy, Mxy, hreg, numItermax=max_iter)
@@ -123,13 +112,12 @@ def _compute_transport(
 
     if method == 'gromov':
 
-        if Mx is None:
-            Mx = cdist(xs, xs, metric=metric)
+        assert Mx is not None, "No cost matrix provided for xs."
         assert Mx.shape == (n, n), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (n, n, *Mx.shape)
         Mx /= Mx.max()
-        if My is None:
-            My = cdist(yt, yt, metric=metric)
+
+        assert My is not None, "No cost matrix provided for yt."
         assert Mx.shape == (m, m), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (m, m, *My.shape)
         My /= My.max()

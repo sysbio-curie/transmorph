@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="transmorph",  # Replace with your own username
-    version="0.0.6",
+    version="0.0.7",
     author="Aziz Fouché",
     author_email="aziz.fouche@curie.fr",
     description="Optimal transport-based tools for data integration.",
@@ -26,6 +26,7 @@ setuptools.setup(
         'pot',
         'scipy',
         'osqp',
+        'sklearn'
     ],
     python_requires=">=3.6",
 )

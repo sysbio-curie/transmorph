@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix  # Transport plan is usually sparse
 
 from .integration import _compute_transport, _transform
 from .density import normal_kernel_weights, _get_density, sigma_search
 from .tdata import TData
+from .utils import tdist
 
 class Transmorph:
     """
@@ -17,8 +18,8 @@ class Transmorph:
     transport in order to correct for dataset classes unbalance.
 
     By default, the optimal transport plan will be computed using
-    Gromov-Wasserstein metric, but it can be changed to rather use optimal
-    transport (Wasserstein distance).
+    optimal transport metric, but it can be changed to rather use Gromov-
+    Wasserstein distance.
 
     Parameters:
     -----------
@@ -30,7 +31,7 @@ class Transmorph:
         Gromov stands for Gromov-Wasserstein (GW), and only requires the metric
             in both spaces. It is in this sense more general, but is
             invariant to dataset isometries which can lead to poor
-            integration.
+            integration due to overfitting.
 
     max_iter: int, default = 1e6
         Maximum number of iterations for OT/GW.
@@ -59,8 +60,11 @@ class Transmorph:
     metric: str (see scipy.spatial.distance.cdist)
         Default metric to use.
 
-    verbose: bool, default = False
-        Enable logging.
+    verbose: int, default = 1
+        Defines the logging level.
+        0: Disabled
+        1: Informations
+        2: Debug
     """
 
     def __init__(self,
@@ -71,7 +75,8 @@ class Transmorph:
                  weighted: bool = True,
                  alpha_qp: float = 1.0,
                  scale: float = -1,
-                 metric: str = 'euclidean',
+                 metric: str = 'sqeuclidean',
+                 normalize: bool = True,
                  verbose: bool = False):
         assert method in ('ot', 'gromov'), "Unrecognized method: %s. \
                                             Available methods are 'ot', 'gromov'"
@@ -87,18 +92,24 @@ class Transmorph:
         self.verbose = verbose
         self.scale = scale
         self.metric = metric
+        self.normalize = normalize
         # Cache for transport plan
         self.transport_plan = None
-        # Cache for datasets (TData)
+        # Cache for datasets (TData objects)
         self.xs = None
         self.yt = None
-        self._print("Successfully initialized.\n%s" % str(self))
+        self._log("Successfully initialized.")
+        self._log(str(self), level=2)
 
     def copy(self):
+        """
+        Returns a deep copy of a Transmorph object.
+        """
         c = Transmorph(
             self.method, self.max_iter, self.entropy, self.hreg,
             self.weighted, self.alpha_qp, self.scale, self.metric,
-            self.verbose)
+            self.normalize, self.verbose)
+        self._log("Copying Transmorph...", level=2)
         c.fitted = self.fitted
         c.transport_plan = self.transport_plan.copy()
         c.xs = self.xs.copy()
@@ -122,17 +133,16 @@ class Transmorph:
                 str(self.scale) if self.scale != -1 else 'adaptive'))
               if self.weighted else "unweighted"
             ),
-            self.metric
+            self.metric + ("(normalized)" if self.normalize else "")
         )
 
-    def _print(self, s: str, end: str = '\n', header: bool = True) -> None:
+    def _log(self, s: str, end: str = '\n', header: bool = True, level=1) -> None:
         # Only prints for now, can later be pipelined into other streams
-        if not self.verbose:
+        if level > self.verbose:
             return
         if header:
-            print("(Transmorph) > %s" % s, end=end)
-        else:
-            print(s, end=end)
+            s = "(Transmorph) > %s" % s
+        print(s, end=end)
 
     def fit(self,
             xs: np.ndarray,
@@ -142,8 +152,8 @@ class Transmorph:
             Mxy: np.ndarray = None) -> None:
         """
         Computes the optimal transport plan between two empirical distributions,
-        with parameters specified during initialization.
-
+        with parameters specified during initialization. Caches the result
+        in the Transmorph object.
 
         Parameters:
         -----------
@@ -174,22 +184,39 @@ class Transmorph:
 
         # Creating TData objects if necessary
         if self.xs is None or not np.array_equal(self.xs.x, xs):
-            self.xs = TData(xs, None, self.weighted, self.scale, self.verbose)
+            self.xs = TData(xs, None, self.weighted,
+                            self.metric, self.normalize, self.scale,
+                            self.verbose)
 
         if self.yt is None or not np.array_equal(self.yt.x, yt):
-            self.yt = TData(yt, None, self.weighted, self.scale, self.verbose)
+            self.yt = TData(yt, None, self.weighted,
+                            self.metric, self.normalize, self.scale,
+                            self.verbose)
+
+        # Computing cost matrices if necessary.
+        if self.method == 'ot' and Mxy is None:
+            self._log("Using metric %s as a cost for Mxy. Normalization: %r" %
+                     (self.metric, self.normalize))
+            Mxy = tdist(xs, yt, normalize=self.normalize, metric=self.metric)
+        if self.method == 'gromov' and Mx is None:
+            self._log("Using metric %s as a cost for Mx. Normalization: %r" %
+                     (self.metric, self.normalize))
+            Mx = tdist(xs, normalize=self.normalize, metric=self.metric)
+        if self.method == 'gromov' and My is None:
+            self._log("Using metric %s as a cost for My. Normalization: %r" %
+                     (self.metric, self.normalize))
+            My = tdist(yt, normalize=self.normalize, metric=self.metric)
 
         # Projecting source to ref
-        self._print("Computing transport plan (%s)..." % self.method)
+        self._log("Computing transport plan (%s)..." % self.method)
         self.transport_plan = _compute_transport(
             xs, yt, self.xs.get_weights(), self.yt.get_weights(),
-            method=self.method, metric=self.metric,
-            Mxy=Mxy, Mx=Mx, My=My,
+            method=self.method, Mxy=Mxy, Mx=Mx, My=My,
             max_iter=self.max_iter, entropy=self.entropy,
             hreg=self.hreg)
 
         self.fitted = True
-        self._print("Transmorph fitted.")
+        self._log("Transmorph fitted.")
 
 
     def transform(self, jitter: bool = True, jitter_std: float = .01) -> np.ndarray:
@@ -198,7 +225,7 @@ class Transmorph:
 
         jitter: bool, default = True
             Adds a little bit of random scattering to the final results. Helps
-            downstream methods such as UMAP in some cases.
+            downstream methods such as UMAP to converge in some cases.
 
         jitter_std: float, default = 0.01
             Jittering standard deviation.
@@ -212,10 +239,10 @@ class Transmorph:
         yt = self.yt.x
         m, d = yt.shape
         n, mP = self.transport_plan.shape
-        mw = len(wx)
+        mw = len(wy)
         assert m == mP, "Inconsistent dimension between reference and transport."
         assert mP == mw, "Inconsistent dimension between weights and transport."
-        self._print("Projecting dataset...")
+        self._log("Projecting dataset...")
         return _transform(wy, yt, self.transport_plan,
                           jitter=jitter, jitter_std=jitter_std)
 
@@ -239,6 +266,15 @@ class Transmorph:
         """
         Uses the optimal tranport plan to infer xs labels based
         on yt ones in a semi-supervised fashion.
+
+        Parameters:
+        -----------
+        y_labels: (m,) np.ndarray
+            Labels of reference dataset points.
+
+        Returns:
+        --------
+        (n,) np.ndarray, predicted labels for source dataset points.
         """
         assert self.fitted, "Transmorph must be fitted first."
         return y_labels[np.argmax(self.transport_plan.toarray(), axis=1)]
