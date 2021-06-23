@@ -2,11 +2,12 @@
 
 import numpy as np
 from scipy.sparse import csr_matrix  # Transport plan is usually sparse
+from sklearn.decomposition import PCA
+from scipy.spatial.distance import cdist
 
 from .integration import _compute_transport, _transform
 from .density import normal_kernel_weights, _get_density, sigma_search
 from .tdata import TData
-from .utils import tdist
 
 class Transmorph:
     """
@@ -60,6 +61,10 @@ class Transmorph:
     metric: str (see scipy.spatial.distance.cdist)
         Default metric to use.
 
+    n_comps: int, default = -1
+        Number of dimensions to use in the PCA, which is used to compute the cost
+        matrix/density. -1 uses the raw dimensionality instead.
+
     verbose: int, default = 1
         Defines the logging level.
         0: Disabled
@@ -76,6 +81,7 @@ class Transmorph:
                  alpha_qp: float = 1.0,
                  scale: float = -1,
                  metric: str = 'sqeuclidean',
+                 n_comps: int = -1,
                  normalize: bool = True,
                  verbose: bool = False):
         assert method in ('ot', 'gromov'), "Unrecognized method: %s. \
@@ -92,6 +98,7 @@ class Transmorph:
         self.verbose = verbose
         self.scale = scale
         self.metric = metric
+        self.n_comps = n_comps
         self.normalize = normalize
         # Cache for transport plan
         self.transport_plan = None
@@ -118,7 +125,7 @@ class Transmorph:
 
 
     def __str__(self) -> str:
-        return "(Transmorph) %s based \n \
+        return "<Transmorph> %s based \n \
                 -- max_iter: %i \n \
                 -- %s \n \
                 -- %s \n \
@@ -175,7 +182,7 @@ class Transmorph:
             Pairwise metric matrix between xs and yt. Only relevant for OT.
             If None, Euclidean distance is used.
         """
-        # Computing weights
+        ### Computing weights
         n, m = len(xs), len(yt)
         assert n > 0, "Empty source matrix."
         assert m > 0, "Empty reference matrix."
@@ -185,32 +192,40 @@ class Transmorph:
         # Creating TData objects if necessary
         if self.xs is None or not np.array_equal(self.xs.x, xs):
             self.xs = TData(xs, None, self.weighted,
-                            self.metric, self.normalize, self.scale,
+                            self.metric, self.n_comps, self.normalize, self.scale,
                             self.verbose)
 
         if self.yt is None or not np.array_equal(self.yt.x, yt):
             self.yt = TData(yt, None, self.weighted,
-                            self.metric, self.normalize, self.scale,
+                            self.metric, self.n_comps, self.normalize, self.scale,
                             self.verbose)
 
         # Computing cost matrices if necessary.
         if self.method == 'ot' and Mxy is None:
             self._log("Using metric %s as a cost for Mxy. Normalization: %r" %
                      (self.metric, self.normalize))
-            Mxy = tdist(xs, yt, normalize=self.normalize, metric=self.metric)
+            assert xs.shape[1] == yt.shape[1], (
+                "Dimension mismatch (%i != %i)" % (xs.shape[1], yt.shape[1]))
+            X, Y = self.xs.x_nrm, self.yt.x_nrm
+            if self.n_comps != -1:
+                pca = PCA(n_components=self.n_comps)
+                xsyt = np.concatenate( (X, Y), axis=0 )
+                xsyt_red = pca.fit_transform(xsyt)
+                X, Y = xsyt_red[:len(xs)], xsyt_red[len(xs):]
+            Mxy = cdist(X, Y, metric=self.metric)
         if self.method == 'gromov' and Mx is None:
             self._log("Using metric %s as a cost for Mx. Normalization: %r" %
                      (self.metric, self.normalize))
-            Mx = tdist(xs, normalize=self.normalize, metric=self.metric)
+            Mx = self.xs.get_dmatrix()
         if self.method == 'gromov' and My is None:
             self._log("Using metric %s as a cost for My. Normalization: %r" %
                      (self.metric, self.normalize))
-            My = tdist(yt, normalize=self.normalize, metric=self.metric)
+            My = self.yt.get_dmatrix()
 
         # Projecting source to ref
         self._log("Computing transport plan (%s)..." % self.method)
         self.transport_plan = _compute_transport(
-            xs, yt, self.xs.get_weights(), self.yt.get_weights(),
+            self.xs.get_weights(), self.yt.get_weights(),
             method=self.method, Mxy=Mxy, Mx=Mx, My=My,
             max_iter=self.max_iter, entropy=self.entropy,
             hreg=self.hreg)

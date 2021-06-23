@@ -40,8 +40,6 @@ def _transform(
 
 
 def _compute_transport(
-        xs: np.ndarray,
-        yt: np.ndarray,
         wx: np.ndarray,
         wy: np.ndarray,
         method: str = 'ot',
@@ -61,10 +59,6 @@ def _compute_transport(
 
     Parameters:
     ----------
-    xs: array (n,d)
-        Source disribution points.
-    yt: array (m,d)
-        Target distribution points.
     wx: array (n,1)
         Source weights histogram (sum to 1).
     wy: array (m,1)
@@ -84,11 +78,7 @@ def _compute_transport(
     hreg: float
         Entropy regularizer for Sinkhorn's solver.
     """
-    n, m = len(xs), len(yt)
-    assert n >= 0, "Source matrix cannot be empty."
-    assert m >= 0, "Reference matrix cannot be empty."
-    assert n == len(wx), "Weights size does not coincidate with source points."
-    assert m == len(wy), "Weights size does not coincidate with reference points."
+    n, m = len(wx), len(wy)
 
     # Normalization of weights
     assert abs(np.sum(wx) - 1) < 1e-9 and all(
