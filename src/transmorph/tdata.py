@@ -5,7 +5,6 @@ from sklearn.decomposition import PCA
 from scipy.spatial.distance import cdist
 
 from .density import sigma_search, normal_kernel_weights
-from .utils import tdist
 
 class TData:
     """
@@ -39,7 +38,7 @@ class TData:
             x_std[x_std == 0] = 1
             self.x_nrm = x / x_std
 
-        if self.n_comps != -1:
+        if self.n_comps != -1 and self.weighted:
             self._log("Computing a %i components PCA..." % n_comps, end=' ')
             pca = PCA(n_components=n_comps)
             self.x_red = pca.fit_transform(self.x_nrm)
@@ -71,6 +70,7 @@ class TData:
             self.w,
             self.weighted,
             self.metric,
+            self.n_comps,
             self.normalize,
             self.scale,
             self.verbose

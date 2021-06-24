@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import gc
+
 from scipy.sparse import csr_matrix  # Transport plan is usually sparse
 from sklearn.decomposition import PCA
 from scipy.spatial.distance import cdist
@@ -115,12 +117,14 @@ class Transmorph:
         c = Transmorph(
             self.method, self.max_iter, self.entropy, self.hreg,
             self.weighted, self.alpha_qp, self.scale, self.metric,
-            self.normalize, self.verbose)
+            self.n_comps, self.normalize, self.verbose)
         self._log("Copying Transmorph...", level=2)
         c.fitted = self.fitted
         c.transport_plan = self.transport_plan.copy()
-        c.xs = self.xs.copy()
-        c.yt = self.yt.copy()
+        if self.xs is not None:
+            c.xs = self.xs.copy()
+        if self.yt is not None:
+            c.yt = self.yt.copy()
         return c
 
 
@@ -208,6 +212,8 @@ class Transmorph:
                 "Dimension mismatch (%i != %i)" % (xs.shape[1], yt.shape[1]))
             X, Y = self.xs.x_nrm, self.yt.x_nrm
             if self.n_comps != -1:
+                self._log("Computing a PCA representation of datasets (%i PCs)..." %
+                          (self.n_comps))
                 pca = PCA(n_components=self.n_comps)
                 xsyt = np.concatenate( (X, Y), axis=0 )
                 xsyt_red = pca.fit_transform(xsyt)

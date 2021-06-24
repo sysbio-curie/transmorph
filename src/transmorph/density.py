@@ -13,19 +13,21 @@ def _kernel_H(D, sigma):
     return entropy(_get_density(D, sigma).sum(axis=1))
 
 
-def sigma_search(D, max_depth=20, base=2, init_s=1, thr=1.01):
+def sigma_search(D, max_depth=20, base=2, thr=1.01):
     # Searches for a sigma that minimizes density entropy
     # for a given distance matrix D
     # Step 1) Log search
     # Step 2) Dichotomous search
 
     # Initialization
-    s0, s1, s2 = init_s/base, init_s, init_s*base
+    s0, s1, s2 = 1/base, 1, base
     v0 = _kernel_H(D, s0)
     v1 = _kernel_H(D, s1)
     v2 = _kernel_H(D, s2)
 
     # Choosing direction of the minimum
+    log_search = False
+    step = 0
     if v0 < v1 < v2: # _/, backwards
         log_search = True
         step = 1/base
@@ -33,9 +35,6 @@ def sigma_search(D, max_depth=20, base=2, init_s=1, thr=1.01):
     elif v0 > v1 > v2: # \_, forward
         log_search = True
         step = base
-    elif v0 > v1 and v2 > v1: # \_/, in place, go to step 2
-        log_search = False
-        step = 0
 
     # Log search
     for i in range(max_depth):
