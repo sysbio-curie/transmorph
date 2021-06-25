@@ -103,7 +103,7 @@ class TData:
         them if needed.
         """
         if self._weights is None:
-            if not self._weightseighted:
+            if not self.weighted:
                 self._log("Using uniform weights.")
                 self._weights = np.ones((len(self),)) / len(self)
             else:
