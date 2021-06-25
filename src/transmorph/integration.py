@@ -4,18 +4,20 @@ import numpy as np
 import ot
 
 from scipy.sparse import csr_matrix
+from scipy.spatial.distance import cdist
 
 from .density import normal_kernel_weights
+from .tdata import TData
 
 
 def _transform(
-        wy: np.ndarray,
-        yt: np.ndarray,
-        P: np.ndarray,
+        tdata_x: TData,
+        transports: list,
         jitter: bool = True,
-        jitter_std: float = .01) -> np.ndarray:
+        jitter_std: float = .01,
+        n_neighbors: int = 1) -> np.ndarray:
     """
-    Optimal transport integration (Ferradans 2013)
+    Optimal transport integration, inspired by (Ferradans 2013).
 
     Returns:
     --------
@@ -24,19 +26,27 @@ def _transform(
 
     Parameters:
     -----------
-    wy: (n,1) np.ndarray
-        Reference dataset weights used during OT
-    yt: (m,d) np.ndarray
-        Target distribution points
-    P:  (n,m) np.ndarray
-        Optimal transport plan
+    TODO: docstring
     """
-    T = P.toarray() @ np.diag(1 / wy)
-    xt = np.diag(1 / T.sum(axis=1)) @ T @ yt
+    xs_raw = tdata_x.x_raw
+    dx = np.zeros(xs_raw.shape)
+    for n_iter, (tdata_xi, tdata_yi, Pxyi) in enumerate(transports):
+        T = Pxyi.toarray() @ np.diag(1 / tdata_yi.weights())
+        xti = np.diag(1 / T.sum(axis=1)) @ T @ tdata_yi.x_raw
+        dxi = xti - tdata_xi.x_raw
+        Di = tdata_x.distance(tdata_xi)
+        idx = np.argsort(Di, axis=1)[:,:n_neighbors]
+        idx_selector = np.zeros((len(xs_raw), len(xti)))
+        S = 1 / (1 + np.take_along_axis(Di, idx, axis=1))
+        S /= S.sum(axis=1)[:,None]
+        np.put_along_axis(idx_selector, idx, S, axis=1)
+        dx += idx_selector @ dxi
+    x_int = xs_raw + dx / len(transports)
+
     if jitter:
-        stdev = jitter_std * (np.max(xt, axis=0) - np.min(xt, axis=0))
-        xt = xt + np.random.randn(*xt.shape) * stdev
-    return xt
+        stdev = jitter_std * (np.max(x_int, axis=0) - np.min(x_int, axis=0))
+        x_int = x_int + np.random.randn(*x_int.shape) * stdev
+    return x_int
 
 
 def _compute_transport(
@@ -118,3 +128,4 @@ def _compute_transport(
             transport_plan = ot.gromov.gromov_wasserstein(Mx, My, wx, wy, 'square_loss', numItermax=max_iter)
 
     return csr_matrix(transport_plan)
+

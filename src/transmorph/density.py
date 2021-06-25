@@ -65,11 +65,11 @@ def sigma_search(D, max_depth=20, base=2, thr=1.01):
 
 
 def normal_kernel_weights(
-        D: np.ndarray, scale: float = 1
+        D: np.ndarray, scale: float = 1, alpha_qp: float = 1.0
 ):
     ## Shortcut get_density -> optimal weights
     K = _get_density(D, scale)
-    w = _optimal_weights(K, 1.0)
+    w = _optimal_weights(K, alpha_qp)
     return w / np.sum(w)
 
 

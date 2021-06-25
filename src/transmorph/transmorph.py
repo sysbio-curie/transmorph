@@ -6,10 +6,16 @@ import gc
 from scipy.sparse import csr_matrix  # Transport plan is usually sparse
 from sklearn.decomposition import PCA
 from scipy.spatial.distance import cdist
+from collections import namedtuple
 
 from .integration import _compute_transport, _transform
 from .density import normal_kernel_weights, _get_density, sigma_search
 from .tdata import TData
+from .utils import col_normalize
+
+# Read-only container for transport results
+# TData, TData, array
+Transport = namedtuple("Transport", ["src", "tar", "P"])
 
 class Transmorph:
     """
@@ -67,6 +73,13 @@ class Transmorph:
         Number of dimensions to use in the PCA, which is used to compute the cost
         matrix/density. -1 uses the raw dimensionality instead.
 
+    subsampling: float, default = -1
+        Fraction of data to use for computing the anchor matching. Set it
+        to -1 to use the whole datasets.
+
+    normalize: bool = 1
+        Column-normalize matrices before computing cost matrix.
+
     verbose: int, default = 1
         Defines the logging level.
         0: Disabled
@@ -84,12 +97,16 @@ class Transmorph:
                  scale: float = -1,
                  metric: str = 'sqeuclidean',
                  n_comps: int = -1,
+                 subsampling: float = -1,
                  normalize: bool = True,
                  verbose: bool = False):
+
         assert method in ('ot', 'gromov'), "Unrecognized method: %s. \
                                             Available methods are 'ot', 'gromov'"
         assert max_iter > 0, "Negative number of iterations."
         assert scale > 0 or scale == -1, "Scale must be positive."
+        assert subsampling == -1 or 0 < subsampling <= 1, "Invalid subsampling ratio."
+
         self.fitted = False
         self.method = method
         self.max_iter = max_iter
@@ -101,53 +118,29 @@ class Transmorph:
         self.scale = scale
         self.metric = metric
         self.n_comps = n_comps
+        self.subsampling = subsampling
         self.normalize = normalize
-        # Cache for transport plan
-        self.transport_plan = None
-        # Cache for datasets (TData objects)
-        self.xs = None
-        self.yt = None
+        # Cache for transport plans
+        self.tdata_x = None
+        self.tdata_y = None
+        self.transports = []
         self._log("Successfully initialized.")
         self._log(str(self), level=2)
 
-    def copy(self):
-        """
-        Returns a deep copy of a Transmorph object.
-        """
-        c = Transmorph(
-            self.method, self.max_iter, self.entropy, self.hreg,
-            self.weighted, self.alpha_qp, self.scale, self.metric,
-            self.n_comps, self.normalize, self.verbose)
-        self._log("Copying Transmorph...", level=2)
-        c.fitted = self.fitted
-        c.transport_plan = self.transport_plan.copy()
-        if self.xs is not None:
-            c.xs = self.xs.copy()
-        if self.yt is not None:
-            c.yt = self.yt.copy()
-        return c
-
-
     def __str__(self) -> str:
-        return "<Transmorph> %s based \n \
-                -- max_iter: %i \n \
-                -- %s \n \
-                -- %s \n \
-                -- metric: %s" % (
-            self.method,
-            self.max_iter,
-            ( ("entropy regularized, hreg: %f" % self.hreg)
-              if self.entropy else "no entropy"
-            ),
-            ( ("weighted, alpha_qp: %f, scale: %s" % (
-                self.alpha_qp,
-                str(self.scale) if self.scale != -1 else 'adaptive'))
-              if self.weighted else "unweighted"
-            ),
-            self.metric + ("(normalized)" if self.normalize else "")
-        )
+        return f'<Transmorph> {self.method}-based.\n\
+        -- fitted: {self.fitted}\n\
+        -- max_iter: {self.max_iter}\n\
+        -- entropy: {self.entropy}\n\
+        -- hreg: {self.hreg}\n\
+        -- weighted: {self.weighted}\n\
+        -- metric: {self.metric}\n\
+        -- n_comps: {self.n_comps}\n\
+        -- subsampling: {self.subsampling}\n\
+        -- normalize: {self.normalize}\n\
+        -- n_integrations: {len(self.transports)}'
 
-    def _log(self, s: str, end: str = '\n', header: bool = True, level=1) -> None:
+    def _log(self, s: str, end: str = '\n', header: bool = True, level=2) -> None:
         # Only prints for now, can later be pipelined into other streams
         if level > self.verbose:
             return
@@ -192,17 +185,43 @@ class Transmorph:
         assert m > 0, "Empty reference matrix."
 
         self.fitted = False
+        self.transports = [] # Clearing for now
 
-        # Creating TData objects if necessary
-        if self.xs is None or not np.array_equal(self.xs.x, xs):
-            self.xs = TData(xs, None, self.weighted,
-                            self.metric, self.n_comps, self.normalize, self.scale,
-                            self.verbose)
+        xs_nrm, yt_nrm = None, None
+        if self.normalize:
+            self._log("Computing normalized view...")
+            xs_nrm, yt_nrm = col_normalize(xs), col_normalize(yt)
 
-        if self.yt is None or not np.array_equal(self.yt.x, yt):
-            self.yt = TData(yt, None, self.weighted,
-                            self.metric, self.n_comps, self.normalize, self.scale,
-                            self.verbose)
+        xs_red, yt_red = None, None
+        if self.n_comps != -1:
+            self._log("Computing PC view, %i PCs..." % self.n_comps)
+            pca = PCA(n_components=self.n_comps)
+            xy = None
+            if self.normalize:
+                xy = np.concatenate( (xs_nrm, yt_nrm), axis=0 )
+            else:
+                xy = np.concatenate( (xs, yt), axis=0 )
+            xy = pca.fit_transform(xy)
+            xs_red, yt_red = xy[:n], xy[n:]
+
+        # Full TDatas
+        self.tdata_x = TData(xs,
+                             x_nrm=xs_nrm,
+                             x_red=xs_red,
+                             weighted=self.weighted,
+                             metric=self.metric,
+                             scale=self.scale,
+                             alpha_qp=self.alpha_qp,
+                             verbose=self.verbose)
+
+        self.tdata_y = TData(yt,
+                             x_nrm=yt_nrm,
+                             x_red=yt_red,
+                             weighted=self.weighted,
+                             metric=self.metric,
+                             scale=self.scale,
+                             alpha_qp=self.alpha_qp,
+                             verbose=self.verbose)
 
         # Computing cost matrices if necessary.
         if self.method == 'ot' and Mxy is None:
@@ -210,39 +229,81 @@ class Transmorph:
                      (self.metric, self.normalize))
             assert xs.shape[1] == yt.shape[1], (
                 "Dimension mismatch (%i != %i)" % (xs.shape[1], yt.shape[1]))
-            X, Y = self.xs.x_nrm, self.yt.x_nrm
-            if self.n_comps != -1:
-                self._log("Computing a PCA representation of datasets (%i PCs)..." %
-                          (self.n_comps))
-                pca = PCA(n_components=self.n_comps)
-                xsyt = np.concatenate( (X, Y), axis=0 )
-                xsyt_red = pca.fit_transform(xsyt)
-                X, Y = xsyt_red[:len(xs)], xsyt_red[len(xs):]
-            Mxy = cdist(X, Y, metric=self.metric)
+            Mxy = self.tdata_x.distance(self.tdata_y)
         if self.method == 'gromov' and Mx is None:
             self._log("Using metric %s as a cost for Mx. Normalization: %r" %
                      (self.metric, self.normalize))
-            Mx = self.xs.get_dmatrix()
+            Mx = self.tdata_x.distance()
         if self.method == 'gromov' and My is None:
             self._log("Using metric %s as a cost for My. Normalization: %r" %
                      (self.metric, self.normalize))
-            My = self.yt.get_dmatrix()
+            My = self.tdata_y.distance()
 
-        # Projecting source to ref
-        self._log("Computing transport plan (%s)..." % self.method)
-        self.transport_plan = _compute_transport(
-            self.xs.get_weights(), self.yt.get_weights(),
-            method=self.method, Mxy=Mxy, Mx=Mx, My=My,
-            max_iter=self.max_iter, entropy=self.entropy,
-            hreg=self.hreg)
+        # Partial cost matrices
+        Mxyi, Mxi, Myi = Mxy, Mx, My
+        xsi_raw, xsi_nrm, xsi_red = xs, xs_nrm, xs_red
+        yti_raw, yti_nrm, yti_red = yt, yt_nrm, yt_red
+        iter_max = 1 if self.subsampling == -1 else (1 + int(1/self.subsampling))**2
+
+        # Main subsampling loop
+        for n_iter in range(iter_max):
+
+            sel_x, sel_y = np.ones(n).astype(bool), np.ones(m).astype(bool)
+            if self.subsampling != -1:
+                self._log(f'Subsampling, iteration {n_iter+1}/{iter_max}')
+                sel_x = np.random.rand(n) < self.subsampling
+                sel_y = np.random.rand(m) < self.subsampling
+
+            tdata_x = TData(xs[sel_x],
+                            x_nrm=(None if xs_nrm is None else xs_nrm[sel_x]),
+                            x_red=(None if xs_red is None else xs_red[sel_x]),
+                            weighted=self.weighted,
+                            metric=self.metric,
+                            scale=self.scale,
+                            alpha_qp=self.alpha_qp,
+                            verbose=self.verbose)
+
+            tdata_y = TData(yt[sel_y],
+                            x_nrm=(None if yt_nrm is None else yt_nrm[sel_y]),
+                            x_red=(None if yt_red is None else yt_red[sel_y]),
+                            weighted=self.weighted,
+                            metric=self.metric,
+                            scale=self.scale,
+                            alpha_qp=self.alpha_qp,
+                            verbose=self.verbose)
+
+            # Computing cost matrices if necessary.
+            # Copying for C-contiguity, required by pot
+            if self.method == 'ot':
+                Mxyi = Mxy[sel_x][:,sel_y].copy()
+            if self.method == 'gromov':
+                Mxi = Mx[sel_x][:,sel_x].copy()
+                Myi = My[sel_y][:,sel_y].copy()
+
+            # Projecting source to ref
+            self._log("Computing transport plan (%s)..." % self.method)
+            Pxy = _compute_transport(
+                tdata_x.weights(), tdata_y.weights(),
+                method=self.method, Mxy=Mxyi, Mx=Mxi, My=Myi,
+                max_iter=self.max_iter, entropy=self.entropy,
+                hreg=self.hreg)
+
+            self.transports.append(Transport(tdata_x, tdata_y, Pxy))
 
         self.fitted = True
         self._log("Transmorph fitted.")
 
 
-    def transform(self, jitter: bool = True, jitter_std: float = .01) -> np.ndarray:
+    def transform(self,
+                  xs: np.ndarray = None,
+                  jitter: bool = True,
+                  jitter_std: float = .01,
+                  neighbors_smoothing: int = 1) -> np.ndarray:
         """
         Applies optimal transport integration. Transmorph must be fitted beforehand.
+
+        xs: np.ndarray, default = None
+            Source dataset to transform.
 
         jitter: bool, default = True
             Adds a little bit of random scattering to the final results. Helps
@@ -256,16 +317,14 @@ class Transmorph:
         (n,d1) np.ndarray, of xs integrated onto yt.
         """
         assert self.fitted, "Transmorph must be fitted first."
-        wy = self.yt.get_weights()
-        yt = self.yt.x
-        m, d = yt.shape
-        n, mP = self.transport_plan.shape
-        mw = len(wy)
-        assert m == mP, "Inconsistent dimension between reference and transport."
-        assert mP == mw, "Inconsistent dimension between weights and transport."
         self._log("Projecting dataset...")
-        return _transform(wy, yt, self.transport_plan,
-                          jitter=jitter, jitter_std=jitter_std)
+        xt = _transform(self.tdata_x,
+                        self.transports,
+                        jitter=jitter,
+                        jitter_std=jitter_std,
+                        n_neighbors=neighbors_smoothing)
+        self._log("Terminated")
+        return xt
 
 
     def fit_transform(self,
@@ -275,12 +334,16 @@ class Transmorph:
                       My: np.ndarray = None,
                       Mxy: np.ndarray = None,
                       jitter: bool = True,
-                      jitter_std: float = .01) -> np.ndarray:
+                      jitter_std: float = .01,
+                      neighbors_smoothing: int = 1) -> np.ndarray:
         """
         Shortcut, fit() -> transform()
         """
         self.fit(xs, yt, Mx, My, Mxy)
-        return self.transform(jitter=jitter, jitter_std=jitter_std)
+        return self.transform(xs,
+                              jitter=jitter,
+                              jitter_std=jitter_std,
+                              neighbors_smoothing=neighbors_smoothing)
 
 
     def label_transfer(self, y_labels: np.ndarray) -> np.ndarray:
@@ -298,5 +361,5 @@ class Transmorph:
         (n,) np.ndarray, predicted labels for source dataset points.
         """
         assert self.fitted, "Transmorph must be fitted first."
-        return y_labels[np.argmax(self.transport_plan.toarray(), axis=1)]
-
+        assert len(transports) == 1, "Subsampling unsupported yet."
+        return y_labels[np.argmax(self.transports[0]["P"].toarray(), axis=1)]
