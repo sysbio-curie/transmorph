@@ -27,7 +27,7 @@ class TData:
         self.x_nrm = x_nrm  # Feature-normalized matrix (n, D)
         self.x_red = x_red  # Dimension-reduced matrix  (n, d)
 
-        self._weightseighted = weighted
+        self.weighted = weighted
         self.metric = metric
         self.scale = scale
         self.alpha_qp = alpha_qp
