@@ -57,21 +57,24 @@ class TData:
         print(s, end=end)
 
 
-    def distance(self, other=None):
+    def distance(self, other=None, metric=None):
         """
         Reuturns the inner pairwise distance matrix by default, or the
         (n,m) pairwise distance matrix if another TData is provided.
 
         Priority is red > nrm > raw
         """
+        if metric is None:
+            metric = self.metric
+
         # Cacheing the inner pairwise matrix if needed
         if other is None and self.dmatrix is None:
             if self.x_red is not None:
-                self.dmatrix = cdist(self.x_red, self.x_red, metric=self.metric)
+                self.dmatrix = cdist(self.x_red, self.x_red, metric=metric)
             elif self.x_nrm is not None:
-                self.dmatrix = cdist(self.x_nrm, self.x_nrm, metric=self.metric)
+                self.dmatrix = cdist(self.x_nrm, self.x_nrm, metric=metric)
             else:
-                self.dmatrix = cdist(self.x_raw, self.x_raw, metric=self.metric)
+                self.dmatrix = cdist(self.x_raw, self.x_raw, metric=metric)
 
         if other is None:
             dmatrix = self.dmatrix
@@ -92,7 +95,7 @@ class TData:
             else:
                 raise ValueError("Incompatible shapes in all views.")
 
-            dmatrix = cdist(x, y, metric=self.metric)
+            dmatrix = cdist(x, y, metric=metric)
 
         return dmatrix
 
@@ -110,10 +113,10 @@ class TData:
                 self._log("Starting the weights selection procedure.")
                 if self.scale == -1:
                     self._log("Searching for sigma...", end=' ')
-                    self.scale = sigma_search(self.distance())
+                    self.scale = sigma_search(self.distance(metric="euclidean"))
                     self._log("Found: %f" % self.scale, header=False)
                 self._log("Solving the QP to find weights...", end=' ')
-                self._weights = normal_kernel_weights(self.distance(),
+                self._weights = normal_kernel_weights(self.distance(metric="euclidean"),
                                                       scale=self.scale,
                                                       alpha_qp=self.alpha_qp)
                 self._log("Done.", header=False)
