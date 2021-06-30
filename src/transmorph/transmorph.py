@@ -5,17 +5,35 @@ import gc
 
 from scipy.sparse import csr_matrix  # Transport plan is usually sparse
 from sklearn.decomposition import PCA
+from sklearn.utils import check_array
 from scipy.spatial.distance import cdist
 from collections import namedtuple
 
-from .integration import _compute_transport, _transform
-from .density import normal_kernel_weights, _get_density, sigma_search
+from .integration import compute_transport, transform
+from .density import normal_kernel_weights, get_density, sigma_search
 from .tdata import TData
 from .utils import col_normalize
 
+# TODO: Transport -> separate class
 # Read-only container for transport results
 # TData, TData, array
 Transport = namedtuple("Transport", ["src", "tar", "P"])
+
+def weight_per_label(xs_labels, yt_labels):
+    # Weighting by cell type proportion
+    n, m = len(xs_labels), len(yt_labels)
+    all_labels = list(set(xs_labels).union(set(xs_labels)))
+    xs_freqs = np.array([
+        np.sum(xs_labels == li) / n for li in all_labels
+    ])
+    yt_freqs = np.array([
+        np.sum(yt_labels == li) / m for li in all_labels
+    ])
+    rel_freqs = yt_freqs / xs_freqs
+    wx, wy = np.ones(n) / n, np.ones(m) / m
+    for fi, li in zip(rel_freqs, all_labels):
+        wx[xs_labels == li] *= fi
+    return wx, wy
 
 class Transmorph:
     """
@@ -101,31 +119,44 @@ class Transmorph:
                  normalize: bool = True,
                  verbose: bool = False):
 
-        assert method in ('ot', 'gromov'), "Unrecognized method: %s. \
-                                            Available methods are 'ot', 'gromov'"
-        assert max_iter > 0, "Negative number of iterations."
-        assert scale > 0 or scale == -1, "Scale must be positive."
-        assert subsampling == -1 or 0 < subsampling <= 1, "Invalid subsampling ratio."
-
-        self.fitted = False
         self.method = method
         self.max_iter = max_iter
         self.entropy = entropy
         self.hreg = hreg
         self.weighted = weighted
         self.alpha_qp = alpha_qp
-        self.verbose = verbose
         self.scale = scale
         self.metric = metric
         self.n_comps = n_comps
         self.subsampling = subsampling
         self.normalize = normalize
+        self.verbose = verbose
+
+        self.validate_parameters()
+
         # Cache for transport plans
         self.tdata_x = None
         self.tdata_y = None
         self.transports = []
+        self.fitted = False
+
         self._log("Successfully initialized.")
         self._log(str(self), level=2)
+
+    def validate_parameters(self):
+
+        assert self.method in ('ot', 'gromov'), \
+            "Unrecognized method: %s. Available methods \
+            are 'ot', 'gromov'" % self.method
+
+        assert self.max_iter > 0, \
+            "Negative number of iterations."
+
+        assert self.scale > 0 or self.scale == -1, \
+            "Scale must be positive."
+
+        assert self.subsampling == -1 or 0 < self.subsampling <= 1, \
+            "Invalid subsampling ratio %f." % self.subsampling
 
     def __str__(self) -> str:
         return f'<Transmorph> {self.method}-based.\n\
@@ -169,6 +200,8 @@ class Transmorph:
         yt: (m,d1) np.ndarray
             Target data points cloud.
 
+        TODO: add labels
+
         Mx: (n,n) np.ndarray
             Pairwise metric matrix for xs. Only relevant for GW. If
             None, Euclidean distance is used.
@@ -181,38 +214,100 @@ class Transmorph:
             Pairwise metric matrix between xs and yt. Only relevant for OT.
             If None, Euclidean distance is used.
         """
-        ### Computing weights
+        ### Verifying parameters
+
+        # Data matrices
         n, m = len(xs), len(yt)
         assert n > 0, "Empty source matrix."
         assert m > 0, "Empty reference matrix."
 
+        xs = check_array(xs, dtype=np.float32, order="C")
+        yt = check_array(yt, dtype=np.float32, order="C")
+
+        # Use sample labels frequency to estimate weights?
+        is_label_weighted = (
+            self.weighted
+            and xs_labels is not None
+            and yt_labels is not None
+        )
+
+        # Verifying/formatting labels
+        # Then, computing relative weights
+        if is_label_weighted:
+            assert xs_labels.shape[0] == n, \
+                "Inconsistent dimension for labels in source dataset, \
+                %i != %i" % (xs_labels.shape[0], n)
+            assert yt_labels.shape[0] == m, \
+                "Inconsistent dimension for labels in reference dataset, \
+                %i != %i" % (yt_labels.shape[0], m)
+
+        # Cost matrices
+        if self.method == 'ot' and Mxy is not None:
+            Mxy = check_array(Mxy, dtype=np.float32, order="C")
+            assert Mxy.shape == (n, m), \
+                "Inconsistent dimension between user-provided cost \
+                matrix and datasets size. Expected: (%i,%i), found: (%i,%i)" \
+                % (n, m, *Mxy.shape)
+        if self.method == 'gromov' and Mx is None:
+            Mx = check_array(Mx, dtype=np.float32, order="C")
+            assert Mx.shape == (n, n), \
+                "Inconsistent dimension between user-provided cost \
+                matrix and source dataset size. \
+                Expected: (%i,%i), found: (%i,%i)" \
+                % (n, n, *Mx.shape)
+        if self.method == 'gromov' and My is None:
+            My = check_array(My, dtype=np.float32, order="C")
+            assert My.shape == (m, m), \
+                "Inconsistent dimension between user-provided cost \
+                matrix and reference dataset size. \
+                Expected: (%i,%i), found: (%i,%i)" \
+                % (m, m, *My.shape)
+
+        ### Starting the procedure
         self.fitted = False
         self.transports = [] # Clearing for now
 
+        # STD-normalization
         xs_nrm, yt_nrm = None, None
         if self.normalize:
             self._log("Computing normalized view...")
             xs_nrm, yt_nrm = col_normalize(xs), col_normalize(yt)
 
+        # Dimensionality reduction, only needed if asked and
+        # no cost matrix is provided.
         xs_red, yt_red = None, None
         if self.n_comps != -1:
-            self._log("Computing PC view, %i PCs..." % self.n_comps)
-            pca = PCA(n_components=self.n_comps)
-            xy = None
-            if self.normalize:
-                xy = np.concatenate( (xs_nrm, yt_nrm), axis=0 )
-            else:
-                xy = np.concatenate( (xs, yt), axis=0 )
-            xy = pca.fit_transform(xy)
-            xs_red, yt_red = xy[:n], xy[n:]
+            if self.method == 'ot' and Mxy is None:
+                self._log("Computing joint PC view, %i PCs..."\
+                          % self.n_comps)
+                pca = PCA(n_components=self.n_comps)
+                if self.normalize:
+                    xy = np.concatenate( (xs_nrm, yt_nrm), axis=0 )
+                else:
+                    xy = np.concatenate( (xs, yt), axis=0 )
+                xy = pca.fit_transform(xy)
+                xs_red, yt_red = xy[:n], xy[n:]
+            if self.method == 'gromov' and Mx is None:
+                self._log("Computing source PC view, %i PCs..."\
+                          % self.n_comps)
+                pca = PCA(n_components=self.n_comps)
+                xs_red = pca.fit_transform(
+                    xs_nrm if self.normalize else xs
+                )
+            if self.method == 'gromov' and My is None:
+                self._log("Computing reference PC view, %i PCs..."\
+                          % self.n_comps)
+                pca = PCA(n_components=self.n_comps)
+                yt_red = pca.fit_transform(
+                    yt_nrm if self.normalize else yt
+                )
 
-        wx, wy = None, None # Adaptive weights
-        is_label_weighted = xs_labels is not None and yt_labels is not None
+        wx, wy = None, None
         if is_label_weighted:
-            self._log("Using labels to infer weights...")
-            wx, wy = self.weight_per_label(xs_labels, yt_labels)
+            self._log("Using labels to balance class weights.")
+            wx, wy = weight_per_label(xs_labels, yt_labels)
 
-        # Full TDatas
+        # Building full TDatas using computed values
         self.tdata_x = TData(xs,
                              x_nrm=xs_nrm,
                              x_red=xs_red,
@@ -249,64 +344,16 @@ class Transmorph:
                      (self.metric, self.normalize))
             My = self.tdata_y.distance()
 
-        # Partial cost matrices
-        Mxyi, Mxi, Myi = Mxy, Mx, My
-        xsi_raw, xsi_nrm, xsi_red = xs, xs_nrm, xs_red
-        yti_raw, yti_nrm, yti_red = yt, yt_nrm, yt_red
-        iter_max = 1 if self.subsampling == -1 else (1 + int(1/self.subsampling))**2
+        # Projecting source to ref
+        self._log("Computing transport plan (%s)..." % self.method)
+        Pxy = compute_transport(
+            self.tdata_x.weights(), self.tdata_y.weights(),
+            method=self.method, Mxy=Mxy, Mx=Mx, My=My,
+            max_iter=self.max_iter, entropy=self.entropy,
+            hreg=self.hreg)
 
-        # Main subsampling loop
-        for n_iter in range(iter_max):
-
-            sel_x, sel_y = np.ones(n).astype(bool), np.ones(m).astype(bool)
-            if self.subsampling != -1:
-                self._log(f'Subsampling, iteration {n_iter+1}/{iter_max}')
-                sel_x = np.random.rand(n) < self.subsampling
-                sel_y = np.random.rand(m) < self.subsampling
-
-            wxi, wyi = None, None
-            if is_label_weighted:
-                x_ratio, y_ratio = sel_x.sum() / n, sel_y.sum() / m
-                wxi, wyi = wx[sel_x] / x_ratio, wy[sel_y] / y_ratio
-
-
-            tdata_x = TData(xs[sel_x],
-                            x_nrm=(None if xs_nrm is None else xs_nrm[sel_x]),
-                            x_red=(None if xs_red is None else xs_red[sel_x]),
-                            weighted=self.weighted,
-                            weights=wxi,
-                            metric=self.metric,
-                            scale=self.scale,
-                            alpha_qp=self.alpha_qp,
-                            verbose=self.verbose)
-
-            tdata_y = TData(yt[sel_y],
-                            x_nrm=(None if yt_nrm is None else yt_nrm[sel_y]),
-                            x_red=(None if yt_red is None else yt_red[sel_y]),
-                            weighted=self.weighted,
-                            weights=wyi,
-                            metric=self.metric,
-                            scale=self.scale,
-                            alpha_qp=self.alpha_qp,
-                            verbose=self.verbose)
-
-            # Computing cost matrices if necessary.
-            # Copying for C-contiguity, required by pot
-            if self.method == 'ot':
-                Mxyi = Mxy[sel_x][:,sel_y].copy()
-            if self.method == 'gromov':
-                Mxi = Mx[sel_x][:,sel_x].copy()
-                Myi = My[sel_y][:,sel_y].copy()
-
-            # Projecting source to ref
-            self._log("Computing transport plan (%s)..." % self.method)
-            Pxy = _compute_transport(
-                tdata_x.weights(), tdata_y.weights(),
-                method=self.method, Mxy=Mxyi, Mx=Mxi, My=Myi,
-                max_iter=self.max_iter, entropy=self.entropy,
-                hreg=self.hreg)
-
-            self.transports.append(Transport(tdata_x, tdata_y, Pxy))
+        # Anticipating multi-batches
+        self.transports.append(Transport(self.tdata_x, self.tdata_y, Pxy))
 
         self.fitted = True
         self._log("Transmorph fitted.")
@@ -315,8 +362,7 @@ class Transmorph:
     def transform(self,
                   xs: np.ndarray = None,
                   jitter: bool = True,
-                  jitter_std: float = .01,
-                  neighbors_smoothing: int = 1) -> np.ndarray:
+                  jitter_std: float = .01) -> np.ndarray:
         """
         Applies optimal transport integration. Transmorph must be fitted beforehand.
 
@@ -336,12 +382,10 @@ class Transmorph:
         """
         assert self.fitted, "Transmorph must be fitted first."
         self._log("Projecting dataset...")
-        xt = _transform(self.tdata_x,
-                        self.transports,
-                        jitter=jitter,
-                        jitter_std=jitter_std,
-                        n_neighbors=neighbors_smoothing)
-        self._log("Terminated")
+        xt = transform(self.transports[0],
+                       jitter=jitter,
+                       jitter_std=jitter_std)
+        self._log("Terminated.")
         return xt
 
 
@@ -354,8 +398,7 @@ class Transmorph:
                       My: np.ndarray = None,
                       Mxy: np.ndarray = None,
                       jitter: bool = True,
-                      jitter_std: float = .01,
-                      neighbors_smoothing: int = 1) -> np.ndarray:
+                      jitter_std: float = .01) -> np.ndarray:
         """
         Shortcut, fit() -> transform()
         """
@@ -368,24 +411,7 @@ class Transmorph:
                  Mxy=Mxy)
         return self.transform(xs,
                               jitter=jitter,
-                              jitter_std=jitter_std,
-                              neighbors_smoothing=neighbors_smoothing)
-
-
-    def weight_per_label(self, xs_labels, yt_labels):
-        n, m = len(xs_labels), len(yt_labels)
-        all_labels = list(set(xs_labels).union(set(xs_labels)))
-        rel_freqs = np.array([
-            np.sum(yt_labels == li) / np.sum(xs_labels == li)
-            for li in all_labels ])
-        wy = np.ones(m) / m
-        wx = np.ones(n) / n
-        for i, li in enumerate(xs_labels): # TODO: optimize this loop
-            for j, lj in enumerate(all_labels):
-                if li == lj:
-                    wx[i] *= rel_freqs[j]
-                    continue
-        return wx, wy
+                              jitter_std=jitter_std)
 
 
     def label_transfer(self, y_labels: np.ndarray) -> np.ndarray:

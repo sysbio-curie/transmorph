@@ -10,12 +10,10 @@ from .density import normal_kernel_weights
 from .tdata import TData
 
 
-def _transform(
-        tdata_x: TData,
-        transports: list,
+def transform(
+        transport,
         jitter: bool = True,
-        jitter_std: float = .01,
-        n_neighbors: int = 1) -> np.ndarray:
+        jitter_std: float = .01) -> np.ndarray:
     """
     Optimal transport integration, inspired by (Ferradans 2013).
 
@@ -28,26 +26,18 @@ def _transform(
     -----------
     TODO: docstring
     """
-    xs_raw = tdata_x.x_raw
-    dx = np.zeros(xs_raw.shape)
-    for n_iter, (tdata_xi, tdata_yi, Pxyi) in enumerate(transports):
-        T = Pxyi.toarray() @ np.diag(1 / tdata_yi.weights())
-        xti = np.diag(1 / T.sum(axis=1)) @ T @ tdata_yi.x_raw
-        dxi = xti - tdata_xi.x_raw
-        Di = tdata_x.distance(tdata_xi)
-        idx = np.argsort(Di, axis=1)[:,:n_neighbors]
-        idx_selector = np.zeros((len(xs_raw), len(xti)))
-        np.put_along_axis(idx_selector, idx, 1/n_neighbors, axis=1)
-        dx += idx_selector @ dxi
-    x_int = xs_raw + dx / len(transports)
+    tdata_x, tdata_y, Pxy = transport
+    T = Pxy.toarray() @ np.diag(1 / tdata_y.weights())
+    x_int = np.diag(1 / T.sum(axis=1)) @ T @ tdata_y.x_raw
 
     if jitter:
         stdev = jitter_std * (np.max(x_int, axis=0) - np.min(x_int, axis=0))
         x_int = x_int + np.random.randn(*x_int.shape) * stdev
+
     return x_int
 
 
-def _compute_transport(
+def compute_transport(
         wx: np.ndarray,
         wy: np.ndarray,
         method: str = 'ot',

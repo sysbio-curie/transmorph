@@ -7,10 +7,10 @@ from scipy import sparse
 import osqp
 
 
-def _kernel_H(D, sigma):
+def kernel_H(D, sigma):
     # Returns density entropy
     # vector is automatically normalized to sum up to 1.
-    return entropy(_get_density(D, sigma).sum(axis=1))
+    return entropy(get_density(D, sigma).sum(axis=1))
 
 
 def sigma_search(D, max_depth=20, base=2, thr=1.01):
@@ -21,9 +21,9 @@ def sigma_search(D, max_depth=20, base=2, thr=1.01):
 
     # Initialization
     s0, s1, s2 = 1/base, 1, base
-    v0 = _kernel_H(D, s0)
-    v1 = _kernel_H(D, s1)
-    v2 = _kernel_H(D, s2)
+    v0 = kernel_H(D, s0)
+    v1 = kernel_H(D, s1)
+    v2 = kernel_H(D, s2)
 
     # Choosing direction of the minimum
     log_search = False
@@ -52,8 +52,8 @@ def sigma_search(D, max_depth=20, base=2, thr=1.01):
     for i in range(max_depth):
         mid0 = s0 + 3*(s2 - s0)/8
         mid1 = mid0 + (s2 - s0) / 4
-        v0 = _kernel_H(D, mid0)
-        v1 = _kernel_H(D, mid1)
+        v0 = kernel_H(D, mid0)
+        v1 = kernel_H(D, mid1)
         if v0 < v1:
             s0, s2 = s0, mid1
         else:
@@ -68,17 +68,17 @@ def normal_kernel_weights(
         D: np.ndarray, scale: float = 1, alpha_qp: float = 1.0
 ):
     ## Shortcut get_density -> optimal weights
-    K = _get_density(D, scale)
-    w = _optimal_weights(K, alpha_qp)
+    K = get_density(D, scale)
+    w = optimal_weights(K, alpha_qp)
     return w / np.sum(w)
 
 
-def _get_density(D: np.ndarray, scale: float = 1) -> np.ndarray:
+def get_density(D: np.ndarray, scale: float = 1) -> np.ndarray:
     assert scale > 0, "scale must be positive, found %f" % scale
     return norm.pdf(-D, loc=0, scale=scale)
 
 
-def _optimal_weights(K: np.ndarray, alpha_qp: float = 1.0, eps=1e-9):
+def optimal_weights(K: np.ndarray, alpha_qp: float = 1.0, eps=1e-9):
     """ Computes optimal weights given K pairwise kernel matrix. """
 
     # Cost matrix
