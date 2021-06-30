@@ -37,9 +37,7 @@ def _transform(
         Di = tdata_x.distance(tdata_xi)
         idx = np.argsort(Di, axis=1)[:,:n_neighbors]
         idx_selector = np.zeros((len(xs_raw), len(xti)))
-        S = 1 / (1 + np.take_along_axis(Di, idx, axis=1))
-        S /= S.sum(axis=1)[:,None]
-        np.put_along_axis(idx_selector, idx, S, axis=1)
+        np.put_along_axis(idx_selector, idx, 1/n_neighbors, axis=1)
         dx += idx_selector @ dxi
     x_int = xs_raw + dx / len(transports)
 

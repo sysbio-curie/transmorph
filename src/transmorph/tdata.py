@@ -16,6 +16,7 @@ class TData:
                  x_nrm: np.ndarray = None,
                  x_red: np.ndarray = None,
                  weighted: bool = True,
+                 weights: np.ndarray = None,
                  metric: str = "sqeuclidean",
                  scale: float = -1,
                  alpha_qp: float = 1.0,
@@ -35,7 +36,10 @@ class TData:
 
         # Will be computed on the fly if needed
         self.dmatrix = None
-        self._weights = None
+
+        if weights is not None:
+            weights /= weights.sum()
+        self._weights = weights
 
         self._log("TData initialized, length %i" % len(self), level=3)
 
@@ -127,4 +131,4 @@ class TData:
         """
 
         """
-        return (np.diag(self._weightseights()) @ self.x_raw).sum(axis=0)
+        return (np.diag(self.weights()) @ self.x_raw).sum(axis=0)

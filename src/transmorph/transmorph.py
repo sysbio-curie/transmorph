@@ -151,6 +151,8 @@ class Transmorph:
     def fit(self,
             xs: np.ndarray,
             yt: np.ndarray,
+            xs_labels: np.ndarray = None,
+            yt_labels: np.ndarray = None,
             Mx: np.ndarray = None,
             My: np.ndarray = None,
             Mxy: np.ndarray = None) -> None:
@@ -204,11 +206,18 @@ class Transmorph:
             xy = pca.fit_transform(xy)
             xs_red, yt_red = xy[:n], xy[n:]
 
+        wx, wy = None, None # Adaptive weights
+        is_label_weighted = xs_labels is not None and yt_labels is not None
+        if is_label_weighted:
+            self._log("Using labels to infer weights...")
+            wx, wy = self.weight_per_label(xs_labels, yt_labels)
+
         # Full TDatas
         self.tdata_x = TData(xs,
                              x_nrm=xs_nrm,
                              x_red=xs_red,
                              weighted=self.weighted,
+                             weights=wx,
                              metric=self.metric,
                              scale=self.scale,
                              alpha_qp=self.alpha_qp,
@@ -218,6 +227,7 @@ class Transmorph:
                              x_nrm=yt_nrm,
                              x_red=yt_red,
                              weighted=self.weighted,
+                             weights=wy,
                              metric=self.metric,
                              scale=self.scale,
                              alpha_qp=self.alpha_qp,
@@ -254,10 +264,17 @@ class Transmorph:
                 sel_x = np.random.rand(n) < self.subsampling
                 sel_y = np.random.rand(m) < self.subsampling
 
+            wxi, wyi = None, None
+            if is_label_weighted:
+                x_ratio, y_ratio = sel_x.sum() / n, sel_y.sum() / m
+                wxi, wyi = wx[sel_x] / x_ratio, wy[sel_y] / y_ratio
+
+
             tdata_x = TData(xs[sel_x],
                             x_nrm=(None if xs_nrm is None else xs_nrm[sel_x]),
                             x_red=(None if xs_red is None else xs_red[sel_x]),
                             weighted=self.weighted,
+                            weights=wxi,
                             metric=self.metric,
                             scale=self.scale,
                             alpha_qp=self.alpha_qp,
@@ -267,6 +284,7 @@ class Transmorph:
                             x_nrm=(None if yt_nrm is None else yt_nrm[sel_y]),
                             x_red=(None if yt_red is None else yt_red[sel_y]),
                             weighted=self.weighted,
+                            weights=wyi,
                             metric=self.metric,
                             scale=self.scale,
                             alpha_qp=self.alpha_qp,
@@ -330,6 +348,8 @@ class Transmorph:
     def fit_transform(self,
                       xs: np.ndarray,
                       yt: np.ndarray,
+                      xs_labels: np.ndarray = None,
+                      yt_labels: np.ndarray = None,
                       Mx: np.ndarray = None,
                       My: np.ndarray = None,
                       Mxy: np.ndarray = None,
@@ -339,11 +359,33 @@ class Transmorph:
         """
         Shortcut, fit() -> transform()
         """
-        self.fit(xs, yt, Mx, My, Mxy)
+        self.fit(xs,
+                 yt,
+                 xs_labels=xs_labels,
+                 yt_labels=yt_labels,
+                 Mx=Mx,
+                 My=My,
+                 Mxy=Mxy)
         return self.transform(xs,
                               jitter=jitter,
                               jitter_std=jitter_std,
                               neighbors_smoothing=neighbors_smoothing)
+
+
+    def weight_per_label(self, xs_labels, yt_labels):
+        n, m = len(xs_labels), len(yt_labels)
+        all_labels = list(set(xs_labels).union(set(xs_labels)))
+        rel_freqs = np.array([
+            np.sum(yt_labels == li) / np.sum(xs_labels == li)
+            for li in all_labels ])
+        wy = np.ones(m) / m
+        wx = np.ones(n) / n
+        for i, li in enumerate(xs_labels): # TODO: optimize this loop
+            for j, lj in enumerate(all_labels):
+                if li == lj:
+                    wx[i] *= rel_freqs[j]
+                    continue
+        return wx, wy
 
 
     def label_transfer(self, y_labels: np.ndarray) -> np.ndarray:
@@ -361,5 +403,5 @@ class Transmorph:
         (n,) np.ndarray, predicted labels for source dataset points.
         """
         assert self.fitted, "Transmorph must be fitted first."
-        assert len(transports) == 1, "Subsampling unsupported yet."
-        return y_labels[np.argmax(self.transports[0]["P"].toarray(), axis=1)]
+        assert len(self.transports) == 1, "Subsampling unsupported yet."
+        return y_labels[np.argmax(self.transports[0].P.toarray(), axis=1)]
