@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import gc
 
-from scipy.sparse import csr_matrix  # Transport plan is usually sparse
 from sklearn.decomposition import PCA
 from sklearn.utils import check_array
 from scipy.spatial.distance import cdist
 from collections import namedtuple
 
-from .integration import compute_transport, transform
-from .density import normal_kernel_weights, get_density, sigma_search
+from .integration import compute_transport
+from .integration import transform
 from .tdata import TData
 from .utils import col_normalize
 
@@ -107,9 +105,11 @@ class Transmorph:
 
     def __init__(self,
                  method: str = 'ot',
+                 unbalanced: bool = False,
                  max_iter: int = 1e6,
                  entropy: bool = False,
                  hreg: float = 1e-3,
+                 mreg: float = 1e-3,
                  weighted: bool = True,
                  alpha_qp: float = 1.0,
                  scale: float = -1,
@@ -120,9 +120,11 @@ class Transmorph:
                  verbose: bool = False):
 
         self.method = method
-        self.max_iter = max_iter
+        self.unbalanced = unbalanced
+        self.max_iter = int(max_iter)
         self.entropy = entropy
         self.hreg = hreg
+        self.mreg = mreg
         self.weighted = weighted
         self.alpha_qp = alpha_qp
         self.scale = scale
@@ -144,6 +146,7 @@ class Transmorph:
         self._log(str(self), level=2)
 
     def validate_parameters(self):
+
 
         assert self.method in ('ot', 'gromov'), \
             "Unrecognized method: %s. Available methods \
@@ -200,7 +203,11 @@ class Transmorph:
         yt: (m,d1) np.ndarray
             Target data points cloud.
 
-        TODO: add labels
+        xs_labels: (n,) np.ndarray
+            Labels of xs points, for the semi-supervised integration.
+
+        yt_labels: (m,) np.ndarray
+            Label of yt points, for the semi-supervised integration.
 
         Mx: (n,n) np.ndarray
             Pairwise metric matrix for xs. Only relevant for GW. If
@@ -248,14 +255,14 @@ class Transmorph:
                 "Inconsistent dimension between user-provided cost \
                 matrix and datasets size. Expected: (%i,%i), found: (%i,%i)" \
                 % (n, m, *Mxy.shape)
-        if self.method == 'gromov' and Mx is None:
+        if self.method == 'gromov' and Mx is not None:
             Mx = check_array(Mx, dtype=np.float32, order="C")
             assert Mx.shape == (n, n), \
                 "Inconsistent dimension between user-provided cost \
                 matrix and source dataset size. \
                 Expected: (%i,%i), found: (%i,%i)" \
                 % (n, n, *Mx.shape)
-        if self.method == 'gromov' and My is None:
+        if self.method == 'gromov' and My is not None:
             My = check_array(My, dtype=np.float32, order="C")
             assert My.shape == (m, m), \
                 "Inconsistent dimension between user-provided cost \
@@ -347,10 +354,17 @@ class Transmorph:
         # Projecting source to ref
         self._log("Computing transport plan (%s)..." % self.method)
         Pxy = compute_transport(
-            self.tdata_x.weights(), self.tdata_y.weights(),
-            method=self.method, Mxy=Mxy, Mx=Mx, My=My,
-            max_iter=self.max_iter, entropy=self.entropy,
-            hreg=self.hreg)
+            self.tdata_x.weights(),
+            self.tdata_y.weights(),
+            method=self.method,
+            Mxy=Mxy,
+            Mx=Mx,
+            My=My,
+            max_iter=self.max_iter,
+            entropy=self.entropy,
+            hreg=self.hreg,
+            unbalanced=self.unbalanced,
+            mreg=self.mreg)
 
         # Anticipating multi-batches
         self.transports.append(Transport(self.tdata_x, self.tdata_y, Pxy))
@@ -370,7 +384,7 @@ class Transmorph:
             Source dataset to transform.
 
         jitter: bool, default = True
-            Adds a little bit of random scattering to the final results. Helps
+            Adds a little bit of random jittering to the final results. Helps
             downstream methods such as UMAP to converge in some cases.
 
         jitter_std: float, default = 0.01

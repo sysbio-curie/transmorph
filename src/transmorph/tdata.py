@@ -4,12 +4,14 @@ import numpy as np
 from sklearn.decomposition import PCA
 from scipy.spatial.distance import cdist
 
-from .density import sigma_search, normal_kernel_weights
+from .density import sigma_search
+from .density import normal_kernel_weights
 from .utils import col_normalize
 
 class TData:
     """
     # TODO: write doctring
+    # TODO: slicing
     """
     def __init__(self,
                  x_raw: np.ndarray,

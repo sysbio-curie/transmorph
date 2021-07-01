@@ -1,8 +1,6 @@
-# Transmorph (anciently WOTi)
+# <img alt="Transmorph" src="img/logo.png" height="60">
 
 [![PyPI version](https://badge.fury.io/py/transmorph.svg)](https://badge.fury.io/py/transmorph)
-
-![](img/logo.png)
 
 **Transmorph** is a python toolbox dedicated to transportation theory-based
 data analysis. Originally consisting in a data integration pipeline

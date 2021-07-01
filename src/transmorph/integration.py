@@ -4,9 +4,7 @@ import numpy as np
 import ot
 
 from scipy.sparse import csr_matrix
-from scipy.spatial.distance import cdist
 
-from .density import normal_kernel_weights
 from .tdata import TData
 
 
@@ -46,7 +44,9 @@ def compute_transport(
         My: np.ndarray = None,
         max_iter: int = 1e7,
         entropy: bool = False,
-        hreg: float = 1e-3) -> np.ndarray:
+        hreg: float = 1e-3,
+        unbalanced: bool = False,
+        mreg: float = 1e-3) -> np.ndarray:
     """
     Returns the optimal transport plan between xs and yt, interfaces the
     POT methods: https://github.com/PythonOT/POT
@@ -93,7 +93,9 @@ def compute_transport(
             Expected (%i,%i), found (%i,%i)." % (n, m, *Mxy.shape)
 
         Mxy /= Mxy.max()
-        if entropy:
+        if unbalanced:
+            transport_plan = ot.sinkhorn_unbalanced(wx, wy, Mxy, hreg, mreg, numItermax=max_iter)
+        elif entropy:
             transport_plan = ot.sinkhorn(wx, wy, Mxy, hreg, numItermax=max_iter)
         else:
             transport_plan = ot.emd(wx, wy, Mxy, numItermax=max_iter)
@@ -106,11 +108,13 @@ def compute_transport(
         Mx /= Mx.max()
 
         assert My is not None, "No cost matrix provided for yt."
-        assert Mx.shape == (m, m), "Incompatible cost matrix.\
+        assert My.shape == (m, m), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (m, m, *My.shape)
         My /= My.max()
 
-        if entropy:
+        if unbalanced:
+            raise NotImplementedError
+        elif entropy:
             transport_plan = ot.gromov.entropic_gromov_wasserstein(Mx, My, wx, wy, 'square_loss', hreg, numItermax=max_iter)
         else:
             transport_plan = ot.gromov.gromov_wasserstein(Mx, My, wx, wy, 'square_loss', numItermax=max_iter)

@@ -42,7 +42,7 @@ def sigma_search(D, max_depth=20, base=2, thr=1.01):
             break
         v0, s0, v1, s1 = v1, s1, v2, s2
         s2 *= step
-        v2 = _kernel_H(D, s2)
+        v2 = kernel_H(D, s2)
 
     if s0 > s2:
         v0, v2, s0, s2 = v2, v0, s2, s0
