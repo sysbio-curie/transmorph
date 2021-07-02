@@ -6,4 +6,4 @@ Pipfile
 Pipfile.lock
 examples/.ipynb_checkpoints
 src/transmorph.egg-info
-*/*__pycache__
+*/*__pycache__*
