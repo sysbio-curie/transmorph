@@ -84,7 +84,7 @@ def compute_transport(
         Entropy regularizer for Sinkhorn's solver.
     """
     n, m = len(wx), len(wy)
-
+    
     # Normalization of weights
     assert abs(np.sum(wx) - 1) < 1e-9 and all(
         wx >= 0
@@ -93,11 +93,19 @@ def compute_transport(
         wy >= 0
     ), "Reference weights must be in the probability simplex."
 
+    sel_x, sel_y = np.argwhere(wx != 0)[:,0], np.argwhere(wy != 0)[:,0]
+    slicing = len(sel_x) < n or len(sel_y) < n
+    if slicing:
+        wx, wy = wx[sel_x], wy[sel_y]
+
     if method == 'ot':
 
         assert Mxy is not None, "No cost matrix provided."
         assert Mxy.shape == (n, m), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (n, m, *Mxy.shape)
+
+        if slicing:
+            Mxy = Mxy[sel_x][:,sel_y].copy()
 
         Mxy /= Mxy.max()
         if unbalanced:
@@ -112,11 +120,15 @@ def compute_transport(
         assert Mx is not None, "No cost matrix provided for xs."
         assert Mx.shape == (n, n), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (n, n, *Mx.shape)
+        if slicing:
+            Mx = Mx[sel_x][:,sel_x]
         Mx /= Mx.max()
 
         assert My is not None, "No cost matrix provided for yt."
         assert My.shape == (m, m), "Incompatible cost matrix.\
             Expected (%i,%i), found (%i,%i)." % (m, m, *My.shape)
+        if slicing:
+            My = My[sel_y][:,sel_y]
         My /= My.max()
 
         if unbalanced:
@@ -125,6 +137,13 @@ def compute_transport(
             transport_plan = ot.gromov.entropic_gromov_wasserstein(Mx, My, wx, wy, 'square_loss', hreg, numItermax=max_iter)
         else:
             transport_plan = ot.gromov.gromov_wasserstein(Mx, My, wx, wy, 'square_loss', numItermax=max_iter)
+
+    # TODO: clean this block
+    if slicing:
+        tmp_transport_plan = transport_plan
+        transport_plan = np.zeros((n, m))
+        for i, j in enumerate(sel_x):
+            transport_plan[j,sel_y] = tmp_transport_plan[i,:]
 
     return csr_matrix(transport_plan)
 
