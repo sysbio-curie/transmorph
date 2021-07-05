@@ -25,8 +25,15 @@ def transform(
     TODO: docstring
     """
     tdata_x, tdata_y, Pxy = transport
-    T = Pxy.toarray() @ np.diag(1 / tdata_y.weights())
-    x_int = np.diag(1 / T.sum(axis=1)) @ T @ tdata_y.x_raw
+    sel_x, sel_y = tdata_x.weights() != 0, tdata_y.weights() != 0
+    nz_yw, nz_yraw, nz_Pxy = (
+        tdata_y.weights()[sel_y],
+        tdata_y.x_raw[sel_y],
+        Pxy[sel_x][:,sel_y]
+    )
+    x_int = tdata_x.x_raw.copy()
+    T = nz_Pxy.toarray() @ np.diag(1 / nz_yw)
+    x_int[sel_x] = np.diag(1 / T.sum(axis=1)) @ T @ nz_yraw
 
     if jitter:
         stdev = jitter_std * (np.max(x_int, axis=0) - np.min(x_int, axis=0))

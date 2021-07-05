@@ -19,18 +19,45 @@ Transport = namedtuple("Transport", ["src", "tar", "P"])
 
 def weight_per_label(xs_labels, yt_labels):
     # Weighting by cell type proportion
+
     n, m = len(xs_labels), len(yt_labels)
-    all_labels = list(set(xs_labels).union(set(xs_labels)))
+    all_labels = list(set(xs_labels).union(set(yt_labels)))
+
+    # Labels specific to xs/yt
+    labels_specx = [ i for (i, li) in enumerate(all_labels)
+                     if li not in yt_labels ] 
+    labels_specy = [ i for (i, li) in enumerate(all_labels)
+                     if li not in xs_labels ] 
+    labels_common = [ i for (i, li) in enumerate(all_labels)
+                      if i not in labels_specx
+                      and i not in labels_specy ]
+
+    # Fequency of each label
     xs_freqs = np.array([
         np.sum(xs_labels == li) / n for li in all_labels
     ])
     yt_freqs = np.array([
         np.sum(yt_labels == li) / m for li in all_labels
     ])
-    rel_freqs = yt_freqs / xs_freqs
+
+    # Only accounting for common labels
+    norm_x, norm_y = (
+        np.sum(xs_freqs[labels_common]),
+        np.sum(yt_freqs[labels_common])
+    )
+    rel_freqs = np.zeros(len(all_labels))
+    rel_freqs[labels_common] = (
+        yt_freqs[labels_common] * norm_x / (xs_freqs[labels_common] * norm_y)
+    )
+    
+    # Correcting weights with respect to label frequency
     wx, wy = np.ones(n) / n, np.ones(m) / m
     for fi, li in zip(rel_freqs, all_labels):
         wx[xs_labels == li] *= fi
+    for i in labels_specx + labels_specy:
+        wy[yt_labels == all_labels[i]] = 0
+
+    wx, wy = wx / wx.sum(), wy / wy.sum()
     return wx, wy
 
 class Transmorph:

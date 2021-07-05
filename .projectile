@@ -1,0 +1,7 @@
+-/examples
+-/build
+-/dist
+-/*.egg-info
+-/*/*.egg-info
+-/img
+-/src/transmorph/datasets/data
