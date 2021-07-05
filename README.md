@@ -1,4 +1,4 @@
-# <img alt="Transmorph" src="img/logo.png" height="60">
+# <img alt="Transmorph" src="img/logo.png" height="90">
 
 [![PyPI version](https://badge.fury.io/py/transmorph.svg)](https://badge.fury.io/py/transmorph)
 
