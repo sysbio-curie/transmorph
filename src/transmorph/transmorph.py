@@ -17,6 +17,9 @@ from .utils import col_normalize
 # TData, TData, array
 Transport = namedtuple("Transport", ["src", "tar", "P"])
 
+def penalize_per_label(M, xs_labels, yt_labels):
+    return M + M.max()*(xs_labels[:,None] != yt_labels)
+
 def weight_per_label(xs_labels, yt_labels):
     # Weighting by cell type proportion
 
@@ -369,6 +372,8 @@ class Transmorph:
             assert xs.shape[1] == yt.shape[1], (
                 "Dimension mismatch (%i != %i)" % (xs.shape[1], yt.shape[1]))
             Mxy = self.tdata_x.distance(self.tdata_y)
+            if is_label_weighted:
+                Mxy = penalize_per_label(Mxy, xs_labels, yt_labels)
         if self.method == 'gromov' and Mx is None:
             self._log("Using metric %s as a cost for Mx. Normalization: %r" %
                      (self.metric, self.normalize))
