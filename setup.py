@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="transmorph",  # Replace with your own username
-    version="0.0.7",
+    version="0.0.8",
     author="Aziz Fouché",
     author_email="aziz.fouche@curie.fr",
     description="Optimal transport-based tools for data integration.",
@@ -29,7 +29,6 @@ setuptools.setup(
         'osqp',
         'sklearn',
         'numba',
-        'numba-scipy'
     ],
     python_requires=">=3.6",
 )
