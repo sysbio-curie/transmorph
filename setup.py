@@ -23,10 +23,13 @@ setuptools.setup(
     package_dir={"": "src"},
     install_requires=[
         'numpy',
+        'cython',
         'pot',
         'scipy',
         'osqp',
-        'sklearn'
+        'sklearn',
+        'numba',
+        'numba-scipy'
     ],
     python_requires=">=3.6",
 )

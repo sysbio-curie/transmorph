@@ -2,10 +2,10 @@
 
 import numpy as np
 
+from collections import namedtuple
+from scipy.spatial.distance import cdist
 from sklearn.decomposition import PCA
 from sklearn.utils import check_array
-from scipy.spatial.distance import cdist
-from collections import namedtuple
 
 from .integration import compute_transport
 from .integration import transform

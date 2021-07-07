@@ -1,18 +1,21 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from scipy.stats import norm, entropy
-from scipy.spatial.distance import cdist
+from numba import njit, vectorize
 from scipy import sparse
 import osqp
 
 
+@njit
 def kernel_H(D, sigma):
     # Returns density entropy
     # vector is automatically normalized to sum up to 1.
-    return entropy(get_density(D, sigma).sum(axis=1))
+    Dvector = get_density(D, sigma).sum(axis=1)
+    Dvector /= Dvector.sum()
+    return -np.sum(Dvector * np.log(Dvector)/np.log(2))
 
 
+@njit
 def sigma_search(D, max_depth=20, base=2, thr=1.01):
     # Searches for a sigma that minimizes density entropy
     # for a given distance matrix D
@@ -68,14 +71,15 @@ def normal_kernel_weights(
         D: np.ndarray, scale: float = 1, alpha_qp: float = 1.0
 ):
     ## Shortcut get_density -> optimal weights
+    assert scale > 0, "scale must be positive, found %f" % scale
     K = get_density(D, scale)
     w = optimal_weights(K, alpha_qp)
     return w / np.sum(w)
 
 
+@vectorize
 def get_density(D: np.ndarray, scale: float = 1) -> np.ndarray:
-    assert scale > 0, "scale must be positive, found %f" % scale
-    return norm.pdf(-D, loc=0, scale=scale)
+    return np.exp(-D**2/(2*scale))/(2.5066282746310002*scale)
 
 
 def optimal_weights(K: np.ndarray, alpha_qp: float = 1.0, eps=1e-9):
