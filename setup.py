@@ -6,9 +6,9 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="transmorph",  # Replace with your own username
+    name="transmorph",
     version="0.0.8",
-    author="Aziz Fouché",
+    author="Aziz Fouché (Institut Curie, Paris)",
     author_email="aziz.fouche@curie.fr",
     description="Optimal transport-based tools for data integration.",
     long_description=long_description,

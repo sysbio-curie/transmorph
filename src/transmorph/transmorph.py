@@ -7,6 +7,7 @@ from scipy.spatial.distance import cdist
 from sklearn.decomposition import PCA
 from sklearn.utils import check_array
 
+from .constants import *
 from .integration import compute_transport
 from .integration import transform
 from .tdata import TData
@@ -173,12 +174,6 @@ class Transmorph:
         self.transport = None
         self.fitted = False
 
-        # Constants
-        METHOD_OT = 0
-        METHOD_GROMOV = 1
-        WS_AUTO = 0
-        WS_LABELS = 1
-
         self.validate_parameters()
 
         self._log("Successfully initialized.")
@@ -219,23 +214,23 @@ class Transmorph:
 
         # str -> constants
         if self.method == 'gromov':
-            self.method = Transmorph.METHOD_GROMOV
+            self.method = TR_METHOD_GROMOV
         elif self.method == 'ot':
-            self.method = Transmorph.METHOD_OT
+            self.method = TR_METHOD_OT
         else:
             raise NotImplementedError
 
         if self.weighting_strategy == 'auto':
-            self.weighting_strategy = Transmorph.WS_AUTO
+            self.weighting_strategy = TR_WS_AUTO
         elif self.weighting_strategy == 'labels':
-            self.weighting_strategy = Transmorph.WS_LABELS
+            self.weighting_strategy = TR_WS_LABELS
         else:
             raise NotImplementedError
 
 
     def __str__(self) -> str:
         # Useful for debugging
-        return f'\
+        return f'\n\
         <Transmorph> object.\n\
         -- method: {self.method}\n\
         -- metric: {self.metric}\n\
@@ -323,13 +318,13 @@ class Transmorph:
 
         assert not (
             is_label_weighted
-            and self.weighting_strategy == Transmorph.WS_AUTO), \
+            and self.weighting_strategy == TR_WS_AUTO), \
             "Inconsistency in parameters: Automatic weighting chosen, \
             but labels were passed to fit()."
 
         assert not (
             not is_label_weighted
-            and self.weighting_strategy == Transmorph.WS_LABELS), \
+            and self.weighting_strategy == TR_WS_LABELS), \
             "Inconsistency in parameters: Labels weighting chosen, \
             but no labels were passed to fit()."
 
@@ -343,20 +338,20 @@ class Transmorph:
                 %i != %i" % (yt_labels.shape[0], m)
 
         # Cost matrices
-        if self.method == self.METHOD_OT and Mxy is not None:
+        if self.method == TR_METHOD_OT and Mxy is not None:
             Mxy = check_array(Mxy, dtype=np.float32, order="C")
             assert Mxy.shape == (n, m), \
                 "Inconsistent dimension between user-provided cost \
                 matrix and datasets size. Expected: (%i,%i), found: (%i,%i)" \
                 % (n, m, *Mxy.shape)
-        if self.method == self.METHOD_GROMOV and Mx is not None:
+        if self.method == TR_METHOD_GROMOV and Mx is not None:
             Mx = check_array(Mx, dtype=np.float32, order="C")
             assert Mx.shape == (n, n), \
                 "Inconsistent dimension between user-provided cost \
                 matrix and source dataset size. \
                 Expected: (%i,%i), found: (%i,%i)" \
                 % (n, n, *Mx.shape)
-        if self.method == self.METHOD_GROMOV and My is not None:
+        if self.method == TR_METHOD_GROMOV and My is not None:
             My = check_array(My, dtype=np.float32, order="C")
             assert My.shape == (m, m), \
                 "Inconsistent dimension between user-provided cost \
@@ -380,7 +375,7 @@ class Transmorph:
         # no cost matrix is provided.
         xs_red, yt_red = None, None
         if self.n_comps != -1:
-            if self.method == self.METHOD_OT and Mxy is None:
+            if self.method == TR_METHOD_OT and Mxy is None:
                 self._log("Computing joint PC view, %i PCs..."\
                           % self.n_comps)
                 pca = PCA(n_components=self.n_comps)
@@ -390,14 +385,14 @@ class Transmorph:
                     xy = np.concatenate( (xs, yt), axis=0 )
                 xy = pca.fit_transform(xy)
                 xs_red, yt_red = xy[:n], xy[n:]
-            if self.method == self.METHOD_GROMOV and Mx is None:
+            if self.method == TR_METHOD_GROMOV and Mx is None:
                 self._log("Computing source PC view, %i PCs..."\
                           % self.n_comps)
                 pca = PCA(n_components=self.n_comps)
                 xs_red = pca.fit_transform(
                     xs_nrm if self.normalize else xs
                 )
-            if self.method == self.METHOD_GROMOV and My is None:
+            if self.method == TR_METHOD_GROMOV and My is None:
                 self._log("Computing reference PC view, %i PCs..."\
                           % self.n_comps)
                 pca = PCA(n_components=self.n_comps)
@@ -432,7 +427,7 @@ class Transmorph:
                              verbose=self.verbose)
 
         # Computing cost matrices if necessary.
-        if self.method == self.METHOD_OT and Mxy is None:
+        if self.method == TR_METHOD_OT and Mxy is None:
             self._log("Using metric %s as a cost for Mxy. Normalization: %r" %
                      (self.metric, self.normalize))
             assert xs.shape[1] == yt.shape[1], (
@@ -440,17 +435,17 @@ class Transmorph:
             Mxy = self.tdata_x.distance(self.tdata_y)
             if is_label_weighted:
                 Mxy = penalize_per_label(Mxy, xs_labels, yt_labels)
-        if self.method == self.METHOD_GROMOV and Mx is None:
+        if self.method == TR_METHOD_GROMOV and Mx is None:
             self._log("Using metric %s as a cost for Mx. Normalization: %r" %
                      (self.metric, self.normalize))
             Mx = self.tdata_x.distance()
-        if self.method == self.METHOD_GROMOV and My is None:
+        if self.method == TR_METHOD_GROMOV and My is None:
             self._log("Using metric %s as a cost for My. Normalization: %r" %
                      (self.metric, self.normalize))
             My = self.tdata_y.distance()
 
         # Projecting source to ref
-        self._log("Computing transport plan (%s)..." % self.method)
+        self._log("Computing transport plan...")
         Pxy = compute_transport(
             self.tdata_x.weights(),
             self.tdata_y.weights(),

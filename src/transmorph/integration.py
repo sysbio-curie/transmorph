@@ -6,8 +6,7 @@ import ot
 from scipy.sparse import csr_matrix
 
 from .tdata import TData
-from .Transmorph import Transmorph
-
+from .constants import *
 
 def transform(
         transport,
@@ -46,7 +45,7 @@ def transform(
 def compute_transport(
         wx: np.ndarray,
         wy: np.ndarray,
-        method: int = Transmorph.METHOD_OT,
+        method: int = TR_METHOD_OT,
         Mxy: np.ndarray = None,
         Mx: np.ndarray = None,
         My: np.ndarray = None,
@@ -69,7 +68,7 @@ def compute_transport(
         Source weights histogram (sum to 1).
     wy: array (m,1)
         Target weights histogram (sum to 1).
-    method: int in Transmorph.METHOD
+    method: int in TR_METHOD
         Optimal transport or Gromov-Wasserstein integration
     Mxy: array (n,m)
         Cost matrix, M_ij = cost(xi, yj).
@@ -99,7 +98,7 @@ def compute_transport(
     if slicing:
         wx, wy = wx[sel_x], wy[sel_y]
 
-    if method == Transmorph.METHOD_OT:
+    if method == TR_METHOD_OT:
 
         assert Mxy is not None, "No cost matrix provided."
         assert Mxy.shape == (n, m), "Incompatible cost matrix.\
@@ -116,7 +115,7 @@ def compute_transport(
         else:
             transport_plan = ot.emd(wx, wy, Mxy, numItermax=max_iter)
 
-    if method == Transmorph.METHOD_GROMOV:
+    if method == TR_METHOD_GROMOV:
 
         assert Mx is not None, "No cost matrix provided for xs."
         assert Mx.shape == (n, n), "Incompatible cost matrix.\
