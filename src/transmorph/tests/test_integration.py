@@ -16,12 +16,7 @@ from ..transmorph import Transmorph
 def test_fit_empty_xs():
     # Transmorph raises an exception when fitted and xs is empty
     xs, yt = load_cell_cycle()
-    tm = Transmorph(
-        method='ot',
-        weighted=False,
-        verbose=0,
-        unbalanced=False
-    )
+    tm = Transmorph()
     with pytest.raises(AssertionError):
         tm.fit(np.array([]), yt)
 
@@ -29,12 +24,7 @@ def test_fit_empty_xs():
 def test_fit_empty_yt():
     # Transmorph raises an exception when fitted and yt is empty
     xs, yt = load_cell_cycle()
-    tm = Transmorph(
-        method='ot',
-        weighted=False,
-        verbose=0,
-        unbalanced=False
-    )
+    tm = Transmorph()
     with pytest.raises(AssertionError):
         tm.fit(xs, np.array([]))
 
@@ -44,12 +34,7 @@ def test_ot():
     # Minimal setup
     # Spirals dataset (d=3)
     xs, yt = load_spirals()
-    tm = Transmorph(
-        method='ot',
-        weighted=False,
-        verbose=0,
-        unbalanced=False
-    )
+    tm = Transmorph()
     xt = tm.fit_transform(xs, yt, jitter=False)
     assert xt.shape == xs.shape, \
         "Shape inconsistency: (%i, %i) != (%i, %i)" \
@@ -62,10 +47,7 @@ def test_ot_weighted():
     # Spirals dataset (d=3)
     xs, yt = load_spirals()
     tm = Transmorph(
-        method='ot',
-        weighted=True,
-        verbose=0,
-        unbalanced=False
+        weighting_strategy='woti',
     )
     xt = tm.fit_transform(xs, yt, jitter=False)
     assert xt.shape == xs.shape, \
@@ -79,11 +61,7 @@ def test_ot_sinkhorn():
     # Spirals dataset (d=3)
     xs, yt = load_spirals()
     tm = Transmorph(
-        method='ot',
-        weighted=False,
-        unbalanced=False,
-        entropy=True,
-        verbose=0,
+        entropy=True
     )
     xt = tm.fit_transform(xs, yt, jitter=False)
     assert xt.shape == xs.shape, \
@@ -97,10 +75,7 @@ def test_ot_unbalanced():
     # Spirals dataset (d=3)
     xs, yt = load_spirals()
     tm = Transmorph(
-        method='ot',
-        weighted=False,
         unbalanced=True,
-        verbose=0,
     )
     xt = tm.fit_transform(xs, yt, jitter=False)
     assert xt.shape == xs.shape, \
@@ -114,12 +89,7 @@ def test_ot_custom_M():
     # Spirals dataset (d=3)
     xs, yt = load_spirals()
     tm = Transmorph(
-        method='ot',
-        weighted=False,
-        verbose=0,
-        unbalanced=False,
         metric='sqeuclidean',
-        normalize=False
     )
     xt = tm.fit_transform(xs, yt, jitter=False)
     M = cdist(xs, yt, metric="sqeuclidean")
@@ -133,12 +103,7 @@ def test_ot_custom_M_wrong():
     # Should return an error
     xs, yt = load_spirals()
     tm = Transmorph(
-        method='ot',
-        weighted=False,
-        verbose=0,
-        unbalanced=False,
         metric='sqeuclidean',
-        normalize=False
     )
     M = cdist(yt, xs, metric="sqeuclidean") # Wrong size
     with pytest.raises(AssertionError):
@@ -152,10 +117,6 @@ def test_gromov():
     xs, yt = load_spirals()
     tm = Transmorph(
         method='gromov',
-        weighted=False,
-        verbose=0,
-        unbalanced=False,
-        normalize=False
     )
     xt = tm.fit_transform(xs, yt, jitter=False)
     assert xt.shape == xs.shape, \
@@ -170,10 +131,6 @@ def test_gromov_custom_Mx():
     xs, yt = load_spirals()
     tm = Transmorph(
         method='gromov',
-        weighted=False,
-        verbose=0,
-        unbalanced=False,
-        normalize=False,
         metric='sqeuclidean'
     )
     xt = tm.fit_transform(xs, yt, jitter=False)
@@ -189,10 +146,6 @@ def test_gromov_custom_Mx_wrong():
     xs, yt = load_spirals()
     tm = Transmorph(
         method='gromov',
-        weighted=False,
-        verbose=0,
-        unbalanced=False,
-        normalize=False,
         metric='sqeuclidean'
     )
     M = cdist(yt, yt, metric='sqeuclidean')
@@ -207,10 +160,6 @@ def test_gromov_custom_My():
     xs, yt = load_spirals()
     tm = Transmorph(
         method='gromov',
-        weighted=False,
-        verbose=0,
-        unbalanced=False,
-        normalize=False,
         metric='sqeuclidean'
     )
     xt = tm.fit_transform(xs, yt, jitter=False)
@@ -226,10 +175,6 @@ def test_gromov_custom_My_wrong():
     xs, yt = load_spirals()
     tm = Transmorph(
         method='gromov',
-        weighted=False,
-        verbose=0,
-        unbalanced=False,
-        normalize=False,
         metric='sqeuclidean'
     )
     M = cdist(xs, xs, metric='sqeuclidean') # Wrong shape
@@ -242,12 +187,7 @@ def test_label_transfer():
     # Minimal setup
     # Spirals dataset (d=3)
     xs, yt = load_spirals()
-    tm = Transmorph(
-        method='ot',
-        weighted=False,
-        verbose=0,
-        unbalanced=False
-    )
+    tm = Transmorph()
     tm.fit(xs, yt)
     y_labels = np.ones(yt.shape[0])
     x_labels = tm.label_transfer(y_labels)

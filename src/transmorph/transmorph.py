@@ -16,6 +16,23 @@ from .utils import col_normalize
 # TODO: distance on a graph
 # TODO: better cacheing
 # TODO: document parameters
+# TODO: cost matrix in Transport
+# TODO: rewrite unit tests
+# TODO: penalize par label (Clambda)
+
+# 0: AUTO
+# 1: LABEL
+# 2: UNIFORM
+_tmp_aliases_methods = [
+    ['woti', 'auto', 'automatic', 'qp'],
+    ['labeled', 'labels'],
+    ['uniform', 'none', 'nil', 'uni']
+]
+_aliases_methods = {
+    k: i
+    for (i, keys) in enumerate(_tmp_aliases_methods)
+    for k in keys
+}
 
 # Read-only container for transport results
 # TData, TData, array
@@ -28,49 +45,6 @@ def penalize_per_label(C, xs_labels, yt_labels, lam=1):
     # lam=1 -> C is label-consistent
     return C + lam*C.max()*(xs_labels[:,None] != yt_labels)
 
-def weight_per_label(xs_labels, yt_labels):
-    # Weighting points by label proportion, so that
-    # - Label total weights is equal in each dataset
-    # - Dataset-specific labels weight 0
-
-    n, m = len(xs_labels), len(yt_labels)
-    all_labels = list(set(xs_labels).union(set(yt_labels)))
-
-    # Labels specific to xs/yt
-    labels_specx = [ i for (i, li) in enumerate(all_labels)
-                     if li not in yt_labels ] 
-    labels_specy = [ i for (i, li) in enumerate(all_labels)
-                     if li not in xs_labels ] 
-    labels_common = [ i for (i, li) in enumerate(all_labels)
-                      if i not in labels_specx
-                      and i not in labels_specy ]
-
-    # Fequency of each label
-    xs_freqs = np.array([
-        np.sum(xs_labels == li) / n for li in all_labels
-    ])
-    yt_freqs = np.array([
-        np.sum(yt_labels == li) / m for li in all_labels
-    ])
-
-    # Only accounting for common labels
-    norm_x, norm_y = (
-        np.sum(xs_freqs[labels_common]),
-        np.sum(yt_freqs[labels_common])
-    )
-    rel_freqs = np.zeros(len(all_labels))
-    rel_freqs[labels_common] = (
-        yt_freqs[labels_common] * norm_x / (xs_freqs[labels_common] * norm_y)
-    )
-    
-    # Correcting weights with respect to label frequency
-    wx, wy = np.ones(n) / n, np.ones(m) / m
-    for fi, li in zip(rel_freqs, all_labels):
-        wx[xs_labels == li] *= fi
-    for i in labels_specx + labels_specy:
-        wy[yt_labels == all_labels[i]] = 0
-
-    return wx / wx.sum(), wy / wy.sum()
 
 class Transmorph:
     """
@@ -114,13 +88,6 @@ class Transmorph:
         to solve a QP of dimensionality equal to dataset size, so it does not scale
         for now above 10^4 data points.
 
-    alpha_qp: float, default = 1.0
-        Parameter for the QP solver (osqp)
-
-    scale: float, default = -1
-        Standard deviation of Gaussian RBFs used in the weights selection. May need
-        some tuning. Set it to -1 to use an adaptive sigma.
-
     metric: str (see scipy.spatial.distance.cdist)
         Default metric to use.
 
@@ -141,16 +108,13 @@ class Transmorph:
     def __init__(self,
                  method: str = 'ot',
                  metric: str = 'sqeuclidean',
-                 normalize: bool = True,
+                 normalize: bool = False,
                  n_comps: int = -1,
                  entropy: bool = False,
                  hreg: float = 1e-3,
                  unbalanced: bool = False,
                  mreg: float = 1e-3,
-                 weighted: bool = True,
-                 weighting_strategy: str = 'auto',
-                 scale: float = -1,
-                 alpha_qp: float = 1.0,
+                 weighting_strategy: str = 'uniform',
                  label_dependency: float = 0,
                  max_iter: int = 1e6,
                  verbose: bool = False):
@@ -163,16 +127,14 @@ class Transmorph:
         self.hreg = hreg
         self.unbalanced = unbalanced
         self.mreg = mreg
-        self.weighted = weighted
         self.weighting_strategy = weighting_strategy
-        self.scale = scale
-        self.alpha_qp = alpha_qp
         self.label_dependency = label_dependency
         self.max_iter = int(max_iter)
         self.verbose = verbose
 
         self.transport = None
         self.fitted = False
+        self.weighted = False
 
         self.validate_parameters()
 
@@ -187,9 +149,9 @@ class Transmorph:
             "Unrecognized method: %s. Available methods \
             are 'ot', 'gromov'" % self.method
 
-        assert self.weighting_strategy in ('auto', 'labels'), \
+        assert self.weighting_strategy in _aliases_methods, \
             "Unrecognized weighting strategy: %s. Available \
-            strategies: ('auto', 'labels')." % self.weighting_strategy
+            strategies: " + list(_aliases_methods.keys())
 
         assert 0 <= self.label_dependency <= 1, \
             "Invalid label dependency coefficient: %f, expected \
@@ -197,9 +159,6 @@ class Transmorph:
 
         assert self.max_iter > 0, \
             "Negative number of iterations."
-
-        assert self.scale > 0 or self.scale == -1, \
-            "Scale must be positive."
 
         # Combination checks
         assert not (
@@ -220,12 +179,8 @@ class Transmorph:
         else:
             raise NotImplementedError
 
-        if self.weighting_strategy == 'auto':
-            self.weighting_strategy = TR_WS_AUTO
-        elif self.weighting_strategy == 'labels':
-            self.weighting_strategy = TR_WS_LABELS
-        else:
-            raise NotImplementedError
+        self.weighting_strategy = _aliases_methods[self.weighting_strategy]
+
 
 
     def __str__(self) -> str:
@@ -242,8 +197,6 @@ class Transmorph:
         -- mreg: {self.mreg}\n\
         -- weighted: {self.weighted}\n\
         -- weighting_strategy: {self.weighting_strategy}\n\
-        -- scale: {self.scale}\n\
-        -- alpha_qp: {self.alpha_qp}\n\
         -- label_dependency: {self.label_dependency}\n\
         -- max_iter: {self.max_iter}\n\
         -- verbose: {self.verbose}\n\
@@ -363,68 +316,45 @@ class Transmorph:
         ### Starting the procedure ###
 
         self.fitted = False
-        self.transports = [] # Clearing for now
-
-        # STD-normalization
-        xs_nrm, yt_nrm = None, None
-        if self.normalize:
-            self._log("Computing normalized view...")
-            xs_nrm, yt_nrm = col_normalize(xs), col_normalize(yt)
-
-        # Dimensionality reduction, only needed if asked and
-        # no cost matrix is provided.
-        xs_red, yt_red = None, None
-        if self.n_comps != -1:
-            if self.method == TR_METHOD_OT and Mxy is None:
-                self._log("Computing joint PC view, %i PCs..."\
-                          % self.n_comps)
-                pca = PCA(n_components=self.n_comps)
-                if self.normalize:
-                    xy = np.concatenate( (xs_nrm, yt_nrm), axis=0 )
-                else:
-                    xy = np.concatenate( (xs, yt), axis=0 )
-                xy = pca.fit_transform(xy)
-                xs_red, yt_red = xy[:n], xy[n:]
-            if self.method == TR_METHOD_GROMOV and Mx is None:
-                self._log("Computing source PC view, %i PCs..."\
-                          % self.n_comps)
-                pca = PCA(n_components=self.n_comps)
-                xs_red = pca.fit_transform(
-                    xs_nrm if self.normalize else xs
-                )
-            if self.method == TR_METHOD_GROMOV and My is None:
-                self._log("Computing reference PC view, %i PCs..."\
-                          % self.n_comps)
-                pca = PCA(n_components=self.n_comps)
-                yt_red = pca.fit_transform(
-                    yt_nrm if self.normalize else yt
-                )
-
-        wx, wy = None, None
-        if is_label_weighted:
-            self._log("Using labels to balance class weights.")
-            wx, wy = weight_per_label(xs_labels, yt_labels)
 
         # Building full TDatas using computed values
         self.tdata_x = TData(xs,
-                             x_nrm=xs_nrm,
-                             x_red=xs_red,
-                             weighted=self.weighted,
-                             weights=wx,
-                             metric=self.metric,
-                             scale=self.scale,
-                             alpha_qp=self.alpha_qp,
+                             is_weighted=self.weighted,
+                             weights=None, # TODO: extra parameter in fit()
+                             labels=xs_labels,
+                             normalize=self.normalize,
                              verbose=self.verbose)
 
         self.tdata_y = TData(yt,
-                             x_nrm=yt_nrm,
-                             x_red=yt_red,
-                             weighted=self.weighted,
-                             weights=wy,
-                             metric=self.metric,
-                             scale=self.scale,
-                             alpha_qp=self.alpha_qp,
+                             is_weighted=self.weighted,
+                             weights=None,
+                             labels=yt_labels,
+                             normalize=self.normalize,
                              verbose=self.verbose)
+
+        layer = 'raw'
+        if self.n_comps != -1:
+            layer = 'pca'
+            if self.method == TR_METHOD_OT:
+                self.tdata_x.pca(n_components=self.n_comps, other=self.tdata_y)
+            elif self.method == TR_METHOD_GROMOV:
+                self.tdata_x.pca(n_components=self.n_comps)
+                self.tdata_y.pca(n_components=self.n_comps)
+
+        # Weights
+        if self.weighting_strategy == TR_WS_AUTO:
+            self.tdata_x.compute_weights(
+                method=TR_WS_AUTO,
+                layer=layer)
+            self.tdata_y.compute_weights(
+                method=self.weighting_strategy,
+                layer=layer)
+        elif self.weighting_strategy == TR_WS_LABELS:
+            self.tdata_x.compute_weights(
+                method=TR_WS_LABELS,
+                layer=layer,
+                other=self.tdata_y
+            )
 
         # Computing cost matrices if necessary.
         if self.method == TR_METHOD_OT and Mxy is None:
@@ -432,23 +362,21 @@ class Transmorph:
                      (self.metric, self.normalize))
             assert xs.shape[1] == yt.shape[1], (
                 "Dimension mismatch (%i != %i)" % (xs.shape[1], yt.shape[1]))
-            Mxy = self.tdata_x.distance(self.tdata_y)
-            if is_label_weighted:
-                Mxy = penalize_per_label(Mxy, xs_labels, yt_labels)
+            Mxy = self.tdata_x.distance(self.tdata_y, layer=layer, metric=self.metric)
         if self.method == TR_METHOD_GROMOV and Mx is None:
             self._log("Using metric %s as a cost for Mx. Normalization: %r" %
-                     (self.metric, self.normalize))
-            Mx = self.tdata_x.distance()
+                      (self.metric, self.normalize))
+            Mx = self.tdata_x.distance(layer=layer, metric=self.metric)
         if self.method == TR_METHOD_GROMOV and My is None:
             self._log("Using metric %s as a cost for My. Normalization: %r" %
                      (self.metric, self.normalize))
-            My = self.tdata_y.distance()
+            My = self.tdata_y.distance(layer=layer, metric=self.metric)
 
         # Projecting source to ref
         self._log("Computing transport plan...")
         Pxy = compute_transport(
-            self.tdata_x.weights(),
-            self.tdata_y.weights(),
+            self.tdata_x.weights,
+            self.tdata_y.weights,
             method=self.method,
             Mxy=Mxy,
             Mx=Mx,
@@ -460,7 +388,7 @@ class Transmorph:
             mreg=self.mreg)
 
         # Anticipating multi-batches
-        self.transports = Transport(self.tdata_x, self.tdata_y, Pxy)
+        self.transport = Transport(self.tdata_x, self.tdata_y, Pxy)
 
         self.fitted = True
         self._log("Transmorph fitted.")
@@ -490,7 +418,7 @@ class Transmorph:
         assert self.fitted, "Transmorph must be fitted first."
         assert jitter_std > 0, "Negative standard deviation for jittering."
         self._log("Projecting dataset...")
-        xt = transform(self.transports,
+        xt = transform(self.transport,
                        jitter=jitter,
                        jitter_std=jitter_std)
         self._log("Terminated.")
@@ -543,4 +471,4 @@ class Transmorph:
             "Inconsistent size between fitted $ys and $y_labels. \
             Expected (%i,), found (%i,)." % (Pxy.shape[1], len(y_labels))
 
-        return y_labels[np.argmax(self.transports[0].P.toarray(), axis=1)]
+        return y_labels[np.argmax(Pxy, axis=1)]

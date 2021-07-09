@@ -25,13 +25,13 @@ def transform(
     TODO: docstring
     """
     tdata_x, tdata_y, Pxy = transport
-    sel_x, sel_y = tdata_x.weights() != 0, tdata_y.weights() != 0
+    sel_x, sel_y = tdata_x.weights != 0, tdata_y.weights != 0
     nz_yw, nz_yraw, nz_Pxy = ( # Eliminating zero-weighted points
-        tdata_y.weights()[sel_y],
-        tdata_y.x_raw[sel_y],
+        tdata_y.weights[sel_y],
+        tdata_y.X[sel_y],
         Pxy[sel_x][:,sel_y]
     )
-    x_int = tdata_x.x_raw.copy()
+    x_int = tdata_x.X.copy()
     T = nz_Pxy.toarray() @ np.diag(1 / nz_yw)
     x_int[sel_x] = np.diag(1 / T.sum(axis=1)) @ T @ nz_yraw
 
