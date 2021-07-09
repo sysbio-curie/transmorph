@@ -20,7 +20,6 @@ class TData:
     """
     def __init__(self,
                  X: np.ndarray,
-                 is_weighted: bool = True,
                  weights: np.ndarray = None,
                  labels: np.ndarray = None,
                  normalize: bool = False,
@@ -44,7 +43,10 @@ class TData:
 
     def validate_parameters(self):
 
+        assert len(self.layers['raw'].shape) > 0, \
+            "Cannot initialize an empty TData."
         n = len(self)
+
         assert self.weights is None or len(self.weights) == n,\
             "Inconsistent size between weights and dataset. Expected %i,\
              found %i." % (n, len(self.weights))
@@ -60,7 +62,7 @@ class TData:
 
 
     def __len__(self):
-        return len(self.layers['raw'])
+        return self.layers['raw'].shape[0]
 
 
     def __str__(self):
@@ -79,7 +81,12 @@ class TData:
     def pca(self,
             n_components: int = 15,
             other = None):
+
         pca = PCA(n_components=n_components)
+
+        assert n_components <= self.X.shape[1], \
+            "n_comps must be lesser or equal to data dimension."
+
         if other is None:
             if self.normalize:
                 self.layers['pca'] = pca.fit_transform(col_normalize(self.X))
@@ -114,6 +121,9 @@ class TData:
 
 
     def select_representers(self, hops=2):
+        assert self._neighbors is not None, \
+            "Neighbors must be computed first."
+
         self.anchors_map, self.anchors = vertex_cover(
             self._neighbors.indptr,
             self._neighbors.indices,
@@ -121,7 +131,7 @@ class TData:
         )
 
 
-    def distance(self, other=None, metric='euclidean', layer='raw'):
+    def distance(self, other=None, metric='sqeuclidean', layer='raw'):
         """
         Reuturns the inner pairwise distance matrix by default, or the
         (n,m) pairwise distance matrix if another TData is provided.
@@ -161,7 +171,7 @@ class TData:
             scale = sigma_search(self.distance(metric="euclidean", layer=layer))
             self._log("Found: %f" % scale, header=False)
             self._log("Solving the QP to find weights...", end=' ')
-            self._weights = normal_kernel_weights(
+            self.weights = normal_kernel_weights(
                 self.distance(metric="euclidean", layer=layer),
                 scale=scale,
                 alpha_qp=1.0)
@@ -170,8 +180,9 @@ class TData:
             assert other is not None, "Missing labels for reference dataset."
             self.weights, other.weights = weight_per_label(self.labels, other.labels)
 
+
     def get_barycenter(self):
         """
 
         """
-        return (np.diag(self.weights()) @ self.x_raw).sum(axis=0)
+        return np.diag(self.weights @ self.X).sum(axis=0)

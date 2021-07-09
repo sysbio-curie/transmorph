@@ -16,9 +16,7 @@ from .utils import col_normalize
 # TODO: distance on a graph
 # TODO: better cacheing
 # TODO: document parameters
-# TODO: cost matrix in Transport
 # TODO: rewrite unit tests
-# TODO: penalize par label (Clambda)
 
 # 0: AUTO
 # 1: LABEL
@@ -83,11 +81,6 @@ class Transmorph:
         Entropic regularization parameter. The lower the more accurate the result
         will be, at a cost of extra computation time.
 
-    weighted: bool, default = True
-        Enables the weights correction to deal with unbalanced datasets. It requires
-        to solve a QP of dimensionality equal to dataset size, so it does not scale
-        for now above 10^4 data points.
-
     metric: str (see scipy.spatial.distance.cdist)
         Default metric to use.
 
@@ -134,7 +127,6 @@ class Transmorph:
 
         self.transport = None
         self.fitted = False
-        self.weighted = False
 
         self.validate_parameters()
 
@@ -149,9 +141,19 @@ class Transmorph:
             "Unrecognized method: %s. Available methods \
             are 'ot', 'gromov'" % self.method
 
+        if self.method == 'gromov':
+            self.method = TR_METHOD_GROMOV
+        elif self.method == 'ot':
+            self.method = TR_METHOD_OT
+        else:
+            raise NotImplementedError
+
         assert self.weighting_strategy in _aliases_methods, \
             "Unrecognized weighting strategy: %s. Available \
-            strategies: " + list(_aliases_methods.keys())
+            strategies: %s" \
+            % (self.weighting_strategy, ','.join(_aliases_methods.keys()))
+
+        self.weighting_strategy = _aliases_methods[self.weighting_strategy]
 
         assert 0 <= self.label_dependency <= 1, \
             "Invalid label dependency coefficient: %f, expected \
@@ -162,25 +164,14 @@ class Transmorph:
 
         # Combination checks
         assert not (
-            self.method == 'gromov'
-            and self.weighting_strategy == 'labels'), \
+            self.method == TR_METHOD_GROMOV
+            and self.weighting_strategy == TR_WS_LABELS), \
             "Labels weighting is incompatible with Gromov-Wasserstein."
 
         assert not (
-            self.method == 'gromov'
+            self.method == TR_METHOD_GROMOV
             and self.unbalanced == True), \
             "Unbalanced is incompatible with Gromov-Wasserstein."
-
-        # str -> constants
-        if self.method == 'gromov':
-            self.method = TR_METHOD_GROMOV
-        elif self.method == 'ot':
-            self.method = TR_METHOD_OT
-        else:
-            raise NotImplementedError
-
-        self.weighting_strategy = _aliases_methods[self.weighting_strategy]
-
 
 
     def __str__(self) -> str:
@@ -195,7 +186,6 @@ class Transmorph:
         -- hreg: {self.hreg}\n\
         -- unbalanced: {self.unbalanced}\n\
         -- mreg: {self.mreg}\n\
-        -- weighted: {self.weighted}\n\
         -- weighting_strategy: {self.weighting_strategy}\n\
         -- label_dependency: {self.label_dependency}\n\
         -- max_iter: {self.max_iter}\n\
@@ -264,8 +254,7 @@ class Transmorph:
 
         # Use sample labels frequency to estimate weights?
         is_label_weighted = (
-            self.weighted
-            and xs_labels is not None
+            xs_labels is not None
             and yt_labels is not None
         )
 
@@ -289,6 +278,14 @@ class Transmorph:
             assert yt_labels.shape[0] == m, \
                 "Inconsistent dimension for labels in reference dataset, \
                 %i != %i" % (yt_labels.shape[0], m)
+
+        # Verifying label dependency
+        if self.label_dependency:
+            assert self.method == TR_METHOD_OT, \
+                "Label dependency cannot be used with methods other \
+                than optimal transport."
+            assert is_label_weighted, "Label dependency cannot be \
+                applied without labels."
 
         # Cost matrices
         if self.method == TR_METHOD_OT and Mxy is not None:
@@ -319,14 +316,12 @@ class Transmorph:
 
         # Building full TDatas using computed values
         self.tdata_x = TData(xs,
-                             is_weighted=self.weighted,
                              weights=None, # TODO: extra parameter in fit()
                              labels=xs_labels,
                              normalize=self.normalize,
                              verbose=self.verbose)
 
         self.tdata_y = TData(yt,
-                             is_weighted=self.weighted,
                              weights=None,
                              labels=yt_labels,
                              normalize=self.normalize,
@@ -363,6 +358,11 @@ class Transmorph:
             assert xs.shape[1] == yt.shape[1], (
                 "Dimension mismatch (%i != %i)" % (xs.shape[1], yt.shape[1]))
             Mxy = self.tdata_x.distance(self.tdata_y, layer=layer, metric=self.metric)
+            if self.label_dependency:
+                penalize_per_label(Mxy,
+                                   xs_labels,
+                                   yt_labels,
+                                   self.label_dependency)
         if self.method == TR_METHOD_GROMOV and Mx is None:
             self._log("Using metric %s as a cost for Mx. Normalization: %r" %
                       (self.metric, self.normalize))
