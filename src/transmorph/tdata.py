@@ -15,7 +15,30 @@ from .utils import weight_per_label
 
 class TData:
     """
-    # TODO: write doctring
+    Custom data object used by the main module. Features
+    weight computation, subsampling, custom distance, labels handling...
+
+    Parameters:
+    -----------
+
+    X: (n,d) np.ndarray to embed.
+
+    weights: (n,) np.ndarray
+        Weights vector, default: uniform
+
+    labels: (n,) np.ndarray
+        Labels vector for supervised problem.
+
+    normalize: bool, default = False
+        Wether to use a column-normalized representation to compute
+        PCA, distance etc.
+    
+    verbose: int, default = 1
+        Defines the logging level.
+        0: Disabled
+        1: Informations
+        2: Debug
+
     # TODO: slicing
     """
     def __init__(self,
@@ -51,6 +74,7 @@ class TData:
             "Inconsistent size between weights and dataset. Expected %i,\
              found %i." % (n, len(self.weights))
 
+        # By default, uniform weights
         if self.weights is None:
             self.weights = np.ones(n) / n
         else:
@@ -81,6 +105,9 @@ class TData:
     def pca(self,
             n_components: int = 15,
             other = None):
+        """
+        Computes the internal PCA layer.
+        """
 
         pca = PCA(n_components=n_components)
 
@@ -92,7 +119,7 @@ class TData:
                 self.layers['pca'] = pca.fit_transform(col_normalize(self.X))
             else:
                 self.layers['pca'] = pca.fit_transform(self.X)
-        else:
+        else: # Shared PCA view between two datasets
             assert self.X.shape[1] == other.X.shape[1], \
                 "Incompatible dimensions for distance computation: %i != %i" \
                 % (self.X.shape[1], other.X.shape[1])
@@ -109,6 +136,9 @@ class TData:
 
 
     def neighbors(self, n_neighbors=5, metric='sqeuclidean', layer='raw'):
+        """
+        Computes the (n,n) nearest neighbors matrix.
+        """
         assert layer in self.layers, \
             "Unrecognized layer: %s" % layer
         nn = NearestNeighbors(n_neighbors=n_neighbors, metric=metric)
@@ -121,6 +151,9 @@ class TData:
 
 
     def select_representers(self, hops=2):
+        """
+        Computes the $hops-vertex cover.
+        """
         assert self._neighbors is not None, \
             "Neighbors must be computed first."
 
@@ -133,10 +166,22 @@ class TData:
 
     def distance(self, other=None, metric='sqeuclidean', layer='raw'):
         """
-        Reuturns the inner pairwise distance matrix by default, or the
+        Returns the inner pairwise distance matrix by default, or the
         (n,m) pairwise distance matrix if another TData is provided.
 
-        Priority is red > nrm > raw
+        Parameters:
+        -----------
+
+        other: TData
+            Returns the inner pairwise distance matrix by default, or the
+            (n,m) pairwise distance matrix if another TData is provided.
+
+        metric: str or Callable
+            scipy-compatible metric.
+
+        layer: str
+            Layer to use for distance computation. Typical layers are
+            'raw', 'pca'.
         """
         assert layer in self.layers, \
             "Unrecognized layer: %s" % layer
@@ -183,6 +228,6 @@ class TData:
 
     def get_barycenter(self):
         """
-
+        Returns the weighted dataset barycenter.
         """
         return np.diag(self.weights @ self.X).sum(axis=0)

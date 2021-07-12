@@ -216,6 +216,19 @@ def test_ot():
         "Shape inconsistency: (%i, %i) != (%i, %i)" \
         % (*xt.shape, *xs.shape)
 
+    
+def test_ot_custom_xy_weights():
+    # Optimal transport based dataset integration
+    # Minimal setup
+    # Spirals dataset (d=3)
+    xs, yt = load_spirals()
+    tm = Transmorph(weighting_strategy='uniform')
+    xt1 = tm.fit_transform(xs, yt, jitter=False)
+    xt2 = tm.fit_transform(xs, yt, jitter=False, xs_weights=np.ones(len(xs))/len(xs))
+    xt3 = tm.fit_transform(xs, yt, jitter=False, yt_weights=np.ones(len(yt))/len(yt))
+    assert_array_equal(xt1, xt2)
+    assert_array_equal(xt1, xt3)
+
 
 def test_ot_weighted():
     # Optimal transport based dataset integration

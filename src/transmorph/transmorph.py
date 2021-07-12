@@ -15,12 +15,7 @@ from .utils import col_normalize
 
 # TODO: distance on a graph
 # TODO: better cacheing
-# TODO: document parameters
-# TODO: rewrite unit tests
 
-# 0: AUTO
-# 1: LABEL
-# 2: UNIFORM
 _tmp_aliases_methods = [
     ['woti', 'auto', 'automatic', 'qp'],
     ['labeled', 'labels'],
@@ -37,10 +32,34 @@ _aliases_methods = {
 Transport = namedtuple("Transport", ["src", "tar", "P"])
 
 def penalize_per_label(C, xs_labels, yt_labels, lam=1):
-    # Defines a label-dependent cost matrix for supervised problems
-    # for lam \in [0,1], lam being the label dependency factor
-    # lam=0 -> C remains unchanged
-    # lam=1 -> C is label-consistent
+    """
+    Defines a label-dependent cost matrix for supervised problems
+    f(C, xl, yl, lam)_ij = C_ij + lam * C.max * (xli == ylj)
+
+    Parameters:
+    -----------
+
+    C: (n,m) np.ndarray
+        Raw cost matrix (e.g. Euclidean)
+
+    xs_labels: (n,1) np.ndarray
+        Source dataset labels
+
+    yt_labels: (m,1) np.ndarray
+        Reference dataset label
+
+    lam: float, default = 1
+        for lam \in [0,1], lam being the label dependency factor
+        lam=0 -> C remains unchanged
+        lam=1 -> C is label-consistent
+
+    Returns:
+    --------
+
+    (n,m) np.ndarray
+        Label-corrected cost matrix.
+
+    """
     return C + lam*C.max()*(xs_labels[:,None] != yt_labels)
 
 
@@ -69,8 +88,15 @@ class Transmorph:
             invariant to dataset isometries which can lead to poor
             integration due to overfitting.
 
-    max_iter: int, default = 1e6
-        Maximum number of iterations for OT/GW.
+    metric: str (see scipy.spatial.distance.cdist)
+        Default metric to use.
+
+    normalize: bool = 1
+        Column-normalize matrices before computing cost matrix.
+
+    n_comps: int, default = -1
+        Number of dimensions to use in the PCA, which is used to compute the cost
+        matrix/density. -1 uses the raw dimensionality instead.
 
     entropy: bool, default = False
         Enables the entropy regularization for OT/GW problem, solving it
@@ -81,15 +107,26 @@ class Transmorph:
         Entropic regularization parameter. The lower the more accurate the result
         will be, at a cost of extra computation time.
 
-    metric: str (see scipy.spatial.distance.cdist)
-        Default metric to use.
+    unbalanced: bool, default = False
+        Use the unbalanced optimal transport formulation + entropy regularization.
+        Incompatible with Gromov-Wasserstein
 
-    n_comps: int, default = -1
-        Number of dimensions to use in the PCA, which is used to compute the cost
-        matrix/density. -1 uses the raw dimensionality instead.
+    mreg: float, default = 1e-3
+        Regularization parameter for unbalanced formulation.
 
-    normalize: bool = 1
-        Column-normalize matrices before computing cost matrix.
+    weighting_strategy: str, default = uniform
+        Strategy to use in order to reweight the samples, before optimal transport.
+        Possible values are:
+        - 'uniform', all points have the same mass
+        - 'woti', automatic weights selection based on local density
+        - 'labels', automatic weights selection based on labels
+    
+    label_dependency: float, default = 0
+        In the case of known labels, extra penalty in the cost matrix if
+        labels differ.
+
+    max_iter: int, default = 1e6
+        Maximum number of iterations for OT/GW.
 
     verbose: int, default = 1
         Defines the logging level.
@@ -207,6 +244,8 @@ class Transmorph:
             yt: np.ndarray,
             xs_labels: np.ndarray = None,
             yt_labels: np.ndarray = None,
+            xs_weights: np.ndarray = None,
+            yt_weights: np.ndarray = None,
             Mx: np.ndarray = None,
             My: np.ndarray = None,
             Mxy: np.ndarray = None) -> None:
@@ -224,10 +263,16 @@ class Transmorph:
             Target data points cloud.
 
         xs_labels: (n,) np.ndarray
-            Labels of xs points, for the semi-supervised integration.
+            Labels of xs points, for the supervised integration.
 
         yt_labels: (m,) np.ndarray
-            Label of yt points, for the semi-supervised integration.
+            Label of yt points, for the supervised integration.
+
+        xs_weights: (n,) np.ndarray
+            Weights of source dataset points.
+
+        yt_weights: (m,) np.ndarray
+            Weights of reference dataset points.
 
         Mx: (n,n) np.ndarray
             Pairwise metric matrix for xs. Only relevant for GW. If
@@ -252,10 +297,18 @@ class Transmorph:
         xs = check_array(xs, dtype=np.float32, order="C")
         yt = check_array(yt, dtype=np.float32, order="C")
 
+        if xs_weights is not None:
+            xs_weights = check_array(xs_weights, dtype=np.float32, order="C")
+
+        if yt_weights is not None:
+            yt_weights = check_array(yt_weights, dtype=np.float32, order="C")
+
         # Use sample labels frequency to estimate weights?
         is_label_weighted = (
             xs_labels is not None
             and yt_labels is not None
+            and xs_weights is None
+            and yt_weights is None
         )
 
         assert not (
@@ -287,6 +340,17 @@ class Transmorph:
             assert is_label_weighted, "Label dependency cannot be \
                 applied without labels."
 
+        # Verifying weights
+        if xs_weights is not None:
+            assert xs_weights.shape[0] == n, \
+                "Inconsistent dimension for weights in source dataset, \
+                %i != %i" % (xs_weights.shape[0], n)
+
+        if yt_weights is not None:
+            assert yt_weights.shape[0] == m, \
+                "Inconsistent dimension for weights in reference dataset, \
+                %i != %i" % (yt_weights.shape[0], m)
+
         # Cost matrices
         if self.method == TR_METHOD_OT and Mxy is not None:
             Mxy = check_array(Mxy, dtype=np.float32, order="C")
@@ -316,13 +380,13 @@ class Transmorph:
 
         # Building full TDatas using computed values
         self.tdata_x = TData(xs,
-                             weights=None, # TODO: extra parameter in fit()
+                             weights=xs_weights,
                              labels=xs_labels,
                              normalize=self.normalize,
                              verbose=self.verbose)
 
         self.tdata_y = TData(yt,
-                             weights=None,
+                             weights=yt_weights,
                              labels=yt_labels,
                              normalize=self.normalize,
                              verbose=self.verbose)
@@ -338,13 +402,20 @@ class Transmorph:
 
         # Weights
         if self.weighting_strategy == TR_WS_AUTO:
-            self.tdata_x.compute_weights(
-                method=TR_WS_AUTO,
-                layer=layer)
-            self.tdata_y.compute_weights(
-                method=self.weighting_strategy,
-                layer=layer)
+            if self.tdata_x.weights is None:
+                self.tdata_x.compute_weights(
+                    method=TR_WS_AUTO,
+                    layer=layer)
+            if self.tdata_y.weights is None:
+                self.tdata_y.compute_weights(
+                    method=self.weighting_strategy,
+                    layer=layer)
         elif self.weighting_strategy == TR_WS_LABELS:
+            if (self.tdata_x.weights is not None
+                or self.tdata_y.weights is not None):
+                self._log("Warning: Using labels weighting strategy \
+                will override custom weights choice. Consider using \
+                'custom' or 'uniform' instead.")
             self.tdata_x.compute_weights(
                 method=TR_WS_LABELS,
                 layer=layer,
@@ -430,6 +501,8 @@ class Transmorph:
                       yt: np.ndarray,
                       xs_labels: np.ndarray = None,
                       yt_labels: np.ndarray = None,
+                      xs_weights: np.ndarray = None,
+                      yt_weights: np.ndarray = None,
                       Mx: np.ndarray = None,
                       My: np.ndarray = None,
                       Mxy: np.ndarray = None,
