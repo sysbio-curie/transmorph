@@ -3,6 +3,7 @@
 import numpy as np
 import ot
 
+from numba import njit
 from scipy.sparse import csr_matrix
 
 from .tdata import TData
@@ -25,15 +26,46 @@ def transform(
     TODO: docstring
     """
     tdata_x, tdata_y, Pxy = transport
-    sel_x, sel_y = tdata_x.weights != 0, tdata_y.weights != 0
-    nz_yw, nz_yraw, nz_Pxy = ( # Eliminating zero-weighted points
-        tdata_y.weights[sel_y],
-        tdata_y.X[sel_y],
+    return _transform(
+        Pxy.toarray(),
+        tdata_x.X,
+        tdata_x.weights(),
+        tdata_x.anchors,
+        tdata_x.anchors_map,
+        tdata_y.X,
+        tdata_y.weights(),
+        tdata_y.anchors,
+        jitter,
+        jitter_std
+    )
+
+def _transform(Pxy,
+               x,
+               xw,
+               x_anchors_sel,
+               x_mapping,
+               y,
+               yw,
+               y_anchors_sel,
+               jitter,
+               jitter_std):
+    sel_x, sel_y = xw > 0, yw > 0
+    x_anchors = x[x_anchors_sel]
+    y_anchors = y[y_anchors_sel]
+    yw_nz, y_anchors_nz, Pxy_nz = ( # Eliminating zero-weighted points
+        yw[sel_y],
+        y_anchors[sel_y],
         Pxy[sel_x][:,sel_y]
     )
-    x_int = tdata_x.X.copy()
-    T = nz_Pxy.toarray() @ np.diag(1 / nz_yw)
-    x_int[sel_x] = np.diag(1 / T.sum(axis=1)) @ T @ nz_yraw
+    x_anchors_int = x_anchors.copy()
+    T = Pxy_nz @ np.diag(1 / yw_nz)
+    x_anchors_int[sel_x] = np.diag(1 / T.sum(axis=1)) @ T @ y_anchors_nz
+    delta_int = x_anchors_int - x_anchors
+    small_idx = [
+        np.sum(x_anchors_sel[:x_mapping[i]])
+        for i in range(len(x))
+    ]
+    x_int = x + delta_int[small_idx]
 
     if jitter:
         stdev = jitter_std * (np.max(x_int, axis=0) - np.min(x_int, axis=0))

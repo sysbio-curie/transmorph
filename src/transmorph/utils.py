@@ -56,11 +56,12 @@ def symmetrize_csr_to_coo(ptrs, inds, data):
 
     return xs, ys, vs
 
+
 @njit
 def vertex_cover(Lptr, Linds, hops=2):
     # Lptr, Linds: CSR matrix representation
     # of neighbors
-    n = Lptr.shape[0]
+    n = Lptr.shape[0] - 1
     anchors = np.zeros(n, dtype='int')
     for v in range(n):
         # If v not visited, add it as an anchor
@@ -79,7 +80,10 @@ def vertex_cover(Lptr, Linds, hops=2):
                         continue
                     anchors[nb2] = v
                     neighbors.append( (nb2, d+1) )
-    return anchors, np.array(list(set(anchors)))
+    anchors_set = np.zeros(n)
+    for i in set(anchors):
+        anchors_set[i] = 1
+    return anchors_set, anchors # set, map
 
 
 def weight_per_label(xs_labels, yt_labels):
@@ -126,3 +130,19 @@ def weight_per_label(xs_labels, yt_labels):
 
     return wx / wx.sum(), wy / wy.sum()
 
+
+@njit
+def fill_dmatrix(D_anchors, anchors, anchors_map, distances_map):
+    # D_i,j ~ D_ri,rj + D_i,ri + D_j,rj
+    n = len(anchors_map)
+    D = np.zeros((n,n), dtype=np.float32)
+    small_idx = [
+        np.sum(anchors[:anchors_map[i]])
+        for i in range(n)
+    ]
+    D = (
+        D_anchors[small_idx, small_idx] 
+        + distances_map 
+        + distances_map[:,None]
+    )
+    return D - np.diag(np.diag(D))

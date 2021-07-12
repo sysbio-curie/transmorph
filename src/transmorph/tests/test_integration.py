@@ -4,10 +4,11 @@ import pytest
 import numpy as np
 
 from scipy.spatial.distance import cdist
-from sklearn.utils._testing import assert_array_equal
+from sklearn.utils._testing import assert_array_almost_equal
 
 from ..constants import *
-from ..datasets import load_cell_cycle, load_spirals
+from ..datasets import load_cell_cycle
+from ..datasets import load_spirals
 from ..tdata import TData
 from ..transmorph import Transmorph
 from ..transmorph import _aliases_methods
@@ -68,6 +69,9 @@ def test_transmorph_validate_parameters():
     with pytest.raises(AssertionError):
         Transmorph(method='gromov', unbalanced=True)
 
+    with pytest.raises(AssertionError):
+        Transmorph(method='ot', geodesic=True)
+
 
 def test_tdata_validate_parameters():
     xs, _ = load_spirals()
@@ -82,7 +86,7 @@ def test_tdata_validate_parameters():
     assert t.layers['raw'] is t.X
     t = TData(xs, weights)
     t = TData(xs, weights_n)
-    assert abs(t.weights.sum() - 1) < 1e-6
+    assert abs(t.weights().sum() - 1) < 1e-6
     t = TData(xs, labels)
 
     with pytest.raises(AssertionError):
@@ -142,14 +146,14 @@ def test_tdata_compute_weights_uniform():
     xs, _ = load_spirals()
     tx = TData(xs)
     tx.compute_weights(method=TR_WS_UNIFORM)
-    assert_array_equal(tx.weights, np.ones(len(xs)) / len(xs))
+    assert_array_almost_equal(tx.weights(), np.ones(len(xs)) / len(xs))
 
 
 def test_tdata_compute_weights_woti():
     xs, _ = load_spirals()
     tx = TData(xs)
     tx.compute_weights(method=TR_WS_AUTO)
-    assert tx.weights is not None
+    assert tx.weights() is not None
 
 
 def test_tdata_compute_weights_label():
@@ -159,8 +163,8 @@ def test_tdata_compute_weights_label():
     yl[:50] = 0
     tx, ty = TData(xs, labels=xl), TData(yt, labels=yl)
     tx.compute_weights(method=TR_WS_LABELS, other=ty)
-    assert abs(tx.weights[xl == 0].sum() - ty.weights[yl == 0].sum()) < 1e-6
-    assert abs(tx.weights[xl == 1].sum() - ty.weights[yl == 1].sum()) < 1e-6
+    assert abs(tx.weights()[xl == 0].sum() - ty.weights()[yl == 0].sum()) < 1e-6
+    assert abs(tx.weights()[xl == 1].sum() - ty.weights()[yl == 1].sum()) < 1e-6
 
 
 def test_tdata_barycenter():
@@ -169,7 +173,7 @@ def test_tdata_barycenter():
     b1 = t.get_barycenter()
     t.compute_weights(method=TR_WS_UNIFORM)
     b2 = t.get_barycenter()
-    assert_array_equal(b1, b2)
+    assert_array_almost_equal(b1, b2)
 
 
 def test_transmorph_str_log_no_crash():
@@ -226,8 +230,8 @@ def test_ot_custom_xy_weights():
     xt1 = tm.fit_transform(xs, yt, jitter=False)
     xt2 = tm.fit_transform(xs, yt, jitter=False, xs_weights=np.ones(len(xs))/len(xs))
     xt3 = tm.fit_transform(xs, yt, jitter=False, yt_weights=np.ones(len(yt))/len(yt))
-    assert_array_equal(xt1, xt2)
-    assert_array_equal(xt1, xt3)
+    assert_array_almost_equal(xt1, xt2)
+    assert_array_almost_equal(xt1, xt3)
 
 
 def test_ot_weighted():
@@ -283,7 +287,7 @@ def test_ot_custom_M():
     xt = tm.fit_transform(xs, yt, jitter=False)
     M = cdist(xs, yt, metric="sqeuclidean")
     xtM = tm.fit_transform(xs, yt, Mxy=M, jitter=False)
-    assert_array_equal(xt, xtM)
+    assert_array_almost_equal(xt, xtM)
 
 
 def test_ot_custom_M_wrong():
@@ -356,6 +360,18 @@ def test_ot_pca_3d_4pc():
         tm.fit_transform(xs, yt)
 
 
+def test_ot_subsample():
+    xs, yt = load_spirals()
+    tm = Transmorph(
+        method='ot',
+        n_hops=1
+    )
+    xt = tm.fit_transform(xs, yt)
+    assert xt.shape == xs.shape, \
+        "Shape inconsistency: (%i, %i) != (%i, %i)" \
+        % (*xt.shape, *xs.shape)
+
+
 def test_gromov():
     # Gromov-Wasserstein based dataset integration
     # Minimal setup
@@ -382,7 +398,7 @@ def test_gromov_custom_Mx():
     xt = tm.fit_transform(xs, yt, jitter=False)
     M = cdist(xs, xs, metric='sqeuclidean')
     xtM = tm.fit_transform(xs, yt, Mx=M, jitter=False)
-    assert_array_equal(xt, xtM)
+    assert_array_almost_equal(xt, xtM)
 
 
 def test_gromov_custom_Mx_wrong():
@@ -411,7 +427,7 @@ def test_gromov_custom_My():
     xt = tm.fit_transform(xs, yt, jitter=False)
     M = cdist(yt, yt, metric='sqeuclidean')
     xtM = tm.fit_transform(xs, yt, My=M, jitter=False)
-    assert_array_equal(xt, xtM)
+    assert_array_almost_equal(xt, xtM)
 
 
 def test_gromov_custom_My_wrong():
@@ -426,6 +442,30 @@ def test_gromov_custom_My_wrong():
     M = cdist(xs, xs, metric='sqeuclidean') # Wrong shape
     with pytest.raises(AssertionError):
         xtM = tm.fit_transform(xs, yt, My=M, jitter=False)
+
+
+def test_gromov_geodesic():
+    xs, yt = load_spirals()
+    tm = Transmorph(
+        method='gromov',
+        geodesic=True
+    )
+    xt = tm.fit_transform(xs, yt)
+    assert xt.shape == xs.shape, \
+        "Shape inconsistency: (%i, %i) != (%i, %i)" \
+        % (*xt.shape, *xs.shape)
+
+
+def test_gromov_subsample():
+    xs, yt = load_spirals()
+    tm = Transmorph(
+        method='gromov',
+        n_hops=1
+    )
+    xt = tm.fit_transform(xs, yt)
+    assert xt.shape == xs.shape, \
+        "Shape inconsistency: (%i, %i) != (%i, %i)" \
+        % (*xt.shape, *xs.shape)
 
 
 def test_label_transfer():

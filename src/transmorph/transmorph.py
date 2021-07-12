@@ -13,7 +13,6 @@ from .integration import transform
 from .tdata import TData
 from .utils import col_normalize
 
-# TODO: distance on a graph
 # TODO: better cacheing
 
 _tmp_aliases_methods = [
@@ -129,6 +128,11 @@ class Transmorph:
         In the case of known labels, extra penalty in the cost matrix if
         labels differ.
 
+    n_hops: int, default = 0
+        Number of hops to consider for the vertex cover approximation.
+        If n_hops = 0, then all points are used during optimal transport (exact
+        solution).
+
     max_iter: int, default = 1e6
         Maximum number of iterations for OT/GW.
 
@@ -151,6 +155,7 @@ class Transmorph:
                  mreg: float = 1e-3,
                  weighting_strategy: str = 'uniform',
                  label_dependency: float = 0,
+                 n_hops: int = 0,
                  max_iter: int = 1e6,
                  verbose: bool = False):
 
@@ -165,6 +170,7 @@ class Transmorph:
         self.mreg = mreg
         self.weighting_strategy = weighting_strategy
         self.label_dependency = label_dependency
+        self.n_hops = n_hops
         self.max_iter = int(max_iter)
         self.verbose = verbose
 
@@ -228,6 +234,7 @@ class Transmorph:
         <Transmorph> object.\n\
         -- method: {self.method}\n\
         -- metric: {self.metric}\n\
+        -- geodesic: {self.geodesic}\n\
         -- normalize: {self.normalize}\n\
         -- n_comps: {self.n_comps}\n\
         -- entropy: {self.entropy}\n\
@@ -236,6 +243,7 @@ class Transmorph:
         -- mreg: {self.mreg}\n\
         -- weighting_strategy: {self.weighting_strategy}\n\
         -- label_dependency: {self.label_dependency}\n\
+        -- n_hops: {self.n_hops}\n\
         -- max_iter: {self.max_iter}\n\
         -- verbose: {self.verbose}\n\
         -- fitted: {self.fitted}\n\
@@ -390,6 +398,7 @@ class Transmorph:
         self.fitted = False
 
         # Building full TDatas using computed values
+        self._log("Creating TDatas...")
         self.tdata_x = TData(xs,
                              weights=xs_weights,
                              labels=xs_labels,
@@ -405,28 +414,48 @@ class Transmorph:
         layer = 'raw'
         if self.n_comps != -1:
             layer = 'pca'
+            self._log("Computing PCAs, %i dimensions..." % self.n_comps)
             if self.method == TR_METHOD_OT:
                 self.tdata_x.pca(n_components=self.n_comps, other=self.tdata_y)
             elif self.method == TR_METHOD_GROMOV:
                 self.tdata_x.pca(n_components=self.n_comps)
                 self.tdata_y.pca(n_components=self.n_comps)
 
-        # Geodesic
-        if self.geodesic:
+        # KNN-graph construction for geodesic/vertex cover
+        if self.geodesic or self.n_hops:
+            self._log("Computing kNN graph...")
             self.tdata_x.neighbors(metric=self.metric,
+                                   self_edit=True,
                                    layer=layer)
             self.tdata_y.neighbors(metric=self.metric,
+                                   self_edit=True,
                                    layer=layer)
+
+        subsample = self.n_hops > 0
+        
+        # Vertex cover
+        if subsample:
+            self._log("Computing %i-hops vertex covers..." % self.n_hops)
+            self.tdata_x.select_representers(self.n_hops)
+            self._log("Source dataset: %i/%i points kept." %
+                (self.tdata_x.anchors.sum(), len(self.tdata_x))
+            )
+            self.tdata_y.select_representers(self.n_hops)
+            self._log("Reference dataset: %i/%i points kept." %
+                (self.tdata_y.anchors.sum(), len(self.tdata_y))
+            )
 
         # Weights
         if self.weighting_strategy == TR_WS_AUTO:
-            if self.tdata_x.weights is None:
+            if xs_weights is None:
                 self.tdata_x.compute_weights(
                     method=TR_WS_AUTO,
+                    subsample=subsample,
                     layer=layer)
-            if self.tdata_y.weights is None:
+            if yt_weights is None:
                 self.tdata_y.compute_weights(
-                    method=self.weighting_strategy,
+                    method=TR_WS_AUTO,
+                    subsample=subsample,
                     layer=layer)
         elif self.weighting_strategy == TR_WS_LABELS:
             if (xs_weights is not None
@@ -449,30 +478,36 @@ class Transmorph:
             Mxy = self.tdata_x.distance(self.tdata_y,
                                         metric=self.metric,
                                         geodesic=False,
+                                        subsample=subsample,
+                                        return_full_size=False,
                                         layer=layer)
             if self.label_dependency:
                 penalize_per_label(Mxy,
-                                   xs_labels,
-                                   yt_labels,
+                                   self.tdata_x.labels(),
+                                   self.tdata_y.labels(),
                                    self.label_dependency)
         if self.method == TR_METHOD_GROMOV and Mx is None:
             self._log("Using metric %s as a cost for Mx. Normalization: %r" %
                       (self.metric, self.normalize))
             Mx = self.tdata_x.distance(metric=self.metric,
+                                       subsample=subsample,
                                        geodesic=self.geodesic,
+                                       return_full_size=False,
                                        layer=layer)
         if self.method == TR_METHOD_GROMOV and My is None:
             self._log("Using metric %s as a cost for My. Normalization: %r" %
                      (self.metric, self.normalize))
             My = self.tdata_y.distance(metric=self.metric,
+                                       subsample=subsample,
                                        geodesic=self.geodesic,
+                                       return_full_size=False,
                                        layer=layer)
 
         # Projecting source to ref
         self._log("Computing transport plan...")
         Pxy = compute_transport(
-            self.tdata_x.weights,
-            self.tdata_y.weights,
+            self.tdata_x.weights(),
+            self.tdata_y.weights(),
             method=self.method,
             Mxy=Mxy,
             Mx=Mx,
@@ -483,7 +518,6 @@ class Transmorph:
             unbalanced=self.unbalanced,
             mreg=self.mreg)
 
-        # Anticipating multi-batches
         self.transport = Transport(self.tdata_x, self.tdata_y, Pxy)
 
         self.fitted = True
