@@ -88,8 +88,12 @@ class Transmorph:
             invariant to dataset isometries which can lead to poor
             integration due to overfitting.
 
-    metric: str (see scipy.spatial.distance.cdist)
-        Default metric to use.
+    metric: str, default = 'sqeuclidan'
+        Default metric to use. (see scipy.spatial.distance.cdist)
+
+    geodesic: bool, default = False
+        Only available for method = 'gromov'. Use geodesic
+        distance instead on a graph instead of vector-based metric.
 
     normalize: bool = 1
         Column-normalize matrices before computing cost matrix.
@@ -138,6 +142,7 @@ class Transmorph:
     def __init__(self,
                  method: str = 'ot',
                  metric: str = 'sqeuclidean',
+                 geodesic: bool = False,
                  normalize: bool = False,
                  n_comps: int = -1,
                  entropy: bool = False,
@@ -151,6 +156,7 @@ class Transmorph:
 
         self.method = method
         self.metric = metric
+        self.geodesic = geodesic
         self.normalize = normalize
         self.n_comps = n_comps
         self.entropy = entropy
@@ -184,6 +190,11 @@ class Transmorph:
             self.method = TR_METHOD_OT
         else:
             raise NotImplementedError
+
+        # geodesic => gromov
+        if self.geodesic:
+            assert self.method == TR_METHOD_GROMOV, \
+                "geodesic = True only available for method 'gromov'."
 
         assert self.weighting_strategy in _aliases_methods, \
             "Unrecognized weighting strategy: %s. Available \
@@ -400,6 +411,13 @@ class Transmorph:
                 self.tdata_x.pca(n_components=self.n_comps)
                 self.tdata_y.pca(n_components=self.n_comps)
 
+        # Geodesic
+        if self.geodesic:
+            self.tdata_x.neighbors(metric=self.metric,
+                                   layer=layer)
+            self.tdata_y.neighbors(metric=self.metric,
+                                   layer=layer)
+
         # Weights
         if self.weighting_strategy == TR_WS_AUTO:
             if self.tdata_x.weights is None:
@@ -411,8 +429,8 @@ class Transmorph:
                     method=self.weighting_strategy,
                     layer=layer)
         elif self.weighting_strategy == TR_WS_LABELS:
-            if (self.tdata_x.weights is not None
-                or self.tdata_y.weights is not None):
+            if (xs_weights is not None
+                or yt_weights is not None):
                 self._log("Warning: Using labels weighting strategy \
                 will override custom weights choice. Consider using \
                 'custom' or 'uniform' instead.")
@@ -428,7 +446,10 @@ class Transmorph:
                      (self.metric, self.normalize))
             assert xs.shape[1] == yt.shape[1], (
                 "Dimension mismatch (%i != %i)" % (xs.shape[1], yt.shape[1]))
-            Mxy = self.tdata_x.distance(self.tdata_y, layer=layer, metric=self.metric)
+            Mxy = self.tdata_x.distance(self.tdata_y,
+                                        metric=self.metric,
+                                        geodesic=False,
+                                        layer=layer)
             if self.label_dependency:
                 penalize_per_label(Mxy,
                                    xs_labels,
@@ -437,11 +458,15 @@ class Transmorph:
         if self.method == TR_METHOD_GROMOV and Mx is None:
             self._log("Using metric %s as a cost for Mx. Normalization: %r" %
                       (self.metric, self.normalize))
-            Mx = self.tdata_x.distance(layer=layer, metric=self.metric)
+            Mx = self.tdata_x.distance(metric=self.metric,
+                                       geodesic=self.geodesic,
+                                       layer=layer)
         if self.method == TR_METHOD_GROMOV and My is None:
             self._log("Using metric %s as a cost for My. Normalization: %r" %
                      (self.metric, self.normalize))
-            My = self.tdata_y.distance(layer=layer, metric=self.metric)
+            My = self.tdata_y.distance(metric=self.metric,
+                                       geodesic=self.geodesic,
+                                       layer=layer)
 
         # Projecting source to ref
         self._log("Computing transport plan...")

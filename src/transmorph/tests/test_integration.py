@@ -159,8 +159,8 @@ def test_tdata_compute_weights_label():
     yl[:50] = 0
     tx, ty = TData(xs, labels=xl), TData(yt, labels=yl)
     tx.compute_weights(method=TR_WS_LABELS, other=ty)
-    assert tx.weights is not None
-    assert ty.weights is not None
+    assert abs(tx.weights[xl == 0].sum() - ty.weights[yl == 0].sum()) < 1e-6
+    assert abs(tx.weights[xl == 1].sum() - ty.weights[yl == 1].sum()) < 1e-6
 
 
 def test_tdata_barycenter():

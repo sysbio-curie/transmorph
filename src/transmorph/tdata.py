@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
 from scipy.spatial.distance import cdist
+from scipy.sparse.csgraph import dijkstra
 
 from .constants import *
 from .density import sigma_search
@@ -147,7 +148,7 @@ class TData:
         else:
             nn.fit(self.layers[layer])
         self._neighbors = nn.kneighbors_graph(mode='distance')
-        symmetrize(self._neighbors)
+        self._neighbors = symmetrize(self._neighbors)
 
 
     def select_representers(self, hops=2):
@@ -164,7 +165,11 @@ class TData:
         )
 
 
-    def distance(self, other=None, metric='sqeuclidean', layer='raw'):
+    def distance(self,
+                 other=None,
+                 metric: str = 'sqeuclidean',
+                 geodesic: bool = False,
+                 layer: str = 'raw'):
         """
         Returns the inner pairwise distance matrix by default, or the
         (n,m) pairwise distance matrix if another TData is provided.
@@ -177,7 +182,11 @@ class TData:
             (n,m) pairwise distance matrix if another TData is provided.
 
         metric: str or Callable
-            scipy-compatible metric.
+            scipy-compatible metric. 
+
+        geodesic: bool
+            Only works for other = None. Computes the distance between points
+            on a graph. Nearest neighbors must have been computed first.
 
         layer: str
             Layer to use for distance computation. Typical layers are
@@ -185,6 +194,18 @@ class TData:
         """
         assert layer in self.layers, \
             "Unrecognized layer: %s" % layer
+
+        if geodesic:
+            assert other is None, \
+                "Unable to compute geodesic distance between datasets."
+
+            assert self._neighbors is not None, \
+                "Neighbors must be computed first."
+
+            Dmatrix = dijkstra(self._neighbors)
+            M = Dmatrix[Dmatrix != float('inf')].max() # removing inf values
+            Dmatrix[Dmatrix == float('inf')] = M
+            return Dmatrix
 
         # Cacheing the inner pairwise matrix if needed
         if other is None:

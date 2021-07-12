@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import numpy as np
+
 from numba import njit
+from scipy.sparse import coo_matrix, csr_matrix
 
 
 def col_normalize(x: np.ndarray):
@@ -10,15 +12,49 @@ def col_normalize(x: np.ndarray):
     return x / x_std
 
 
-# TODO: numba-ize this
 def symmetrize(L):
-    for i, j in zip(*L.nonzero()):
-        dij = L[i, j]
-        dji = L[j, i]
-        if dji != 0:
-            dij = (dij + dji)/2
-        L[j,i] = dij
+    coox, cooy, coodata = symmetrize_csr_to_coo(
+        L.indptr,
+        L.indices,
+        L.data
+    )
+    return coo_matrix(
+        (coodata, (coox, cooy)),
+        shape=L.shape
+    ).tocsr()
+    
 
+@njit
+def symmetrize_csr_to_coo(ptrs, inds, data):
+    # Necessary for numba compatibility (does not support sparse)
+    
+    mapping = {}
+    # preprocessing nnz values
+    for i in range(len(ptrs)):
+        m = ptrs[i]
+        M = ptrs[i+1] if i < len(ptrs) - 1 else len(inds)
+        for j, v in zip(inds[m:M], data[m:M]):
+            mapping[(i,j)] = v
+
+    # Filling loop
+    xs, ys, vs = [], [], []
+    for i in range(len(ptrs)):
+        m = ptrs[i]
+        M = ptrs[i+1] if i < len(ptrs) - 1 else len(inds)
+        for j, v in zip(inds[m:M], data[m:M]):
+            v1 = mapping[(i,j)]
+            v2 = mapping.get((i,j), 0)
+            if v2 != 0:
+                v1 = (v1 + v2) / 2
+            xs.append(i)
+            ys.append(j)
+            vs.append(v)
+            if i != j:
+                xs.append(j)
+                ys.append(i)
+                vs.append(v)
+
+    return xs, ys, vs
 
 @njit
 def vertex_cover(Lptr, Linds, hops=2):
@@ -89,3 +125,4 @@ def weight_per_label(xs_labels, yt_labels):
         wy[yt_labels == all_labels[i]] = 0
 
     return wx / wx.sum(), wy / wy.sum()
+
