@@ -151,8 +151,9 @@ but we do our best to do so).
 
 ## Contributors
 
-+ Aziz Fouché, PHD student (Institut Curie Paris/ENS Paris-Saclay, France)
-+ Andrei Zinovyev, PHD (Institut Curie Paris, France)
++ Aziz Fouché, (PHD student, Institut Curie Paris/ENS Paris-Saclay, France)
++ Andrei Zinovyev, (PHD, Institut Curie Paris, France)
++ Special thanks to Nicolas Captier (PHD student, Institut Curie Paris, France) and Maxime Roméas (PHD student, INRIA, France) for the insightful discussions and proofreading.
 
 ## Reference
 
