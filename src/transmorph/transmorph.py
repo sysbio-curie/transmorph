@@ -525,14 +525,10 @@ class Transmorph:
 
 
     def transform(self,
-                  xs: np.ndarray = None,
                   jitter: bool = True,
                   jitter_std: float = .01) -> np.ndarray:
         """
         Applies optimal transport integration. Transmorph must be fitted beforehand.
-
-        xs: np.ndarray, default = None
-            Source dataset to transform.
 
         jitter: bool, default = True
             Adds a little bit of random jittering to the final results. Helps
