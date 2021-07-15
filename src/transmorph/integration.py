@@ -5,6 +5,7 @@ import ot
 
 from numba import njit
 from scipy.sparse import csr_matrix
+from sklearn.utils import check_array
 
 from .tdata import TData
 from .constants import *
@@ -26,19 +27,28 @@ def transform(
     TODO: docstring
     """
     tdata_x, tdata_y, Pxy = transport
-    return _transform(
-        Pxy.toarray(),
-        tdata_x.X,
-        tdata_x.weights(),
-        tdata_x.anchors,
+    Pxy = check_array(Pxy.toarray(), dtype=np.float32, order="C")
+    x_int = _transform(
+        Pxy,
+        tdata_x.X.astype(np.float32),
+        tdata_x.weights().astype(np.float32),
+        tdata_x.anchors.astype(int),
         tdata_x.anchors_map,
-        tdata_y.X,
-        tdata_y.weights(),
-        tdata_y.anchors,
+        tdata_y.X.astype(np.float32),
+        tdata_y.weights().astype(np.float32),
+        tdata_y.anchors.astype(int),
         jitter,
         jitter_std
     )
 
+    if jitter:
+        stdev = jitter_std * (np.max(x_int, axis=0) - np.min(x_int, axis=0))
+        x_int = x_int + np.random.randn(*x_int.shape) * stdev
+
+    return x_int
+
+
+@njit
 def _transform(Pxy,
                x,
                xw,
@@ -61,17 +71,11 @@ def _transform(Pxy,
     T = Pxy_nz @ np.diag(1 / yw_nz)
     x_anchors_int[sel_x] = np.diag(1 / T.sum(axis=1)) @ T @ y_anchors_nz
     delta_int = x_anchors_int - x_anchors
-    small_idx = [
+    small_idx = np.array([
         np.sum(x_anchors_sel[:x_mapping[i]])
         for i in range(len(x))
-    ]
-    x_int = x + delta_int[small_idx]
-
-    if jitter:
-        stdev = jitter_std * (np.max(x_int, axis=0) - np.min(x_int, axis=0))
-        x_int = x_int + np.random.randn(*x_int.shape) * stdev
-
-    return x_int
+    ])
+    return x + delta_int[small_idx]
 
 
 def compute_transport(

@@ -313,8 +313,8 @@ class Transmorph:
         assert n > 0, "Empty source matrix."
         assert m > 0, "Empty reference matrix."
 
-        xs = check_array(xs, dtype=np.float32, order="C")
-        yt = check_array(yt, dtype=np.float32, order="C")
+        xs = check_array(xs, dtype=np.float64, order="C")
+        yt = check_array(yt, dtype=np.float64, order="C")
 
         if xs_weights is not None:
             xs_weights = check_array(xs_weights, dtype=np.float32, order="C")
@@ -573,8 +573,7 @@ class Transmorph:
                  Mx=Mx,
                  My=My,
                  Mxy=Mxy)
-        return self.transform(xs,
-                              jitter=jitter,
+        return self.transform(jitter=jitter,
                               jitter_std=jitter_std)
 
 
