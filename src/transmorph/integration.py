@@ -30,15 +30,13 @@ def transform(
     Pxy = check_array(Pxy.toarray(), dtype=np.float32, order="C")
     x_int = _transform(
         Pxy,
-        tdata_x.X.astype(np.float32),
-        tdata_x.weights().astype(np.float32),
-        tdata_x.anchors.astype(int),
+        np.float32(tdata_x.X),
+        np.float32(tdata_x.weights()),
+        tdata_x.anchors,
         tdata_x.anchors_map,
-        tdata_y.X.astype(np.float32),
-        tdata_y.weights().astype(np.float32),
-        tdata_y.anchors.astype(int),
-        jitter,
-        jitter_std
+        np.float32(tdata_y.X),
+        np.float32(tdata_y.weights()),
+        tdata_y.anchors,
     )
 
     if jitter:
@@ -56,9 +54,7 @@ def _transform(Pxy,
                x_mapping,
                y,
                yw,
-               y_anchors_sel,
-               jitter,
-               jitter_std):
+               y_anchors_sel):
     sel_x, sel_y = xw > 0, yw > 0
     x_anchors = x[x_anchors_sel]
     y_anchors = y[y_anchors_sel]
