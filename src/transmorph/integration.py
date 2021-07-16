@@ -37,8 +37,6 @@ def transform(
         tdata_y.X.astype(np.float32),
         tdata_y.weights().astype(np.float32),
         tdata_y.anchors.astype(int),
-        jitter,
-        jitter_std
     )
 
     if jitter:
@@ -56,9 +54,7 @@ def _transform(Pxy,
                x_mapping,
                y,
                yw,
-               y_anchors_sel,
-               jitter,
-               jitter_std):
+               y_anchors_sel):
     sel_x, sel_y = xw > 0, yw > 0
     x_anchors = x[x_anchors_sel]
     y_anchors = y[y_anchors_sel]
