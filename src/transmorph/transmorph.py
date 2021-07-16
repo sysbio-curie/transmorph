@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import time
 
 from collections import namedtuple
 from scipy.spatial.distance import cdist
@@ -176,6 +177,8 @@ class Transmorph:
 
         self.transport = None
         self.fitted = False
+        self.fit_time = -1
+        self.transform_time = -1
 
         self.validate_parameters()
 
@@ -305,6 +308,8 @@ class Transmorph:
             Pairwise metric matrix between xs and yt. Only relevant for OT.
             If None, Euclidean distance is used.
         """
+
+        time_start = time.time()
 
         ### Verifying parameters ###
 
@@ -521,6 +526,7 @@ class Transmorph:
         self.transport = Transport(self.tdata_x, self.tdata_y, Pxy)
 
         self.fitted = True
+        self.fit_time = time.time() - time_start
         self._log("Transmorph fitted.")
 
 
@@ -541,6 +547,7 @@ class Transmorph:
         --------
         (n,d1) np.ndarray, of xs integrated onto yt.
         """
+        time_start = time.time()
         assert self.fitted, "Transmorph must be fitted first."
         assert jitter_std > 0, "Negative standard deviation for jittering."
         self._log("Projecting dataset...")
@@ -548,6 +555,7 @@ class Transmorph:
                        jitter=jitter,
                        jitter_std=jitter_std)
         self._log("Terminated.")
+        self.transform_time = time.time() - time_start
         return xt
 
 
