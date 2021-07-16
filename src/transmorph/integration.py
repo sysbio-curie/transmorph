@@ -34,15 +34,9 @@ def transform(
         np.float32(tdata_x.weights()),
         tdata_x.anchors,
         tdata_x.anchors_map,
-<<<<<<< HEAD
-        tdata_y.X.astype(np.float32),
-        tdata_y.weights().astype(np.float32),
-        tdata_y.anchors.astype(int),
-=======
         np.float32(tdata_y.X),
         np.float32(tdata_y.weights()),
         tdata_y.anchors,
->>>>>>> 19a7234cb9b0dc9b1307c5db563cc56800f2887d
     )
 
     if jitter:
