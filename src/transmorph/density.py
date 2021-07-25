@@ -12,7 +12,7 @@ def kernel_H(D, sigma):
     # vector is automatically normalized to sum up to 1.
     Dvector = get_density(D, sigma).sum(axis=1)
     Dvector /= Dvector.sum()
-    return -np.sum(Dvector * np.log(Dvector)/np.log(2))
+    return np.sum(Dvector * np.log(Dvector.shape[0] * Dvector))
 
 
 @njit
@@ -31,17 +31,17 @@ def sigma_search(D, max_depth=20, base=2, thr=1.01):
     # Choosing direction of the minimum
     log_search = False
     step = 0
-    if v0 < v1 < v2: # _/, backwards
+    if v0 > v1 > v2: # backwards
         log_search = True
         step = 1/base
         v0, v2, s0, s2 = v2, v0, s2, s0
-    elif v0 > v1 > v2: # \_, forward
+    elif v0 < v1 < v2: # forward
         log_search = True
         step = base
 
     # Log search
     for i in range(max_depth):
-        if not log_search or v2 > v1:
+        if not log_search or v2 < v1:
             break
         v0, s0, v1, s1 = v1, s1, v2, s2
         s2 *= step
@@ -57,7 +57,7 @@ def sigma_search(D, max_depth=20, base=2, thr=1.01):
         mid1 = mid0 + (s2 - s0) / 4
         v0 = kernel_H(D, mid0)
         v1 = kernel_H(D, mid1)
-        if v0 < v1:
+        if v0 > v1:
             s0, s2 = s0, mid1
         else:
             s0, s2 = mid0, s2
