@@ -607,3 +607,18 @@ class Transmorph:
             Expected (%i,), found (%i,)." % (Pxy.shape[1], len(y_labels))
 
         return y_labels[np.argmax(Pxy, axis=1)]
+
+
+    def wasserstein_distance_transmorph(self):
+        """
+        Returns the total cost of transport matrix from a fitted
+        Transmorph. 
+        """
+        assert self.n_hops == -1, \
+            "Error: Wasserstein distance cannot be computed \
+            on a subsampled transmorph. Use wasserstein_distance \
+            instead."
+        assert self.fitted, \
+            "Error: Transmorph is not fitted."
+
+        return np.sum(self.transport.P)
