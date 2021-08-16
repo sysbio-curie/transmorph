@@ -166,7 +166,7 @@ def compute_transport(
         if unbalanced:
             raise NotImplementedError
         elif entropy:
-            transport_plan = ot.gromov.entropic_gromov_wasserstein(Mx, My, wx, wy, 'square_loss', hreg, numItermax=max_iter)
+            transport_plan = ot.gromov.entropic_gromov_wasserstein(Mx, My, wx, wy, 'square_loss', hreg, max_iter=max_iter)
         else:
             transport_plan = ot.gromov.gromov_wasserstein(Mx, My, wx, wy, 'square_loss', numItermax=max_iter)
 
