@@ -50,6 +50,7 @@ class TData:
                  verbose: bool = 0):
 
         self.layers = {'raw': X}
+        self.extras = {} # Additional matrices
         self._weights = weights # Acess via weights()
         self._labels = labels
         self.normalize = normalize
@@ -113,6 +114,18 @@ class TData:
         print(s, end=end)
 
 
+    def get_layer(self, layer):
+        assert layer in self.layers, \
+            "Error: no layer %s" % layer
+        return self.layers[layer]
+
+
+    def get_extra(self, extra):
+        assert extra in self.extras, \
+            "Error: no extra %s" % extra
+        return self.extras[extra]
+
+
     def weights(self):
         w = self._weights[self.anchors]
         return w / w.sum()
@@ -165,6 +178,8 @@ class TData:
             self.layers['pca'] = Xtot[:len(self)]
             other.layers['pca'] = Xtot[len(self):]
 
+        self.extras['pca'] = pca.components_.copy()
+
 
     def neighbors(self,
                   n_neighbors=5,
@@ -175,10 +190,8 @@ class TData:
         """
         Computes the (n,n) nearest neighbors matrix.
         """
-        assert layer in self.layers, \
-            "Unrecognized layer: %s" % layer
         nn = NearestNeighbors(n_neighbors=n_neighbors, metric=metric)
-        X = self.layers[layer]
+        X = self.get_layer(layer)
         if subsample:
             X = X[self.anchors]
         if self.normalize and layer == 'raw':
@@ -247,9 +260,6 @@ class TData:
             Layer to use for distance computation. Typical layers are
             'raw', 'pca'.
         """
-        assert layer in self.layers, \
-            "Unrecognized layer: %s" % layer
-
         if geodesic:
             assert other is None, \
                 "Unable to compute geodesic distance between datasets."
@@ -273,14 +283,11 @@ class TData:
         # Cacheing the inner pairwise matrix if needed
         if other is None:
             other = self
-        else:
-            assert layer in other.layers, \
-                "Unrecognized layer: %s" % layer
-            assert self.layers[layer].shape[1] == other.layers[layer].shape[1], \
-                "Incompatible dimensions for distance computation: %i != %i" \
-                % (self.layers[layer].shape[1], other.layers[layer].shape[1])
+        X, Y = self.get_layer(layer), other.get_layer(layer)
+        assert X.shape[1] == Y.shape[1], \
+            "Incompatible dimensions for distance computation: %i != %i" \
+            % (X.shape[1], Y.shape[1])
 
-        X, Y = self.layers[layer], other.layers[layer]
         if subsample:
             X, Y = X[self.anchors], Y[other.anchors]
         if self.normalize and layer == 'raw':
