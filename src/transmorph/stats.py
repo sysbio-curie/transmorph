@@ -24,10 +24,10 @@ def sigma_analysis(dataset,
                    normalize_if_raw: bool=True,
                    return_sigmas: bool=False):
     """
-    Returns the discretized mapping sigma -> KL(u_\sigma, Uniform).
+    Returns the discretized mapping sigma -> KL(u_\\sigma, Uniform).
     The module uses
 
-    argmax_\sigma KL(u_\sigma, Uniform)
+    argmax_\\sigma KL(u_\sigma, Uniform)
 
     as a proxy for the optimal Gaussian kernel bandwidth.
     See more details in Fouché, bioRxiv 2021.
@@ -135,6 +135,11 @@ def _sigma_analysis(D, sigmas):
 
 def wasserstein_distance(tr: Transmorph,
                          x_integrated: np.ndarray = None,
+                         use_labels: bool = False,
+                         coefficient_labels: float = 1,
+                         categorical_labels: bool = False,
+                         xs_labels: np.ndarray = None,
+                         yt_labels: np.ndarray = None,
                          layer: str = 'raw',
                          metric: str = 'sqeuclidean'):
     """
@@ -170,12 +175,45 @@ def wasserstein_distance(tr: Transmorph,
         else x_integrated @ tr.tdata_y.extras['pca'].T
     )
 
-    M = cdist(yt, xt, metric=metric)
+    M = cdist(xt, yt, metric=metric)
+
+    if use_labels:
+        if xs_labels is None:
+            assert tr.tdata_x.labels is not None, \
+                "Error: no labels in source dataset."
+            xs_labels = tr.tdata_x.labels
+        else:
+            assert len(xs_labels) == len(tr.tdata_x), \
+                "Error: Inconsistency between source dataset size and \
+                labels size (%i != %i)" \
+                % (len(xs_labels), len(tr.tdata_x))
+
+        if yt_labels is None:
+            assert tr.tdata_y.labels is not None, \
+                "Error: no labels in reference dataset."
+            yt_labels = tr.tdata_y.labels
+        else:
+            assert len(yt_labels) == len(tr.tdata_y), \
+                "Error: Inconsistency between reference dataset size and \
+                labels size (%i != %i)" \
+                % (len(yt_labels), len(tr.tdata_y))
+
+        assert coefficient_labels >= 0, \
+            "Label coefficient must be positive, found %f" % coefficient_labels
+
+        if categorical_labels:
+            L = (xs_labels[:,None] != yt_labels)
+        else:
+            L = (xs_labels[:,None] - yt_labels)**2
+
+        M += coefficient_labels * L
+
     M /= np.max(M)
+    M = check_array(M, dtype=np.float64, order='C')
 
     return ot.lp.emd2(
-        np.ones(len(yt))/len(yt),
         np.ones(len(xt))/len(xt),
+        np.ones(len(yt))/len(yt),
         M,
         numItermax=1e6
     )

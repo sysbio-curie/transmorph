@@ -1,0 +1,379 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <title>Transmorph API &mdash; transmorph  documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+
+  
+  
+
+  
+  
+
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Advanced usage" href="advanced_usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home"> transmorph
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="install.html">Installing transmorph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started with transmorph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials.html">Transmorph’s tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="advanced_usage.html">Advanced usage</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Transmorph API</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">transmorph</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+      <li>Transmorph API</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+          
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  
+<style>
+/* CSS overrides for sphinx_rtd_theme */
+
+/* 24px margin */
+.nbinput.nblast.container,
+.nboutput.nblast.container {
+    margin-bottom: 19px;  /* padding has already 5px */
+}
+
+/* ... except between code cells! */
+.nblast.container + .nbinput.container {
+    margin-top: -19px;
+}
+
+.admonition > p:before {
+    margin-right: 4px;  /* make room for the exclamation icon */
+}
+
+/* Fix math alignment, see https://github.com/rtfd/sphinx_rtd_theme/pull/686 */
+.math {
+    text-align: unset;
+}
+</style>
+<section id="transmorph-api">
+<h1>Transmorph API<a class="headerlink" href="#transmorph-api" title="Permalink to this headline">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="transmorph.transmorph.Transmorph">
+<em class="property"><span class="pre">class</span> </em><span class="sig-prename descclassname"><span class="pre">transmorph.transmorph.</span></span><span class="sig-name descname"><span class="pre">Transmorph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'ot'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'sqeuclidean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geodesic</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_comps</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">-</span> <span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">entropy</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hreg</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unbalanced</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mreg</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weighting_strategy</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">str</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">'uniform'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">label_dependency</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_hops</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">int</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1000000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#transmorph.transmorph.Transmorph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Optimal transport-related tools for dataset integration.</p>
+<p>This class implements a set of methods related to optimal transport-based
+unsupervised and semi-supervised learning, with the option of using an
+unsupervised heuristic to estimate data points weights prior to optimal
+transport in order to correct for dataset classes unbalance.</p>
+<p>By default, the optimal transport plan will be computed using
+optimal transport metric, but it can be changed to rather use Gromov-
+Wasserstein distance.</p>
+<dl>
+<dt>method: str in (‘ot’, ‘gromov’), default = ‘ot’</dt><dd><p>Method to use in order to compute optimal transport plan.
+OT stands for optimal transport, and requires to define a metric</p>
+<blockquote>
+<div><p>between points in different distributions. It is in general
+more reliable in the case of datasets presenting symmetries.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Gromov stands for Gromov-Wasserstein (GW), and only requires the metric</dt><dd><p>in both spaces. It is in this sense more general, but is
+invariant to dataset isometries which can lead to poor
+integration due to overfitting.</p>
+</dd>
+</dl>
+</dd>
+<dt>metric: str, default = ‘sqeuclidan’</dt><dd><p>Default metric to use. (see scipy.spatial.distance.cdist)</p>
+</dd>
+<dt>geodesic: bool, default = False</dt><dd><p>Only available for method = ‘gromov’. Use geodesic
+distance instead on a graph instead of vector-based metric.</p>
+</dd>
+<dt>normalize: bool = 1</dt><dd><p>Column-normalize matrices before computing cost matrix.</p>
+</dd>
+<dt>n_comps: int, default = -1</dt><dd><p>Number of dimensions to use in the PCA, which is used to compute the cost
+matrix/density. -1 uses the raw dimensionality instead.</p>
+</dd>
+<dt>entropy: bool, default = False</dt><dd><p>Enables the entropy regularization for OT/GW problem, solving it
+approximately but more efficiently using Sinkhorn’s algorithm
+(Cuturi 2013)</p>
+</dd>
+<dt>hreg: float, default = 1e-3</dt><dd><p>Entropic regularization parameter. The lower the more accurate the result
+will be, at a cost of extra computation time.</p>
+</dd>
+<dt>unbalanced: bool, default = False</dt><dd><p>Use the unbalanced optimal transport formulation + entropy regularization.
+Incompatible with Gromov-Wasserstein</p>
+</dd>
+<dt>mreg: float, default = 1e-3</dt><dd><p>Regularization parameter for unbalanced formulation.</p>
+</dd>
+<dt>weighting_strategy: str, default = uniform</dt><dd><p>Strategy to use in order to reweight the samples, before optimal transport.
+Possible values are:
+- ‘uniform’, all points have the same mass
+- ‘woti’, automatic weights selection based on local density
+- ‘labels’, automatic weights selection based on labels</p>
+</dd>
+<dt>label_dependency: float, default = 0</dt><dd><p>In the case of known labels, extra penalty in the cost matrix if
+labels differ.</p>
+</dd>
+<dt>n_hops: int, default = 0</dt><dd><p>Number of hops to consider for the vertex cover approximation.
+If n_hops = 0, then all points are used during optimal transport (exact
+solution).</p>
+</dd>
+<dt>max_iter: int, default = 1e6</dt><dd><p>Maximum number of iterations for OT/GW.</p>
+</dd>
+<dt>verbose: int, default = 1</dt><dd><p>Defines the logging level.
+0: Disabled
+1: Informations
+2: Debug</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="transmorph.transmorph.Transmorph.fit">
+<span class="sig-name descname"><span class="pre">fit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">xs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xs_labels</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yt_labels</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xs_weights</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yt_weights</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Mx</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">My</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Mxy</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#transmorph.transmorph.Transmorph.fit" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the optimal transport plan between two empirical distributions,
+with parameters specified during initialization. Caches the result
+in the Transmorph object.</p>
+<dl class="simple">
+<dt>xs: (n,d0) np.ndarray</dt><dd><p>Source data points cloud.</p>
+</dd>
+<dt>yt: (m,d1) np.ndarray</dt><dd><p>Target data points cloud.</p>
+</dd>
+<dt>xs_labels: (n,) np.ndarray</dt><dd><p>Labels of xs points, for the supervised integration.</p>
+</dd>
+<dt>yt_labels: (m,) np.ndarray</dt><dd><p>Label of yt points, for the supervised integration.</p>
+</dd>
+<dt>xs_weights: (n,) np.ndarray</dt><dd><p>Weights of source dataset points.</p>
+</dd>
+<dt>yt_weights: (m,) np.ndarray</dt><dd><p>Weights of reference dataset points.</p>
+</dd>
+<dt>Mx: (n,n) np.ndarray</dt><dd><p>Pairwise metric matrix for xs. Only relevant for GW. If
+None, Euclidean distance is used.</p>
+</dd>
+<dt>My: (m,m) np.ndarray</dt><dd><p>Pairwise metric matrix for yt. Only relevant for GW. If
+None, Euclidean distance is used.</p>
+</dd>
+<dt>Mxy: (n,m) np.ndarray</dt><dd><p>Pairwise metric matrix between xs and yt. Only relevant for OT.
+If None, Euclidean distance is used.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="transmorph.transmorph.Transmorph.fit_transform">
+<span class="sig-name descname"><span class="pre">fit_transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">xs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yt</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xs_labels</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yt_labels</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xs_weights</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">yt_weights</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Mx</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">My</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Mxy</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jitter</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jitter_std</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="headerlink" href="#transmorph.transmorph.Transmorph.fit_transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Shortcut, fit() -&gt; transform()</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="transmorph.transmorph.Transmorph.label_transfer">
+<span class="sig-name descname"><span class="pre">label_transfer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_labels</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">numpy.ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="headerlink" href="#transmorph.transmorph.Transmorph.label_transfer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Uses the optimal tranport plan to infer xs labels based
+on yt ones in a semi-supervised fashion.</p>
+<dl class="simple">
+<dt>y_labels: (m,) np.ndarray</dt><dd><p>Labels of reference dataset points.</p>
+</dd>
+</dl>
+<p>(n,) np.ndarray, predicted labels for source dataset points.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="transmorph.transmorph.Transmorph.transform">
+<span class="sig-name descname"><span class="pre">transform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jitter</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">bool</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jitter_std</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">float</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.01</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="headerlink" href="#transmorph.transmorph.Transmorph.transform" title="Permalink to this definition">¶</a></dt>
+<dd><p>Applies optimal transport integration. Transmorph must be fitted beforehand.</p>
+<dl class="simple">
+<dt>jitter: bool, default = True</dt><dd><p>Adds a little bit of random jittering to the final results. Helps
+downstream methods such as UMAP to converge in some cases.</p>
+</dd>
+<dt>jitter_std: float, default = 0.01</dt><dd><p>Jittering standard deviation.</p>
+</dd>
+</dl>
+<p>(n,d1) np.ndarray, of xs integrated onto yt.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="transmorph.transmorph.Transmorph.wasserstein_distance_transmorph">
+<span class="sig-name descname"><span class="pre">wasserstein_distance_transmorph</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#transmorph.transmorph.Transmorph.wasserstein_distance_transmorph" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns the total cost of transport matrix from a fitted
+Transmorph.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+           </div>
+           
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+        <a href="advanced_usage.html" class="btn btn-neutral float-left" title="Advanced usage" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &#169; Copyright 2021, Aziz Fouché.
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

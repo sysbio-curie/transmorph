@@ -1,0 +1,72 @@
+Metadata-Version: 2.1
+Name: transmorph
+Version: 0.0.1
+Summary: Optimal transport-based tools for data integration.
+Home-page: https://github.com/Risitop/transmorph
+Author: Aziz Fouché
+Author-email: aziz.fouche@curie.fr
+License: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+#+TITLE: Transmorph (anciently WOTi)
+
+This python package aims to provide an easy interface for integrating
+datasets using optimal transport (OT)- and Gromov-Wasserstein (GW)-based
+methods. We plan to extend the package beyond data integration, with
+additional OT-related unsupervised and semi-supervised methods.
+*Warning:* This package is still in an early stage. Feel free to
+open an issue in case of unexpected behvior.
+
+* Installation
+
+#+begin_src shell
+git clone https://github.com/Risitop/WOTi
+pip install ./woti
+#+end_src
+
+* Examples
+
+See three example notebooks in =examples/= directory.
+
+* Usage
+
+This package offers four main integration techniques, two based on
+OT and two based on GW. Both OT and GW comes in two variants, balanced
+(similar to [[https://github.com/rsinghlab/SCOT][SCOT]] technique) and unbalanced, using a quadratic program
+in order to estimate data points weights. These weights are chosen
+so that the weighted Gaussian mixture distribution is close to be
+uniform over the dataset.
+
+Assuming two numpy arrays *X* and *Y* representing source and target
+datasets, WOTi can be used in the following way. First, create a
+Woti object. The scale parameter adjusts kernel bandwidth, and needs
+some tuning according to cloud sparsity.
+
+#+begin_src python
+import woti
+
+X, Y = ... # datasets, np.ndarray
+integration = woti.Woti(method='ot')
+#+end_src
+
+Then, simply apply the integration method to project *X* onto *Y*.
+
+#+begin_src python
+X_integrated = integration.fit_transform(X, Y)
+#+end_src
+
+* Reference
+
+https://www.biorxiv.org/content/10.1101/2021.05.12.443561v1
+
+* Documentation
+
+Work in progress.
+
+
