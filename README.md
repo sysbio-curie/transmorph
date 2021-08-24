@@ -12,19 +12,9 @@ optimization and approximation tricks.
 ***Warning:*** This package is still in an early stage of its
 development. Please open an issue in case of unexpected behavior.
 
-## Changelog (v0.0.8)
+## Documentation (work in progress)
 
-+ Structure: Improved overall code documentation
-+ Structure: Added numba support
-+ Structure: Unit tests
-+ Fix: Various fixes for corner cases
-+ Fix: Various fixes and asserts for more robust code
-+ New feature: geodesic distance (Gromov-Wasserstein only)
-+ New feature: lower dimensional representation
-+ New feature: approximation using vertex covering
-+ New feature: unbalanced case (optimal transport only)
-+ New feature: label weighting (supervised case)
-+ New feature: label-dependent cost function
+https://transmorph.readthedocs.io/en/latest/index.html
 
 ## Installation
 
@@ -159,6 +149,3 @@ but we do our best to do so).
 
 https://www.biorxiv.org/content/10.1101/2021.05.12.443561v1
 
-## Documentation
-
-Work in progress.
