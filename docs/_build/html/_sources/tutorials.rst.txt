@@ -1,7 +1,9 @@
 ======================
-Transmorph's tutorials
+Tutorials
 ======================
 
-A simple tutorial: link_simple_tutorial_
+1. This `first tutorial`_ displays transmorph's basic features, and shows
+   how tuning the weighting strategy can deal with the issue of dataset
+   unbalance.
 
-.. _link_simple_tutorial: tutorial/basic_tutorial.ipynb
+.. _first tutorial: tutorial/simple_example.ipynb
