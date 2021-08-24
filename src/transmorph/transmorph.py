@@ -49,7 +49,7 @@ def penalize_per_label(C, xs_labels, yt_labels, lam=1):
         Reference dataset label
 
     lam: float, default = 1
-        for lam \in [0,1], lam being the label dependency factor
+        for lam \\in [0,1], lam being the label dependency factor
         lam=0 -> C remains unchanged
         lam=1 -> C is label-consistent
 

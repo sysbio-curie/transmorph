@@ -1,0 +1,9 @@
+======================
+Tutorials
+======================
+
+1. Start discovering the basics of transmorph through a `first tutorial`_,
+   in which you will learn how to tune the weighting strategy parameter
+   in order to deal with dataset unbalance.
+
+.. _first tutorial: tutorial/simple_example.ipynb

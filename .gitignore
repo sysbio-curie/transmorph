@@ -4,6 +4,10 @@
 tmp/
 Pipfile
 Pipfile.lock
-examples/.ipynb_checkpoints
+examples/.ipynb_checkpoints/
 src/transmorph.egg-info
+src/transmorph/__pycache__/
 */*__pycache__*
+docs/tutorial/.ipynb_checkpoints/
+examples/*.png
+docs/_build/
