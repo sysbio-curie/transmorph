@@ -27,7 +27,7 @@ def sigma_analysis(dataset,
     Returns the discretized mapping sigma -> KL(u_\\sigma, Uniform).
     The module uses
 
-    argmax_\\sigma KL(u_\sigma, Uniform)
+    argmax_\\sigma KL(u_\\sigma, Uniform)
 
     as a proxy for the optimal Gaussian kernel bandwidth.
     See more details in Fouché, bioRxiv 2021.

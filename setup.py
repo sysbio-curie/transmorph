@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="transmorph",
-    version="0.0.8",
+    version="0.1.0",
     author="Aziz Fouché (Institut Curie, Paris)",
     author_email="aziz.fouche@curie.fr",
     description="Optimal transport-based tools for data integration.",
@@ -21,6 +21,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     package_dir={"": "src"},
+    include_package_data=True,
     install_requires=[
         'numpy<1.21,>=1.17',
         'cython',

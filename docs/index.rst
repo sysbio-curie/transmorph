@@ -20,7 +20,6 @@ tricks.
    install
    getting_started
    tutorials
-   advanced_usage
    api
 
 
@@ -30,7 +29,7 @@ Contribute to transmorph
 For any issue with transmorph, or if you want to see a feature implemented,
 do not hesitate to open an issue on this project's
 `GitHub <https://github.com/Risitop/transmorph>`_. We are trying to
-gather user experience on various datasets, so we will answer quickly!
+gather user experience on various datasets in order to improve our package robustness!
 
 
 Changelog
