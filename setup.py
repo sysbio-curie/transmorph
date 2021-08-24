@@ -22,7 +22,7 @@ setuptools.setup(
     ],
     package_dir={"": "src"},
     install_requires=[
-        'numpy',
+        'numpy<1.21,>=1.17',
         'cython',
         'pot',
         'scipy',
