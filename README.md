@@ -3,7 +3,7 @@
 [![GitHub license](https://img.shields.io/github/license/Risitop/transmorph.svg)](https://github.com/Risitop/transmorph/blob/main/LICENSE)
 [![PyPI version](https://badge.fury.io/py/transmorph.svg)](https://badge.fury.io/py/transmorph)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/transmorph.svg)](https://pypi.python.org/pypi/transmorph/)
-[![PyPI download total](https://img.shields.io/pypi/dt/transmorph.svg)](https://pypi.python.org/pypi/transmorph/)
+[![PyPI download month](https://img.shields.io/pypi/dm/transmorph.svg)](https://pypi.python.org/pypi/transmorph/)
 [![Documentation Status](https://readthedocs.org/projects/transmorph/badge/?version=latest)](https://transmorph.readthedocs.io/en/latest/?badge=latest)
 
 
