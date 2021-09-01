@@ -3,6 +3,7 @@
 import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.neighbors import NearestNeighbors
+from sklearn.utils import check_array
 from scipy.spatial.distance import cdist
 from scipy.sparse.csgraph import dijkstra
 
@@ -21,8 +22,11 @@ class TData:
     Custom data object used by the main module. Features
     weight computation, subsampling, custom distance, labels handling...
 
-    Parameters:
-    -----------
+    TODO: sliceable
+    TODO: sparse support
+
+    Parameters
+    ----------
 
     X: (n,d) np.ndarray to embed.
 
@@ -49,8 +53,8 @@ class TData:
                  normalize: bool = False,
                  verbose: bool = 0):
 
-        self.layers = {'raw': X}
-        self.extras = {} # Additional matrices
+        self.layers = {"raw": X}
+        self.extras = {} # Additional matrices, such as PCA projector
         self._weights = weights # Acess via weights()
         self._labels = labels
         self.normalize = normalize
@@ -58,7 +62,7 @@ class TData:
 
         self.validate_parameters()
 
-        self.X = self.layers['raw'] # shortcut
+        self.X = self.layers["raw"] # shortcut
         self._neighbors = None
 
         # [T, T, F, F, ..., T] representers r
@@ -73,56 +77,59 @@ class TData:
         # Default: each point is at distance 0 from its anchor
         self.distances_map = np.zeros(len(self)).astype(np.float32)
 
-        self._log("TData initialized, length %i" % len(self), level=3)
+        self._log(f"TData initialized, length {len(self)}", level=2)
 
 
     def validate_parameters(self):
 
-        assert len(self.layers['raw'].shape) > 0, \
+        # Nonempty object
+        assert len(self.layers["raw"].shape) > 0,\
             "Cannot initialize an empty TData."
         n = len(self)
 
+        # Valid weights
         assert self._weights is None or len(self._weights) == n,\
-            "Inconsistent size between _weights and dataset. Expected %i,\
-             found %i." % (n, len(self._weights))
-
+            "Inconsistent size between _weights and dataset. "\
+            f"Expected {n}, found {len(self._weights)}."
+        
         # By default, uniform _weights
         if self._weights is None:
             self._weights = np.ones(n) / n
         else:
             self._weights /= self._weights.sum()
 
+        # Valid labels
         assert self._labels is None or len(self._labels) == n,\
-            "Inconsistent size between labels and dataset. Expected %i,\
-             found %i." % (n, len(self._labels))
+            "Inconsistent size between labels and dataset. "\
+            f"Expected {n}, found {len(self._labels)}."
 
 
     def __len__(self):
-        return self.layers['raw'].shape[0]
+        return self.layers["raw"].shape[0]
 
 
     def __str__(self):
-        return "<TData> of length %i" % len(self)
+        return f"<TData> of length {len(self)}"
 
 
-    def _log(self, s: str, end: str = '\n', header: bool = True, level=2) -> None:
+    def _log(self, s: str, end: str = "\n", header: bool = True, level=2) -> None:
         # Only prints for now, can later be pipelined into other streams
         if level > self.verbose:
             return
         if header:
-            s = "(Transmorph/TData) > %s" % s
+            s = f"# Transmorph/TData > {s}"
         print(s, end=end)
 
 
     def get_layer(self, layer):
         assert layer in self.layers, \
-            "Error: no layer %s" % layer
+            f"Error: no layer {layer}."
         return self.layers[layer]
 
 
     def get_extra(self, extra):
         assert extra in self.extras, \
-            "Error: no extra %s" % extra
+            f"Error: no extra {extra}."
         return self.extras[extra]
 
 
@@ -156,11 +163,11 @@ class TData:
             if self.normalize:
                 X = col_normalize(X)
             pca = pca.fit(X)
-            self.layers['pca'] = pca.transform(self.X)
+            self.layers["pca"] = pca.transform(self.X)
         else: # Shared PCA view between two datasets
             assert self.X.shape[1] == other.X.shape[1], \
-                "Incompatible dimensions for distance computation: %i != %i" \
-                % (self.X.shape[1], other.X.shape[1])
+                "Incompatible dimensions for concatenation before PCA: "\
+                f"{self.X.shape[1]} != {other.X.shape[1]}"
             X, Y = self.X, other.X
             if subsample:
                 X, Y = X[self.anchors], Y[other.anchors]
@@ -175,16 +182,16 @@ class TData:
             Xtot = pca.transform(
                 np.concatenate( (self.X, other.X), axis=0 )
             )
-            self.layers['pca'] = Xtot[:len(self)]
-            other.layers['pca'] = Xtot[len(self):]
+            self.layers["pca"] = Xtot[:len(self)]
+            other.layers["pca"] = Xtot[len(self):]
 
-        self.extras['pca'] = pca.components_.copy()
+        self.extras["pca"] = pca.components_.copy()
 
 
     def neighbors(self,
                   n_neighbors=5,
-                  metric='sqeuclidean',
-                  layer='raw',
+                  metric="sqeuclidean",
+                  layer="raw",
                   self_edit=True,
                   subsample=False):
         """
@@ -194,11 +201,11 @@ class TData:
         X = self.get_layer(layer)
         if subsample:
             X = X[self.anchors]
-        if self.normalize and layer == 'raw':
+        if self.normalize and layer == "raw":
             X = col_normalize(X)
         nn.fit(X)
         nngraph = symmetrize(
-            nn.kneighbors_graph(mode='distance')
+            nn.kneighbors_graph(mode="distance")
         )
         if self_edit:
             self._neighbors = nngraph
@@ -226,11 +233,11 @@ class TData:
 
     def distance(self,
                  other=None,
-                 metric: str = 'sqeuclidean',
+                 metric: str = "sqeuclidean",
                  geodesic: bool = False,
                  subsample: bool = False,
                  return_full_size: bool = True,
-                 layer: str = 'raw'):
+                 layer: str = "raw"):
         """
         Returns the inner pairwise distance matrix by default, or the
         (n,m) pairwise distance matrix if another TData is provided.
@@ -258,7 +265,7 @@ class TData:
 
         layer: str
             Layer to use for distance computation. Typical layers are
-            'raw', 'pca'.
+            "raw", "pca".
         """
         if geodesic:
             assert other is None, \
@@ -271,8 +278,8 @@ class TData:
             if subsample:
                 graph_matrix = graph_matrix[self.anchors][:,self.anchors]
             Dmatrix = dijkstra(graph_matrix)
-            M = Dmatrix[Dmatrix != float('inf')].max() # removing inf values
-            Dmatrix[Dmatrix == float('inf')] = M
+            M = Dmatrix[Dmatrix != float("inf")].max() # removing inf values
+            Dmatrix[Dmatrix == float("inf")] = M
             if subsample and return_full_size:
                 Dmatrix = fill_dmatrix(Dmatrix,
                                        self.anchors,
@@ -284,15 +291,13 @@ class TData:
         if other is None:
             other = self
         X, Y = self.get_layer(layer), other.get_layer(layer)
-        assert X.shape[1] == Y.shape[1], \
-            "Incompatible dimensions for distance computation: %i != %i" \
-            % (X.shape[1], Y.shape[1])
 
+        # We trust the user for metric domain
         if subsample:
             X, Y = X[self.anchors], Y[other.anchors]
-        if self.normalize and layer == 'raw':
+        if self.normalize and layer == "raw":
             X = col_normalize(X)
-        if other.normalize and layer == 'raw':
+        if other.normalize and layer == "raw":
             Y = col_normalize(Y)
         Dmatrix = cdist(X, Y, metric=metric)
         if subsample and return_full_size:
@@ -307,7 +312,7 @@ class TData:
 
     def compute_weights(self,
                         method=TR_WS_AUTO,
-                        layer='raw',
+                        layer="raw",
                         subsample=False,
                         other=None):
         """
@@ -317,7 +322,7 @@ class TData:
         if method == TR_WS_UNIFORM:
             self._weights = np.ones(len(self)) / len(self)
         if method == TR_WS_AUTO:
-            self._log("Searching for sigma...", end=' ')
+            self._log("Searching for sigma...", end=" ")
             Dmatrix = self.distance(
                 metric="euclidean",
                 layer=layer,
@@ -326,7 +331,7 @@ class TData:
             )
             scale = sigma_search(Dmatrix)
             self._log("Found: %f" % scale, header=False)
-            self._log("Solving the QP to find weights...", end=' ')
+            self._log("Solving the QP to find weights...", end=" ")
             weights = normal_kernel_weights(
                 Dmatrix,
                 scale=scale,

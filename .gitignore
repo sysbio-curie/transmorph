@@ -11,3 +11,5 @@ src/transmorph/__pycache__/
 docs/tutorial/.ipynb_checkpoints/
 examples/*.png
 docs/_build/
+dist/
+transmorph.egg-info/

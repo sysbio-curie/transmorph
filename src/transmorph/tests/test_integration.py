@@ -11,7 +11,6 @@ from ..datasets import load_cell_cycle
 from ..datasets import load_spirals
 from ..tdata import TData
 from ..transmorph import Transmorph
-from ..transmorph import _aliases_methods
 
 # For now, tests will not challenge the return value
 # They will rather test for code inconsistencies
@@ -29,20 +28,13 @@ def test_transmorph_validate_parameters():
     with pytest.raises(AssertionError):
         Transmorph(method='foo')
 
-    # aliases
+    # strategies
     for strategy in [
             'woti',
-            'auto',
-            'automatic',
-            'qp',
-            'labeled',
             'labels',
-            'uniform',
-            'none',
-            'nil',
-            'uni']:
+            'uniform'
+    ]:
         t = Transmorph(weighting_strategy=strategy)
-        assert t.weighting_strategy == _aliases_methods[strategy]
 
     with pytest.raises(AssertionError):
         Transmorph(weighting_strategy='foo')
@@ -64,7 +56,7 @@ def test_transmorph_validate_parameters():
 
     # combinations
     with pytest.raises(AssertionError):
-        Transmorph(method='gromov', weighting_strategy='labels')
+        Transmorph(method='gromov', label_dependency=1)
 
     with pytest.raises(AssertionError):
         Transmorph(method='gromov', unbalanced=True)
@@ -72,6 +64,7 @@ def test_transmorph_validate_parameters():
     with pytest.raises(AssertionError):
         Transmorph(method='ot', geodesic=True)
 
+    Transmorph(method='gromov', weighting_strategy='labels')
 
 def test_tdata_validate_parameters():
     xs, _ = load_spirals()

@@ -1,8 +1,0 @@
-LICENSE
-pyproject.toml
-setup.py
-transmorph.egg-info/PKG-INFO
-transmorph.egg-info/SOURCES.txt
-transmorph.egg-info/dependency_links.txt
-transmorph.egg-info/requires.txt
-transmorph.egg-info/top_level.txt

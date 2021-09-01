@@ -5,6 +5,19 @@
 Data integration using transmorph
 =================================
 
+|PyPi version fury.io| |GitHub license| |Documentation status| |Downloads| |Downloads month|
+
+.. |GitHub license| image:: https://img.shields.io/github/license/Risitop/transmorph.svg
+   :target: https://github.com/Risitop/transmorph/blob/master/LICENSE
+.. |Documentation Status| image:: https://readthedocs.org/projects/transmorph/badge/?version=latest
+   :target: http://transmorph.readthedocs.io/?badge=latest
+.. |Downloads month| image:: https://static.pepy.tech/personalized-badge/transmorph?period=month&units=international_system&left_color=black&right_color=blue&left_text=Downloads/month
+ :target: https://pepy.tech/project/transmorph
+.. |Downloads| image:: https://static.pepy.tech/personalized-badge/transmorph?period=total&units=international_system&left_color=black&right_color=blue&left_text=Downloads
+ :target: https://pepy.tech/project/transmorph
+.. |PyPI version fury.io| image:: https://badge.fury.io/py/transmorph.svg
+   :target: https://pypi.python.org/pypi/transmorph/
+
 **Transmorph** is a python package dedicated to data integration, with a
 particular focus on single-cell applications. Dataset integration describes the
 problem of tying several datasets together, across different samples or
@@ -20,6 +33,7 @@ tricks.
    install
    getting_started
    tutorials
+   changelog
    api
 
 
@@ -32,21 +46,4 @@ do not hesitate to open an issue on this project's
 gather user experience on various datasets in order to improve our package robustness!
 
 
-Changelog
-=========
-
-v0.0.8
-------
-
-   * Structure: Improved overall code documentation
-   * Structure: Added numba support
-   * Structure: Unit tests
-   * Fix: Various fixes for corner cases
-   * Fix: Various fixes and asserts for more robust code
-   * New feature: geodesic distance (Gromov-Wasserstein only)
-   * New feature: lower dimensional representation
-   * New feature: approximation using vertex covering
-   * New feature: unbalanced case (optimal transport only)
-   * New feature: label weighting (supervised case)
-   * New feature: label-dependent cost function
 
