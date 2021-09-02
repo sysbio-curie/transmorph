@@ -2,6 +2,13 @@
 Changelog
 =========
 
+v0.1.2
+------
+
+    +
+    + Fix: Mixing up strings and constants
+    + New: Time profiling of integration
+
 v0.1.1
 ------
 

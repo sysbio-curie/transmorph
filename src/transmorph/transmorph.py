@@ -15,7 +15,9 @@ from .integration import transform
 from .tdata import TData
 from .utils import col_normalize
 
+
 # TODO: better cacheing
+
 
 weighting_strategies = [
     "uniform",
@@ -25,6 +27,10 @@ weighting_strategies = [
 # Read-only container for transport results
 # TData, TData, array
 Transport = namedtuple("Transport", ["src", "tar", "P"])
+
+# id, title, absolute time, relative time to last point
+TimePoint = namedtuple("TimePoint", ["title", "time_abs", "time_rel"])
+
 
 def penalize_per_label(C, xs_labels, yt_labels, lam=1):
     # Defines a label-dependent cost matrix for supervised problems
@@ -177,8 +183,14 @@ class Transmorph:
 
         self.transport = None
         self.fitted = False
-        self.fit_time = -1
-        self.transform_time = -1
+
+        # Time profiling tools
+        self.time_points_id = {}
+        self.time_points = []
+        self.starting_point_id = None
+
+        # Logging tools
+        self.run_id = 0
 
         self.validate_parameters()
 
@@ -305,6 +317,27 @@ class Transmorph:
             s = f"# Transmorph > {s}"
         print(s, end=end)
 
+
+    def _add_time_point(self, title, starting_point=False):
+        assert title not in self.time_points_id,\
+            f"Label {title} is already registered."
+        tp_id = len(self.time_points_id) # Creating new id
+        self.time_points_id[title] = tp_id
+        if starting_point:
+            self.starting_point_id = tp_id
+        time_abs = time.time()
+        time_rel = 0 # The first time point had elapsed = 0
+        if tp_id > 0:
+            time_rel = time_abs - self.time_points[tp_id - 1].time_abs
+        self.time_points.append(TimePoint(
+            title, time_abs, time_rel
+        ))
+        time_abs = time_abs - self.time_points[self.starting_point_id].time_abs
+        self._log(
+            f"Added a time point {title}, abs: {time_abs}, rel: {time_rel}",
+            level=2
+        )
+
         
     def fit(self,
             xs: np.ndarray,
@@ -358,8 +391,10 @@ class Transmorph:
             If None, selected metric distance is used.
         """
 
-        # TODO: advanced profiling
-        time_start = time.time()
+        self.run_id += 1
+
+        # Time profiling
+        self._add_time_point(f"{self.run_id}_fit_start", starting_point=True)
 
         ### Verifying parameters ###
 
@@ -372,7 +407,7 @@ class Transmorph:
         yt = check_array(yt, dtype=np.float64, order="C")
 
         _labels_necessary = (
-            self.weighting_strategy == "labels" # TODO: no more magic words
+            self.weighting_strategy == TR_WS_LABELS
             or self.label_dependency > 0
         )
         # What to do with labels
@@ -430,6 +465,7 @@ class Transmorph:
                 f"matrix and reference dataset size. Expected: ({m},{m}), "\
                 f"found: {My.shape}."
 
+        self._add_time_point(f"{self.run_id}_fit_check_parameters")
         self._log("Parameters checked.", level=2)
         ### Starting the procedure ###
 
@@ -449,6 +485,8 @@ class Transmorph:
                              normalize=self.normalize,
                              verbose=self.verbose)
 
+        self._add_time_point(f"{self.run_id}_fit_create_tdata")
+
         layer = "raw"
         if self.n_comps != -1:
             layer = "pca"
@@ -459,6 +497,8 @@ class Transmorph:
                 self.tdata_x.pca(n_components=self.n_comps)
                 self.tdata_y.pca(n_components=self.n_comps)
 
+            self._add_time_point(f"{self.run_id}_fit_pca")
+
         # KNN-graph construction for geodesic/vertex cover
         if self.geodesic or self.n_hops:
             self._log("Computing kNN graph...", level=1)
@@ -468,6 +508,8 @@ class Transmorph:
             self.tdata_y.neighbors(metric=self.metric,
                                    self_edit=True,
                                    layer=layer)
+
+            self._add_time_point(f"{self.run_id}_fit_knn_graph")
 
         subsample = self.n_hops > 0
         
@@ -488,6 +530,8 @@ class Transmorph:
             self._log(
                 f"Reference dataset: {n_anchors_y}/{n_points_y} points kept.",
                 level=2)
+
+            self._add_time_point(f"{self.run_id}_fit_vertex_cover")
 
         # Weights
         if self.weighting_strategy == TR_WS_AUTO:
@@ -513,6 +557,8 @@ class Transmorph:
                 layer=layer,
                 other=self.tdata_y
             )
+
+        self._add_time_point(f"{self.run_id}_fit_weighting")
 
         # Computing cost matrices if necessary.
         if self.method == TR_METHOD_OT and Mxy is None:
@@ -540,6 +586,8 @@ class Transmorph:
                                        return_full_size=False,
                                        layer=layer)
 
+        self._add_time_point(f"{self.run_id}_fit_cost_matrices")
+
         # Projecting query to ref
         self._log("Computing transport plan...", level=1)
         Pxy = compute_transport(
@@ -555,11 +603,13 @@ class Transmorph:
             unbalanced=self.unbalanced,
             mreg=self.mreg)
 
+        self._add_time_point(f"{self.run_id}_fit_transport")
+
         self.transport = Transport(self.tdata_x, self.tdata_y, Pxy)
 
         self.fitted = True
-        self.fit_time = time.time() - time_start
         self._log("Transmorph fitted.", level=1)
+        self._add_time_point(f"{self.run_id}_fit_end")
 
 
     def transform(self,
@@ -579,15 +629,15 @@ class Transmorph:
         --------
         (n,d1) np.ndarray, of xs integrated onto yt.
         """
-        time_start = time.time()
         assert self.fitted, "Transmorph must be fitted first."
         assert jitter_std > 0, "Negative standard deviation for jittering."
+        self._add_time_point(f"{self.run_id}_transform_start")
         self._log("Projecting dataset...")
         xt = transform(self.transport,
                        jitter=jitter,
                        jitter_std=jitter_std)
         self._log("Terminated.")
-        self.transform_time = time.time() - time_start
+        self._add_time_point(f"{self.run_id}_transform_end")
         return xt
 
 
