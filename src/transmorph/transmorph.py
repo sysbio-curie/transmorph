@@ -83,7 +83,7 @@ class Transmorph:
         metric.
 
         WARNING: This option is computationally intensive. If performance is
-        an issue, we recommend turning on the n\_hops parameter.
+        an issue, we recommend turning on the n_hops parameter.
 
     normalize: bool, default=True
         Column-normalize matrices before computing cost matrix. Useful when features
@@ -130,7 +130,7 @@ class Transmorph:
         computational efficiency but decreases result accuracy. If n_hops = 0, then
         all points are used during optimal transport (exact solution).
 
-    max_iter: int, default = 1e6
+    max_iter: int, default = 1e2
         Maximum number of iterations for OT/GW.
 
     verbose: int, default = 1
@@ -163,7 +163,7 @@ class Transmorph:
                  weighting_strategy: str = "uniform",
                  label_dependency: float = 0,
                  n_hops: int = 0,
-                 max_iter: int = 1e6,
+                 max_iter: int = None,
                  verbose: int = 1):
 
         self.method = method
@@ -178,7 +178,7 @@ class Transmorph:
         self.weighting_strategy = weighting_strategy
         self.label_dependency = label_dependency
         self.n_hops = n_hops
-        self.max_iter = int(max_iter)
+        self.max_iter = max_iter
         self.verbose = verbose
 
         self.transport = None
@@ -265,6 +265,11 @@ class Transmorph:
             f"Invalid number of hops: {self.n_hops}."
        
         # Valid number of iterations
+        if self.max_iter is None:
+            if self.entropy:  # Log-stabilized is expansive
+                self.max_iter = 5e2
+            else:
+                self.max_iter = 1e6
         if isinstance(self.max_iter, float):
             self.max_iter = int(self.max_iter)
         assert isinstance(self.max_iter, int) and self.max_iter > 0,\
@@ -631,11 +636,15 @@ class Transmorph:
         """
         assert self.fitted, "Transmorph must be fitted first."
         assert jitter_std > 0, "Negative standard deviation for jittering."
+        self.run_id += 1
         self._add_time_point(f"{self.run_id}_transform_start")
         self._log("Projecting dataset...")
         xt = transform(self.transport,
                        jitter=jitter,
                        jitter_std=jitter_std)
+        assert not np.isnan(np.sum(xt)),\
+            "Integrated matrix contains NaN values. Please ensure the input "\
+            "is correct, and try tuning regularization parameters."
         self._log("Terminated.")
         self._add_time_point(f"{self.run_id}_transform_end")
         return xt
@@ -660,6 +669,8 @@ class Transmorph:
                  yt,
                  xs_labels=xs_labels,
                  yt_labels=yt_labels,
+                 xs_weights=xs_weights,
+                 yt_weights=yt_weights,
                  Mx=Mx,
                  My=My,
                  Mxy=Mxy)

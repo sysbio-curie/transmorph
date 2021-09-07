@@ -5,9 +5,12 @@ Changelog
 v0.1.2
 ------
 
-    +
+    + Dev: Switched to log-stabilized versions of Sinkhorn's algorithms
+    + Fix: transform() throws an error if the result includes NaN
     + Fix: Mixing up strings and constants
+    + Fix: fit_transform now properly passes weights parameters to fit
     + New: Time profiling of integration
+    + New: scanpy/anndata interfacing via transmorph.anndata.integrate_anndata
 
 v0.1.1
 ------

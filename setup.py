@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="transmorph",
-    version="0.1.1",
+    version="0.1.2",
     author="Aziz Fouché (Institut Curie, Paris)",
     author_email="aziz.fouche@curie.fr",
     description="Optimal transport-based tools for data integration.",
@@ -23,13 +23,15 @@ setuptools.setup(
     package_dir={"": "src"},
     include_package_data=True,
     install_requires=[
-        'numpy<1.21,>=1.17',
+        'anndata',
         'cython',
+        'numba',
+        'numpy<1.21,>=1.17',
+        'osqp',
+        'pandas',
         'pot',
         'scipy',
-        'osqp',
         'sklearn',
-        'numba',
     ],
     python_requires=">=3.7",
 )

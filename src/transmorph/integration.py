@@ -63,7 +63,7 @@ def _transform(Pxy,
         y_anchors[sel_y],
         Pxy[sel_x][:,sel_y]
     )
-    x_anchors_int = x_anchors.copy()
+    x_anchors_int = x_anchors.copy() # TODO: Fix the case GW/specific types
     T = Pxy_nz @ np.diag(1 / yw_nz)
     x_anchors_int[sel_x] = np.diag(1 / T.sum(axis=1)) @ T @ y_anchors_nz
     delta_int = x_anchors_int - x_anchors
@@ -141,9 +141,9 @@ def compute_transport(
 
         Mxy /= Mxy.max()
         if unbalanced:
-            transport_plan = ot.sinkhorn_unbalanced(wx, wy, Mxy, hreg, mreg, numItermax=max_iter)
+            transport_plan = ot.unbalanced.sinkhorn_stabilized_unbalanced(wx, wy, Mxy, hreg, mreg, numItermax=max_iter)
         elif entropy:
-            transport_plan = ot.sinkhorn(wx, wy, Mxy, hreg, numItermax=max_iter)
+            transport_plan = ot.bregman.sinkhorn_stabilized(wx, wy, Mxy, hreg, numItermax=max_iter)
         else:
             transport_plan = ot.emd(wx, wy, Mxy, numItermax=max_iter)
 
