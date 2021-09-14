@@ -43,7 +43,7 @@ def symmetrize_csr_to_coo(ptrs, inds, data):
         M = ptrs[i+1] if i < len(ptrs) - 1 else len(inds)
         for j, v in zip(inds[m:M], data[m:M]):
             v1 = mapping[(i,j)]
-            v2 = mapping.get((i,j), 0)
+            v2 = mapping.get((i,j), np.float32(0))
             if v2 != 0:
                 v1 = (v1 + v2) / 2
             xs.append(i)
@@ -62,10 +62,10 @@ def vertex_cover(Lptr, Linds, hops=2):
     # Lptr, Linds: CSR matrix representation
     # of neighbors
     n = Lptr.shape[0] - 1
-    anchors = np.zeros(n, dtype='int')
+    anchors = np.zeros(n, dtype='int') - 1
     for v in range(n):
         # If v not visited, add it as an anchor
-        if anchors[v]:
+        if anchors[v] != -1:
             continue
         anchors[v] = v
         # Mark its neighbors as visited
@@ -76,7 +76,7 @@ def vertex_cover(Lptr, Linds, hops=2):
             if d < hops:
                 M = (Lptr[nb+1] if nb + 1 < n else n)
                 for nb2 in Linds[Lptr[nb]:M]:
-                    if anchors[nb2]:
+                    if anchors[nb2] != -1:
                         continue
                     anchors[nb2] = v
                     neighbors.append( (nb2, d+1) )
