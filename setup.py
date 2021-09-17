@@ -7,10 +7,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="transmorph",
-    version="0.1.2",
+    version="0.2.0",
     author="Aziz Fouché (Institut Curie, Paris)",
     author_email="aziz.fouche@curie.fr",
-    description="Optimal transport-based tools for data integration.",
+    description="Optimal transport-based data integration.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Risitop/transmorph",
@@ -30,8 +30,10 @@ setuptools.setup(
         'osqp',
         'pandas',
         'pot',
+        'pynndescent',
+        'scikit-learn',
         'scipy',
-        'sklearn',
+        'umap'
     ],
     python_requires=">=3.7",
 )

@@ -2,6 +2,13 @@
 Changelog
 =========
 
+v0.2.0 (rework)
+---------------
+
+    + Dev: Package rework.
+    + Dev: New graph-based integration pipeline.
+    + Dev: Accelerated vertex cover.
+
 v0.1.2
 ------
 
