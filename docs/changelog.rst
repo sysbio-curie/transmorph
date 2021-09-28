@@ -2,12 +2,20 @@
 Changelog
 =========
 
-v0.2.0 (rework)
----------------
+v0.2.0 (package overhaul)
+-------------------------
 
-    + Dev: Package rework.
-    + Dev: New graph-based integration pipeline.
+    + Dev: Package architecture overhaul.
+    + Dev: Enlarged TData class for dataset-specific computations
+    + Dev: Organizing Tidied attributes in dictionaries
+    + Dev: Improved subsampling management
     + Dev: Accelerated vertex cover.
+    + Dev: New graph-based bandwidth selection, borrowing from UMAP's methodology
+    + Dev: Using pynndescent instead of sklearn's NearestNeighbors
+    + Dev: Temporarily removed profiling part
+    + New: a "low_memory" option to trade space for time
+    + New: New graph-based integration in latent space
+    + New: Possibility to add a random seed for reproducibility
 
 v0.1.2
 ------
