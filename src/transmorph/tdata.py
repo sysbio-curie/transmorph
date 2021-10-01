@@ -291,13 +291,18 @@ class TData:
         """
         umap_graph = compute_umap_graph(
             self.get_working_layer(subsample=use_subsample),
+<<<<<<< HEAD
             metric=self.metric,
+=======
+            metric="euclidean",
+>>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
             metric_kwargs=self.metric_kwargs,
             n_neighbors=self.n_neighbors,
             low_memory=self.low_memory
         )
 
         if use_subsample:
+<<<<<<< HEAD
 
             self.add_extra("sigmas_subsampled", umap_graph["sigmas"])
             self.add_extra("rhos_subsampled", umap_graph["rhos"])
@@ -310,6 +315,20 @@ class TData:
                 umap_graph["strengths"]
             )
 
+=======
+
+            self.add_extra("sigmas_subsampled", umap_graph["sigmas"])
+            self.add_extra("rhos_subsampled", umap_graph["rhos"])
+            self.add_extra( # Binary sparse matrix
+                "distance_graph_subsampled",
+                umap_graph["fuzzy_distances"]
+            )
+            self.add_extra(
+                "strength_graph_subsampled",
+                umap_graph["strengths"]
+            )
+
+>>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
         else:
 
             self.add_attribute("sigmas", umap_graph["sigmas"])
@@ -341,6 +360,7 @@ class TData:
             edges.indptr,
             edges.indices,
             hops=self.n_hops
+<<<<<<< HEAD
         )
         self.add_attribute("anchors", anchors.astype(bool))
         self.add_attribute("mapping", mapping)
@@ -363,6 +383,30 @@ class TData:
             knn_indices,
             n_neighbors = self.n_neighbors
         )
+=======
+        )
+        self.add_attribute("anchors", anchors.astype(bool))
+        self.add_attribute("mapping", mapping)
+        self.neighbors(use_subsample=True) # Compute sigmas, rhos
+
+        self._log(f"{int(anchors.sum())} anchors kept (out of {len(self)} points)")
+
+
+    def smooth_by_pooling(self, layer=None):
+        if layer is None:
+            X = self.get_working_layer()
+        else:
+            X = self.get_layer(layer)
+
+        knn_indices = self.get_extra("knn_indices")
+        assert knn_indices is not None, \
+            "kNN-graph must be computed prior to pooling."
+        X_stabilized = within_modality_stabilize(
+            X,
+            knn_indices,
+            n_neighbors = self.n_neighbors
+        )
+>>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
         self.add_layer("pooled", X_stabilized)
 
 
@@ -403,9 +447,15 @@ class TData:
         """
         if other is None:
             other = self
+<<<<<<< HEAD
 
         if other is self and self.geodesic:
 
+=======
+
+        if other is self and self.geodesic:
+
+>>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
             distance_graph = self.get_extra("distance_graph")
             assert distance_graph is not None, \
                 "Neighbors must be computed first."
@@ -476,7 +526,12 @@ class TData:
             n_anchors = anchors.sum()
             weights[anchors] = 1.0 / n_anchors
 
+<<<<<<< HEAD
         if self.weighting_strategy == TR_WS_AUTO: # WOTi
+=======
+        elif self.weighting_strategy == TR_WS_AUTO: # WOTi
+
+>>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
             subsampling = self.n_hops > 0
             if subsampling:
                 sigmas = self.get_extra("sigmas_subsampled")

@@ -20,10 +20,17 @@ from .tdata import TData
 
 
 weighting_strategies = [
+<<<<<<< HEAD
     "custom",
     "labels",
     "uniform",
     "woti"
+=======
+    "woti",
+    "labels",
+    "uniform",
+    "custom"
+>>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
 ]
 # Read-only container for transport results
 # TData, TData, array
@@ -544,10 +551,17 @@ class Transmorph:
         else:
             self.tdata_x.compute_weights()
             self.tdata_y.compute_weights()
+<<<<<<< HEAD
 
         wx = self.tdata_x.get_attribute("weights", subsample=subsample)
         wy = self.tdata_y.get_attribute("weights", subsample=subsample)
 
+=======
+
+        wx = self.tdata_x.get_attribute("weights", subsample=subsample)
+        wy = self.tdata_y.get_attribute("weights", subsample=subsample)
+
+>>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
         # Ensuring weights is in the simplex
         wx /= wx.sum()
         wy /= wy.sum()
