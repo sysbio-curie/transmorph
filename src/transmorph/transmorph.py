@@ -1,41 +1,33 @@
 #!/usr/bin/env python3
 
 import numpy as np
-import time
 
 from collections import namedtuple
-from scipy.spatial.distance import cdist
-from scipy.spatial.distance import _METRIC_ALIAS
-from sklearn.decomposition import PCA
 from sklearn.utils import check_array
+from warnings import warn
 
 from .constants import *
 from .integration import compute_transport
-from .integration import transform
+from .integration import (
+    project,
+    transform_reference_space,
+    transform_latent_space
+)
 from .tdata import TData
-from .utils import col_normalize
 
 
 # TODO: better cacheing
 
 
 weighting_strategies = [
+    "custom",
+    "labels",
     "uniform",
-    "woti",
-    "labels"
+    "woti"
 ]
 # Read-only container for transport results
 # TData, TData, array
 Transport = namedtuple("Transport", ["src", "tar", "P"])
-
-# id, title, absolute time, relative time to last point
-TimePoint = namedtuple("TimePoint", ["title", "time_abs", "time_rel"])
-
-
-def penalize_per_label(C, xs_labels, yt_labels, lam=1):
-    # Defines a label-dependent cost matrix for supervised problems
-    # f(C, xl, yl, lam)_ij = C_ij + lam * C.max * (xli == ylj)
-    return C + lam*C.max()*(xs_labels[:,None] != yt_labels)
 
 
 class Transmorph:
@@ -58,7 +50,8 @@ class Transmorph:
 
     Parameters
     ----------
-    method: str in ('ot', 'gromov'), default='ot'
+
+    method: str in ('ot', 'gromov'), default = 'ot'
         Transportation framework for data integration.
 
         OT stands for optimal transport, and requires to define a metric
@@ -70,12 +63,20 @@ class Transmorph:
         invariant to dataset isometries which can lead to poor
         integration due to overfitting.
 
+    latent_space: bool, default = False
+        Integrate the data in a UMAP-like latent space. This allows for
+        integration without a reference, at a cost of interpretabiltity
+        and distortion due to the low dimensional representation.
+    
     metric: str, default = 'sqeuclidan'
         Metric to use when computing cost matrix, must be a string or a
         callable, must be scipy-compatible. For a comprehensive list of
         metrics, see::
 
             https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.cdist.html
+
+    metric_kwargs: dict, default = {}
+        Optional parameters for argument $metric, passed to cdist. 
 
     geodesic: bool, default=False
         Only available for method = 'gromov'. Turns on geodesic distance on
@@ -118,6 +119,7 @@ class Transmorph:
             - 'uniform', all points have the same mass
             - 'woti', automatic weights selection based on local density
             - 'labels', automatic weights selection based on labels
+            - 'custom', provide custom weights to the fit() function
     
     label_dependency: float, default=0
         Adds a label dependency in the cost matrix, in the case of supervised optimal
@@ -132,6 +134,10 @@ class Transmorph:
 
     max_iter: int, default = 1e2
         Maximum number of iterations for OT/GW.
+
+    low_memory: bool, default = False
+        Trades computation time for lower memory usage. We plan on making
+        it influence more pipeline parts in the future.
 
     verbose: int, default = 1
         Defines the logging level.
@@ -150,47 +156,56 @@ class Transmorph:
     >>> x_integrated = my_transmorph.fit_transform(x, y)
     """
 
-    def __init__(self,
-                 method: str = "ot",
-                 metric: str = "sqeuclidean",
-                 geodesic: bool = False,
-                 normalize: bool = False,
-                 n_comps: int = -1,
-                 entropy: bool = False,
-                 hreg: float = 1e-3,
-                 unbalanced: bool = False,
-                 mreg: float = 1e-3,
-                 weighting_strategy: str = "uniform",
-                 label_dependency: float = 0,
-                 n_hops: int = 0,
-                 max_iter: int = None,
-                 verbose: int = 1):
-
-        self.method = method
+    def __init__(
+            self,
+            method: str = "ot",
+            same_space_input: bool = True,
+            latent_space: bool = False,
+            latent_dim: int = 2,
+            umap_kwargs: dict = {},
+            metric: str = "sqeuclidean",
+            metric_kwargs: dict = {},
+            geodesic: bool = False,
+            normalize: bool = False,
+            n_comps: int = -1,
+            n_neighbors: int = 15,
+            entropy: bool = False,
+            hreg: float = 1e-3,
+            unbalanced: bool = False,
+            mreg: float = 1e-3,
+            weighting_strategy: str = "uniform",
+            label_dependency: float = 0,
+            n_hops: int = 0,
+            max_iter: int = None,
+            low_memory: bool = False,
+            random_seed: int = 42,
+            verbose: int = 1
+    ):
         self.metric = metric
+        self.same_space_input = same_space_input
+        self.latent_space = latent_space
+        self.latent_dim = latent_dim
+        self.umap_kwargs = umap_kwargs
+        self.metric_kwargs = metric_kwargs
         self.geodesic = geodesic
         self.normalize = normalize
         self.n_comps = n_comps
+        self.n_neighbors = n_neighbors
         self.entropy = entropy
         self.hreg = hreg
         self.unbalanced = unbalanced
         self.mreg = mreg
+        self.method = method
         self.weighting_strategy = weighting_strategy
         self.label_dependency = label_dependency
         self.n_hops = n_hops
         self.max_iter = max_iter
+        self.low_memory = low_memory
+        self.random_seed = random_seed
         self.verbose = verbose
 
         self.transport = None
         self.fitted = False
-
-        # Time profiling tools
-        self.time_points_id = {}
-        self.time_points = []
-        self.starting_point_id = None
-
-        # Logging tools
-        self.run_id = 0
 
         self.validate_parameters()
 
@@ -218,11 +233,8 @@ class Transmorph:
         # Metric
         assert callable(self.metric) or isinstance(self.metric, str),\
             "Unrecognized metric type. Must be a callable or a string."
-        if isinstance(self.metric, str):
-            assert _METRIC_ALIAS.get(self.metric, None) is not None,\
-                f"Unknown metric: {self.metric}"
         
-        # Geodesic only if method is gromov
+        # Geodesic only makes sense if method is gromov
         if self.geodesic:
             assert self.method == TR_METHOD_GROMOV,\
                 "geodesic=True only available if method 'gromov'."
@@ -232,10 +244,14 @@ class Transmorph:
             f"Unrecognized number of components for PCA: {self.n_comps}."
 
         # Valid entropy regularizer
+        if isinstance(self.hreg, int):
+            self.hreg = float(self.hreg)
         assert isinstance(self.hreg, float) and self.hreg > 0,\
             f"Entropy regularizer hreg must be positive, found {self.hreg}."
 
         # Valid marginal penalty
+        if isinstance(self.mreg, int):
+            self.mreg = float(self.mreg)
         assert isinstance(self.mreg, float) and self.mreg > 0,\
             f"Marginal penalty mreg must be positive, found {self.mreg}."
         
@@ -249,6 +265,8 @@ class Transmorph:
             self.weighting_strategy = TR_WS_AUTO
         elif self.weighting_strategy == "labels":
             self.weighting_strategy = TR_WS_LABELS
+        elif self.weighting_strategy == "custom":
+            self.weighting_strategy = TR_WS_CUSTOM
         else:
             raise NotImplementedError
 
@@ -293,9 +311,10 @@ class Transmorph:
             "Unbalanced is incompatible with Gromov-Wasserstein."
 
 
-    def __str__(self) -> str:
+    def __str__(self) -> str: # TODO: rework this, making it more concise
         return \
         "<Transmorph> object.\n"\
+        f"-- latent_space: {self.latent_space}\n"\
         f"-- method: {self.method}\n"\
         f"-- metric: {self.metric}\n"\
         f"-- geodesic: {self.geodesic}\n"\
@@ -313,7 +332,13 @@ class Transmorph:
         f"-- fitted: {self.fitted}"
 
     
-    def _log(self, s: str, end: str = "\n", header: bool = True, level=2) -> None:
+    def _log(
+        self,
+        s: str,
+        end: str = "\n",
+        header: bool = True,
+        level=2
+    ) -> None:
         # Internal logginf method
         # Only prints for now, can later be pipelined into other streams
         if level > self.verbose:
@@ -323,37 +348,17 @@ class Transmorph:
         print(s, end=end)
 
 
-    def _add_time_point(self, title, starting_point=False):
-        assert title not in self.time_points_id,\
-            f"Label {title} is already registered."
-        tp_id = len(self.time_points_id) # Creating new id
-        self.time_points_id[title] = tp_id
-        if starting_point:
-            self.starting_point_id = tp_id
-        time_abs = time.time()
-        time_rel = 0 # The first time point had elapsed = 0
-        if tp_id > 0:
-            time_rel = time_abs - self.time_points[tp_id - 1].time_abs
-        self.time_points.append(TimePoint(
-            title, time_abs, time_rel
-        ))
-        time_abs = time_abs - self.time_points[self.starting_point_id].time_abs
-        self._log(
-            f"Added a time point {title}, abs: {time_abs}, rel: {time_rel}",
-            level=2
-        )
-
-        
-    def fit(self,
-            xs: np.ndarray,
-            yt: np.ndarray,
-            xs_labels: np.ndarray = None,
-            yt_labels: np.ndarray = None,
-            xs_weights: np.ndarray = None,
-            yt_weights: np.ndarray = None,
-            Mx: np.ndarray = None,
-            My: np.ndarray = None,
-            Mxy: np.ndarray = None) -> None:
+    def fit(
+        self,xs: np.ndarray,
+        yt: np.ndarray,
+        xs_labels: np.ndarray = None,
+        yt_labels: np.ndarray = None,
+        xs_weights: np.ndarray = None,
+        yt_weights: np.ndarray = None,
+        Mx: np.ndarray = None,
+        My: np.ndarray = None,
+        Mxy: np.ndarray = None
+    ) -> None:
         """
         Computes the optimal transport plan between two empirical distributions,
         with parameters specified during initialization. Caches the result
@@ -395,12 +400,6 @@ class Transmorph:
             Pairwise metric matrix between xs and yt. Only relevant for OT.
             If None, selected metric distance is used.
         """
-
-        self.run_id += 1
-
-        # Time profiling
-        self._add_time_point(f"{self.run_id}_fit_start", starting_point=True)
-
         ### Verifying parameters ###
 
         # Data matrices
@@ -470,7 +469,6 @@ class Transmorph:
                 f"matrix and reference dataset size. Expected: ({m},{m}), "\
                 f"found: {My.shape}."
 
-        self._add_time_point(f"{self.run_id}_fit_check_parameters")
         self._log("Parameters checked.", level=2)
         ### Starting the procedure ###
 
@@ -478,126 +476,87 @@ class Transmorph:
 
         # Building full TDatas using computed values
         self._log("Creating TDatas...", level=2)
-        self.tdata_x = TData(xs,
-                             weights=xs_weights,
-                             labels=xs_labels,
-                             normalize=self.normalize,
-                             verbose=self.verbose)
+        self.tdata_x = TData(
+            xs,
+            metric=self.metric,
+            metric_kwargs=self.metric_kwargs,
+            geodesic=self.geodesic,
+            normalize=self.normalize,
+            n_comps=self.n_comps,
+            custom_pca=None,
+            n_neighbors=self.n_neighbors,
+            n_hops=self.n_hops,
+            weighting_strategy=self.weighting_strategy,
+            weights=xs_weights,
+            labels=xs_labels,
+            low_memory=self.low_memory,
+            verbose=self.verbose
+        )
 
-        self.tdata_y = TData(yt,
-                             weights=yt_weights,
-                             labels=yt_labels,
-                             normalize=self.normalize,
-                             verbose=self.verbose)
+        custom_pca = None
+        if self.n_comps > 0 and self.method == TR_METHOD_OT:
+            custom_pca = self.tdata_x.get_extra("pca")
 
-        self._add_time_point(f"{self.run_id}_fit_create_tdata")
-
-        layer = "raw"
-        if self.n_comps != -1:
-            layer = "pca"
-            self._log(f"Computing PCAs, {self.n_comps} dimensions...", level=1)
-            if self.method == TR_METHOD_OT:
-                self.tdata_x.pca(n_components=self.n_comps, other=self.tdata_y)
-            elif self.method == TR_METHOD_GROMOV:
-                self.tdata_x.pca(n_components=self.n_comps)
-                self.tdata_y.pca(n_components=self.n_comps)
-
-            self._add_time_point(f"{self.run_id}_fit_pca")
-
-        # KNN-graph construction for geodesic/vertex cover
-        if self.geodesic or self.n_hops:
-            self._log("Computing kNN graph...", level=1)
-            self.tdata_x.neighbors(metric=self.metric,
-                                   self_edit=True,
-                                   layer=layer)
-            self.tdata_y.neighbors(metric=self.metric,
-                                   self_edit=True,
-                                   layer=layer)
-
-            self._add_time_point(f"{self.run_id}_fit_knn_graph")
+        self.tdata_y = TData(
+            yt,
+            metric=self.metric,
+            metric_kwargs=self.metric_kwargs,
+            geodesic=self.geodesic,
+            normalize=self.normalize,
+            n_comps=self.n_comps,
+            custom_pca=custom_pca,
+            n_neighbors=self.n_neighbors,
+            n_hops=self.n_hops,
+            weighting_strategy=self.weighting_strategy,
+            weights=yt_weights,
+            labels=yt_labels,
+            low_memory=self.low_memory,
+            verbose=self.verbose
+        )
 
         subsample = self.n_hops > 0
-        
-        # Vertex cover
-        if subsample:
-            self._log(
-                f"Computing {self.n_hops}-hops vertex covers...",
-                level=1)
-            self.tdata_x.select_representers(self.n_hops)
-            n_anchors_x = self.tdata_x.anchors.sum()
-            n_points_x = len(self.tdata_x)
-            self._log(
-                f"Query dataset: {n_anchors_x}/{n_points_x} points kept.",
-                level=2)
-            self.tdata_y.select_representers(self.n_hops)
-            n_anchors_y = self.tdata_y.anchors.sum()
-            n_points_y = len(self.tdata_y)
-            self._log(
-                f"Reference dataset: {n_anchors_y}/{n_points_y} points kept.",
-                level=2)
-
-            self._add_time_point(f"{self.run_id}_fit_vertex_cover")
-
-        # Weights
-        if self.weighting_strategy == TR_WS_AUTO:
-            if xs_weights is None:
-                self.tdata_x.compute_weights(
-                    method=TR_WS_AUTO,
-                    subsample=subsample,
-                    layer=layer)
-            if yt_weights is None:
-                self.tdata_y.compute_weights(
-                    method=TR_WS_AUTO,
-                    subsample=subsample,
-                    layer=layer)
-        elif self.weighting_strategy == TR_WS_LABELS:
-            if (xs_weights is not None
-                or yt_weights is not None):
-                self._log("Warning: Using labels weighting strategy "\
-                          "will override custom weights choice. Consider using "\
-                          "weighting_strategy 'woti' or 'uniform' instead.",
-                          level=0)
-            self.tdata_x.compute_weights(
-                method=TR_WS_LABELS,
-                layer=layer,
-                other=self.tdata_y
-            )
-
-        self._add_time_point(f"{self.run_id}_fit_weighting")
 
         # Computing cost matrices if necessary.
         if self.method == TR_METHOD_OT and Mxy is None:
-            Mxy = self.tdata_x.distance(self.tdata_y,
-                                        metric=self.metric,
-                                        geodesic=False,
-                                        subsample=subsample,
-                                        return_full_size=False,
-                                        layer=layer)
+            Mxy = self.tdata_x.distance(
+                other=self.tdata_y,
+                subsampling=subsample,
+            )
             if self.label_dependency:
-                penalize_per_label(Mxy,
-                                   self.tdata_x.labels(),
-                                   self.tdata_y.labels(),
-                                   self.label_dependency)
+                label_discrepancy = (
+                    xs_labels[:,None] != yt_labels
+                )
+                Mxy = (
+                    Mxy
+                    + self.label_dependency * Mxy.max() * label_discrepancy
+                )
         if self.method == TR_METHOD_GROMOV and Mx is None:
-            Mx = self.tdata_x.distance(metric=self.metric,
-                                       subsample=subsample,
-                                       geodesic=self.geodesic,
-                                       return_full_size=False,
-                                       layer=layer)
+            Mx = self.tdata_x.distance(
+                subsampling=subsample,
+            )
         if self.method == TR_METHOD_GROMOV and My is None:
-            My = self.tdata_y.distance(metric=self.metric,
-                                       subsample=subsample,
-                                       geodesic=self.geodesic,
-                                       return_full_size=False,
-                                       layer=layer)
+            My = self.tdata_y.distance(
+                subsampling=subsample,
+            )
 
-        self._add_time_point(f"{self.run_id}_fit_cost_matrices")
+        if self.weighting_strategy == TR_WS_LABELS:
+            self.tdata_x.compute_weights(other_if_labels=self.tdata_y)
+        else:
+            self.tdata_x.compute_weights()
+            self.tdata_y.compute_weights()
+
+        wx = self.tdata_x.get_attribute("weights", subsample=subsample)
+        wy = self.tdata_y.get_attribute("weights", subsample=subsample)
+
+        # Ensuring weights is in the simplex
+        wx /= wx.sum()
+        wy /= wy.sum()
 
         # Projecting query to ref
         self._log("Computing transport plan...", level=1)
         Pxy = compute_transport(
-            self.tdata_x.weights(),
-            self.tdata_y.weights(),
+            wx,
+            wy,
             method=self.method,
             Mxy=Mxy,
             Mx=Mx,
@@ -606,20 +565,20 @@ class Transmorph:
             entropy=self.entropy,
             hreg=self.hreg,
             unbalanced=self.unbalanced,
-            mreg=self.mreg)
-
-        self._add_time_point(f"{self.run_id}_fit_transport")
+            mreg=self.mreg
+        )
 
         self.transport = Transport(self.tdata_x, self.tdata_y, Pxy)
 
         self.fitted = True
         self._log("Transmorph fitted.", level=1)
-        self._add_time_point(f"{self.run_id}_fit_end")
 
 
-    def transform(self,
-                  jitter: bool = True,
-                  jitter_std: float = .01) -> np.ndarray:
+    def transform(
+        self,
+        jitter: bool = True,
+        jitter_std: float = .01
+    ) -> np.ndarray:
         """
         Applies optimal transport integration. Transmorph must be fitted beforehand.
 
@@ -636,46 +595,189 @@ class Transmorph:
         """
         assert self.fitted, "Transmorph must be fitted first."
         assert jitter_std > 0, "Negative standard deviation for jittering."
-        self.run_id += 1
-        self._add_time_point(f"{self.run_id}_transform_start")
         self._log("Projecting dataset...")
-        xt = transform(self.transport,
-                       jitter=jitter,
-                       jitter_std=jitter_std)
+
+        subsample = self.n_hops > 0
+        P = self.transport.P
+        tdata_x, tdata_y = self.tdata_x, self.tdata_y
+        get_attr_X = tdata_x.get_attribute
+        get_attr_Y = tdata_y.get_attribute
+        X, Y = tdata_x.X, tdata_y.X
+        x_weights, y_weights = (
+            get_attr_X("weights", subsample=subsample),
+            get_attr_Y("weights", subsample=subsample)
+        )
+        x_anchors, y_anchors = (
+            get_attr_X("anchors", subsample=False),
+            get_attr_Y("anchors", subsample=False)
+        )
+        x_mapping, y_mapping = (
+            get_attr_X("mapping", subsample=False),
+            get_attr_Y("mapping", subsample=False)
+        )
+        
+        subsample = self.n_hops > 0
+        if self.latent_space:
+
+            # Within-dataset smoothed representations
+            tdata_x.smooth_by_pooling()
+            tdata_y.smooth_by_pooling()
+            X1 = tdata_x.get_layer("pooled", subsample=subsample)
+            X2 = tdata_y.get_layer("pooled", subsample=subsample)
+
+            self._log("Computing reciprocal projections...")
+            # Project X1 in S2
+            X12 = transform_reference_space(
+                P,
+                X1,
+                x_weights,
+                x_anchors[x_anchors],
+                x_mapping[x_anchors],
+                X2,
+                y_weights,
+                y_anchors[y_anchors],
+                y_mapping[y_anchors],
+                continuous_displacement=False
+            )
+            
+            # Project X2 in S1
+            X21 = transform_reference_space(
+                P.T,
+                X2,
+                y_weights,
+                y_anchors[y_anchors],
+                y_mapping[y_anchors],
+                X1,
+                x_weights,
+                x_anchors[x_anchors],
+                x_mapping[x_anchors],
+                continuous_displacement=False
+            )
+
+            self._log("Building joint graphs...")
+            # Build joint graphs
+            tdata_x12 = TData(
+                np.concatenate( (X12, X2), axis=0 ),
+                metric=self.metric,
+                metric_kwargs=self.metric_kwargs,
+                geodesic=False,
+                normalize=self.normalize,
+                n_comps=-1,
+                custom_pca=None,
+                n_neighbors=self.n_neighbors,
+                n_hops=0,
+                weighting_strategy="uniform",
+                weights=None,
+                labels=None,
+                low_memory=self.low_memory,
+                verbose=self.verbose
+            )
+            tdata_x12.neighbors()
+
+            tdata_x21 = TData(
+                np.concatenate( (X1, X21), axis=0 ),
+                metric=self.metric,
+                metric_kwargs=self.metric_kwargs,
+                geodesic=False,
+                normalize=self.normalize,
+                n_comps=-1,
+                custom_pca=None,
+                n_neighbors=self.n_neighbors,
+                n_hops=0,
+                weighting_strategy="uniform",
+                weights=None,
+                labels=None,
+                low_memory=self.low_memory,
+                verbose=self.verbose
+            )
+            tdata_x21.neighbors()
+
+            self._log("Embedding in latent space...")
+            # Compute embedding
+            xt = transform_latent_space(
+                tdata_x.get_extra("strength_graph"),
+                tdata_y.get_extra("strength_graph"),
+                tdata_x12.get_extra("strength_graph"),
+                tdata_x21.get_extra("strength_graph"),
+                x_anchors,
+                y_anchors,
+                latent_dim=self.latent_dim,
+                umap_kwargs=self.umap_kwargs,
+                n_neighbors=self.n_neighbors,
+                metric=self.metric,
+                metric_keywords=self.metric_kwargs,
+                random_state=self.random_seed
+            )
+
+        else:
+
+            if (self.same_space_input is False
+                and self.n_hops > 0):
+                warn("Integrating datasets from different spaces with "\
+                     "subsampling enabled without latent space embedding "\
+                     "is discouraged. Only anchors will be integrated. "\
+                     "Try turning latent_space=True.")
+                
+            xt = transform_reference_space(
+                P,
+                X,
+                x_weights,
+                x_anchors,
+                x_mapping,
+                Y,
+                y_weights,
+                y_anchors,
+                y_mapping,
+                continuous_displacement=self.same_space_input
+            )
+
         assert not np.isnan(np.sum(xt)),\
             "Integrated matrix contains NaN values. Please ensure the input "\
-            "is correct, and try tuning regularization parameters."
+            "is correct, and try increasing 'hreg' and 'mreg' parametrs."
+
+
+        if jitter:
+            stdev = jitter_std * (
+                np.max(xt, axis=0) - np.min(xt, axis=0)
+            )
+            xt += np.random.randn(*xt.shape) * stdev
+
         self._log("Terminated.")
-        self._add_time_point(f"{self.run_id}_transform_end")
         return xt
 
 
-    def fit_transform(self,
-                      xs: np.ndarray,
-                      yt: np.ndarray,
-                      xs_labels: np.ndarray = None,
-                      yt_labels: np.ndarray = None,
-                      xs_weights: np.ndarray = None,
-                      yt_weights: np.ndarray = None,
-                      Mx: np.ndarray = None,
-                      My: np.ndarray = None,
-                      Mxy: np.ndarray = None,
-                      jitter: bool = True,
-                      jitter_std: float = .01) -> np.ndarray:
+    def fit_transform(
+        self,
+        xs: np.ndarray,
+        yt: np.ndarray,
+        xs_labels: np.ndarray = None,
+        yt_labels: np.ndarray = None,
+        xs_weights: np.ndarray = None,
+        yt_weights: np.ndarray = None,
+        Mx: np.ndarray = None,
+        My: np.ndarray = None,
+        Mxy: np.ndarray = None,
+        jitter: bool = True,
+        jitter_std: float = .01
+    ) -> np.ndarray:
         """
         Shortcut, fit() -> transform()
         """
-        self.fit(xs,
-                 yt,
-                 xs_labels=xs_labels,
-                 yt_labels=yt_labels,
-                 xs_weights=xs_weights,
-                 yt_weights=yt_weights,
-                 Mx=Mx,
-                 My=My,
-                 Mxy=Mxy)
-        return self.transform(jitter=jitter,
-                              jitter_std=jitter_std)
+        self.fit(
+            xs,
+            yt,
+            xs_labels=xs_labels,
+            yt_labels=yt_labels,
+            xs_weights=xs_weights,
+            yt_weights=yt_weights,
+            Mx=Mx,
+            My=My,
+            Mxy=Mxy
+        )
+        return self.transform(
+            jitter=jitter,
+            jitter_std=jitter_std
+        )
 
 
     def label_transfer(self, y_labels: np.ndarray) -> np.ndarray:
