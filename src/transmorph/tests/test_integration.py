@@ -77,76 +77,51 @@ def test_tdata_validate_parameters():
     t = TData(xs)
     assert n == len(t)
     assert t.layers['raw'] is t.X
-    t = TData(xs, weights)
-    t = TData(xs, weights_n)
-    assert abs(t.weights().sum() - 1) < 1e-6
-    t = TData(xs, labels)
+    t = TData(xs, weights=weights)
+    t = TData(xs, weights=weights_n)
+    assert abs(t.get_attribute("weights").sum() - 1) < 1e-6
+    t = TData(xs, labels=labels)
 
     with pytest.raises(AssertionError):
         TData(np.ndarray([]))
-    with pytest.raises(AssertionError):
-        TData(xs, weights_w)
-    with pytest.raises(AssertionError):
-        TData(xs, labels_w)
 
 
 def test_tdata_pca_3d_2d():
     xs, xt = load_spirals()
     ys, _ = load_cell_cycle()
-    txs = TData(xs)
-    txt = TData(xt)
-    txs.pca(n_components=2)
-    txs.pca(n_components=2, other=txt)
-    with pytest.raises(AssertionError):
-        txs.pca(n_components=2, other=TData(ys))
-
-
-def test_tdata_neighbors():
-    xs, _ = load_spirals()
-    t = TData(xs)
-    t.neighbors()
-    with pytest.raises(AssertionError):
-        t.neighbors(layer='pca')
-    t.pca(n_components=2)
-    t.neighbors(layer='pca')
-
-
-def test_tdata_representers():
-    xs, _ = load_spirals()
-    t = TData(xs)
-    with pytest.raises(AssertionError):
-        t.select_representers()
-    t.neighbors()
-    t.select_representers()
+    txs = TData(xs, n_comps=2)
+    txt = TData(xt, n_comps=2)
 
 
 def test_tdata_distance():
     xs, yt = load_spirals()
-    tx, ty = TData(xs, normalize=False), TData(yt, normalize=False)
+    tx, ty = (
+        TData(xs, normalize=False),
+        TData(yt, normalize=False)
+    )
     D1t = cdist(xs, yt, metric='sqeuclidean')
     D1 = tx.distance(ty, metric='sqeuclidean')
     D2t = cdist(xs, xs, metric='sqeuclidean')
     D2 = tx.distance(metric='sqeuclidean')
-    with pytest.raises(AssertionError):
-        tx.distance(layer='pca')
-    tx.pca(n_components=2)
-    tx.distance(layer='pca')
-    with pytest.raises(AssertionError):
-        tx.distance(ty, layer='pca')
+    assert_array_almost_equal(D1, D1t)
+    assert_array_almost_equal(D2, D2t)
 
 
 def test_tdata_compute_weights_uniform():
     xs, _ = load_spirals()
-    tx = TData(xs)
-    tx.compute_weights(method=TR_WS_UNIFORM)
-    assert_array_almost_equal(tx.weights(), np.ones(len(xs)) / len(xs))
+    tx = TData(xs, weighting_strategy=TR_WS_UNIFORM)
+    tx.compute_weights()
+    assert_array_almost_equal(
+        tx.get_attribute("weights"),
+        np.ones(len(xs)) / len(xs)
+    )
 
 
 def test_tdata_compute_weights_woti():
     xs, _ = load_spirals()
-    tx = TData(xs)
-    tx.compute_weights(method=TR_WS_AUTO)
-    assert tx.weights() is not None
+    tx = TData(xs, weighting_strategy=TR_WS_AUTO)
+    tx.compute_weights()
+    assert tx.get_attribute("weights") is not None
 
 
 def test_tdata_compute_weights_label():
@@ -154,19 +129,17 @@ def test_tdata_compute_weights_label():
     xl, yl = np.ones(len(xs)), np.ones(len(yt))
     xl[:50] = 0
     yl[:50] = 0
-    tx, ty = TData(xs, labels=xl), TData(yt, labels=yl)
-    tx.compute_weights(method=TR_WS_LABELS, other=ty)
-    assert abs(tx.weights()[xl == 0].sum() - ty.weights()[yl == 0].sum()) < 1e-6
-    assert abs(tx.weights()[xl == 1].sum() - ty.weights()[yl == 1].sum()) < 1e-6
-
-
-def test_tdata_barycenter():
-    xs, yt = load_spirals()
-    t = TData(xs)
-    b1 = t.get_barycenter()
-    t.compute_weights(method=TR_WS_UNIFORM)
-    b2 = t.get_barycenter()
-    assert_array_almost_equal(b1, b2)
+    tx, ty = (
+        TData(xs, labels=xl, weighting_strategy=TR_WS_LABELS),
+        TData(yt, labels=yl, weighting_strategy=TR_WS_LABELS)
+    )
+    tx.compute_weights(other_if_labels=ty)
+    xw, yw = (
+        tx.get_attribute("weights"),
+        ty.get_attribute("weights"),
+    )
+    assert abs(xw[xl == 0].sum() - yw[yl == 0].sum()) < 1e-6
+    assert abs(xw[xl == 1].sum() - yw[yl == 1].sum()) < 1e-6
 
 
 def test_transmorph_str_log_no_crash():

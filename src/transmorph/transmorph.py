@@ -20,17 +20,10 @@ from .tdata import TData
 
 
 weighting_strategies = [
-<<<<<<< HEAD
     "custom",
     "labels",
     "uniform",
     "woti"
-=======
-    "woti",
-    "labels",
-    "uniform",
-    "custom"
->>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
 ]
 # Read-only container for transport results
 # TData, TData, array
@@ -493,7 +486,7 @@ class Transmorph:
             custom_pca=None,
             n_neighbors=self.n_neighbors,
             n_hops=self.n_hops,
-            weighting_strategy=self.weighting_strategy,
+            weighting_strategy=self.weighting_strategy, #FIXME: type jumping
             weights=xs_weights,
             labels=xs_labels,
             low_memory=self.low_memory,
@@ -530,6 +523,8 @@ class Transmorph:
                 subsampling=subsample,
             )
             if self.label_dependency:
+                assert xs_labels is not None, "No labels found for x."
+                assert yt_labels is not None, "No labels found for y."
                 label_discrepancy = (
                     xs_labels[:,None] != yt_labels
                 )
@@ -551,17 +546,10 @@ class Transmorph:
         else:
             self.tdata_x.compute_weights()
             self.tdata_y.compute_weights()
-<<<<<<< HEAD
 
         wx = self.tdata_x.get_attribute("weights", subsample=subsample)
         wy = self.tdata_y.get_attribute("weights", subsample=subsample)
 
-=======
-
-        wx = self.tdata_x.get_attribute("weights", subsample=subsample)
-        wy = self.tdata_y.get_attribute("weights", subsample=subsample)
-
->>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
         # Ensuring weights is in the simplex
         wx /= wx.sum()
         wy /= wy.sum()

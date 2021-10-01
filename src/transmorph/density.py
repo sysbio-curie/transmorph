@@ -10,15 +10,11 @@ import osqp
 def kernel_H(D, sigma):
     # Returns density entropy
     # vector is automatically normalized to sum up to 1.
-<<<<<<< HEAD
-    Dvector = _get_density(D, sigma).sum(axis=1)
-=======
     Dvector = _get_density(
         D,
         sigma*np.ones((D.shape[0],), dtype=np.float64),
         np.zeros((D.shape[0],), dtype=np.float64)
     ).sum(axis=1)
->>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
     Dvector /= Dvector.sum()
     return np.sum(Dvector * np.log(Dvector.shape[0] * Dvector))
 
@@ -87,13 +83,9 @@ def normal_kernel_weights(
         scales = np.ones((n,), dtype=np.float32)
     if offsets is None:
         offsets = np.zeros((n,), dtype=np.float32)
-<<<<<<< HEAD
-    assert all(scales > 0.0)
-    assert all(offsets > 0.0)
-=======
+
     assert all(scales >= 0.0)
     assert all(offsets >= 0.0)
->>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
     assert scales.shape[0] == n
     assert offsets.shape[0] == n
 
@@ -114,7 +106,6 @@ def _get_density(
     for i in range(n):
         sigma_i = scales[i]
         if sigma_i == 0.0:
-<<<<<<< HEAD
             sigma_i = 1.0
         rho_i = offsets[i]
         normalizer = inv_sqrt_2pi / sigma_i
@@ -126,22 +117,6 @@ def _get_density(
     return K
 
 
-=======
-            sigma_i = 1.
-        rho_i = offsets[i]
-        normalizer = inv_sqrt_2pi / sigma_i
-        for j in range(n):
-            dij = D[i,j]/sigma_i
-            # dij = D[i, j] - rho_i
-            if dij < 0.0:
-                dij = 0.0
-            K[i, j] = np.exp(-dij**2/2)*normalizer
-            # K[i, j] = np.exp(-dij)*normalizer
-    return K
-
-
-
->>>>>>> bc4861285bc3d151472ed876023c03af09e206bb
 def optimal_weights(K: np.ndarray, alpha_qp: float = 1.0, eps=1e-12):
     """ Computes optimal weights given K pairwise kernel matrix. """
 

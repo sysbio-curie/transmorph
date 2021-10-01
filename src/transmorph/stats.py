@@ -113,7 +113,6 @@ def sigma_analysis(dataset,
         dataset.distance(
             metric="euclidean",
             layer=layer,
-            subsample=subsample,
             return_full_size=False
         ),
         sigmas

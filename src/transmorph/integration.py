@@ -136,10 +136,11 @@ def transform_reference_space(
     """
 
     n, m = X.shape[0], Y.shape[0]
-    assert x_weights.shape[0] == n, "Source weights: wrong size."
+    n0, m0 = Pxy.shape[0], Pxy.shape[1]
+    assert x_weights.shape[0] == n0, "Source weights: wrong size."
     assert x_anchors.shape[0] == n, "Source anchors: wrong size."
     assert x_mapping.shape[0] == n, "Source mapping: wrong size."
-    assert y_weights.shape[0] == m, "Reference weights: wrong size."
+    assert y_weights.shape[0] == m0, "Reference weights: wrong size."
     assert y_anchors.shape[0] == m, "Reference anchors: wrong size."
     assert y_mapping.shape[0] == m, "Reference mapping: wrong size."
 
