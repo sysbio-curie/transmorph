@@ -25,6 +25,7 @@ from .utils import (
 # TODO: sparse support
 # TODO: low memory support
 #     -> if normalize, only retain normalizing weights
+# TODO: random seed
 
 class TData:
     """
@@ -115,8 +116,9 @@ class TData:
             weighting_strategy: int = TR_WS_UNIFORM,
             weights: np.ndarray = None,
             labels: np.ndarray = None,
+            latent_space: bool = False,
             low_memory: bool = False,
-            verbose: bool = 0
+            verbose: int = 0
     ):
 
         self.layers = { "raw": X }
@@ -129,6 +131,7 @@ class TData:
         self.n_neighbors = n_neighbors
         self.n_hops = n_hops
         self.weighting_strategy = weighting_strategy
+        self.latent_space = latent_space
         self.low_memory = low_memory
         self.verbose = verbose
         self.attributes = {}
@@ -175,6 +178,7 @@ class TData:
             self.n_hops > 0
             or self.geodesic
             or self.weighting_strategy == TR_WS_AUTO
+            or self.latent_space
         ):
             self.neighbors()
 
@@ -291,7 +295,7 @@ class TData:
         """
         umap_graph = compute_umap_graph(
             self.get_working_layer(subsample=use_subsample),
-            metric="euclidean",
+            metric=self.metric,
             metric_kwargs=self.metric_kwargs,
             n_neighbors=self.n_neighbors,
             low_memory=self.low_memory
@@ -369,6 +373,7 @@ class TData:
     def distance(self,
                  other=None,
                  metric: str = None,
+                 metric_kwargs: dict = {},
                  subsampling: bool = False,
                  result_full_if_subsampling: bool = False,
                  layer: str = None):
@@ -420,6 +425,7 @@ class TData:
 
             if metric is None:
                 metric = self.metric
+                metric_kwargs = self.metric_kwargs
             if layer is None:
                 X, Y = (
                     self.get_working_layer(subsample=subsampling),
@@ -438,7 +444,7 @@ class TData:
 
             X_bef = self.get_working_layer()
             anchors = self.get_attribute("anchors")
-            Dmatrix = cdist(X, Y, metric=metric, **self.metric_kwargs)
+            Dmatrix = cdist(X, Y, metric=metric, **metric_kwargs)
 
         if subsampling and result_full_if_subsampling:
 
@@ -490,6 +496,7 @@ class TData:
 
             Dmatrix = self.distance(
                 metric="euclidean", # Euclidean is fixed here
+                metric_kwargs={},
                 subsampling=subsampling,
                 result_full_if_subsampling=False
             )

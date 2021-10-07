@@ -11,6 +11,7 @@ from umap.umap_ import (
     find_ab_params,
     simplicial_set_embedding
 )
+from warnings import warn
 
 from .tdata import TData
 from .constants import *
@@ -26,9 +27,9 @@ default_umap = {
     "initial_alpha": 1.0,
     "repulsion_strength": 1.5,
     "negative_sample_rate": 5.0,
-    "n_epochs": 500,
+    "n_epochs": 200,
     "spread": 1.0,
-    "min_dist": 0.5,
+    "min_dist": 0.1,
     "densmap_keywords": {}
 }
 
@@ -45,7 +46,9 @@ def transform_latent_space(
         G12,
         G21,
         x_anchors,
+        x_mapping,
         y_anchors,
+        y_mapping,
         latent_dim: int = 2,
         umap_kwargs={},
         n_neighbors=15,
@@ -54,7 +57,17 @@ def transform_latent_space(
         random_state=42,
 ):
     # Unified graph representation
-    A = combine_graphs(G1, G2, G12, G21, x_anchors, y_anchors, n_neighbors)
+    A = combine_graphs(
+        G1,
+        G2,
+        G12,
+        G21,
+        x_anchors,
+        x_mapping,
+        y_anchors,
+        y_mapping,
+        n_neighbors
+    )
     
     # Embedding
     umap_params = {
@@ -199,17 +212,18 @@ def _transform_reference_space(
 
 
 def compute_transport(
-    wx: np.ndarray,
-    wy: np.ndarray,
-    method: int = TR_METHOD_OT,
-    Mxy: np.ndarray = None,
-    Mx: np.ndarray = None,
-    My: np.ndarray = None,
-    max_iter: int = 1e7,
-    entropy: bool = False,
-    hreg: float = 1e-3,
-    unbalanced: bool = False,
-    mreg: float = 1e-3
+        wx: np.ndarray,
+        wy: np.ndarray,
+        method: int = TR_METHOD_OT,
+        Mxy: np.ndarray = None,
+        Mx: np.ndarray = None,
+        My: np.ndarray = None,
+        max_iter: int = 1e7,
+        entropy: bool = False,
+        hreg: float = 1e-3,
+        unbalanced: bool = False,
+        mreg: float = 1e-3,
+        verbose: bool = False
 ) -> np.ndarray:
     """
     Returns the optimal transport plan between xs and yt, interfaces the
@@ -260,42 +274,92 @@ def compute_transport(
     if method == TR_METHOD_OT:
 
         assert Mxy is not None, "No cost matrix provided."
-        assert Mxy.shape == (n, m), "Incompatible cost matrix.\
-            Expected (%i,%i), found (%i,%i)." % (n, m, *Mxy.shape)
+        assert Mxy.shape == (n, m), "Incompatible cost matrix. "\
+            f"Expected ({n},{m}), found {Mxy.shape}."
 
         if slicing:
             Mxy = Mxy[sel_x][:,sel_y].copy()
 
-        Mxy /= Mxy.max()
+        mx = Mxy.max()
+        if mx == 0:
+            warn("Empty cost matrix.")
+            mx = 1.0
+        Mxy /= mx
+
         if unbalanced:
-            transport_plan = ot.unbalanced.sinkhorn_stabilized_unbalanced(wx, wy, Mxy, hreg, mreg, numItermax=max_iter)
+            transport_plan = ot.unbalanced.sinkhorn_stabilized_unbalanced(
+                wx,
+                wy,
+                Mxy,
+                hreg,
+                mreg,
+                numItermax=max_iter,
+                verbose=verbose
+            )
         elif entropy:
-            transport_plan = ot.bregman.sinkhorn_stabilized(wx, wy, Mxy, hreg, numItermax=max_iter)
+            transport_plan = ot.bregman.sinkhorn_stabilized(
+                wx,
+                wy,
+                Mxy,
+                hreg,
+                numItermax=max_iter,
+                verbose=verbose
+            )
         else:
-            transport_plan = ot.emd(wx, wy, Mxy, numItermax=max_iter)
+            transport_plan = ot.emd(
+                wx,
+                wy,
+                Mxy,
+                numItermax=max_iter,
+            )
 
     if method == TR_METHOD_GROMOV:
 
         assert Mx is not None, "No cost matrix provided for xs."
-        assert Mx.shape == (n, n), "Incompatible cost matrix.\
-            Expected (%i,%i), found (%i,%i)." % (n, n, *Mx.shape)
+        assert Mx.shape == (n, n), f"Incompatible cost matrix. "\
+            f"Expected ({n},{n}), found {Mx.shape}."
         if slicing:
             Mx = Mx[sel_x][:,sel_x]
-        Mx /= Mx.max()
+        mx = Mx.max()
+        if mx == 0:
+            warn("Empty cost matrix.")
+            mx = 1.0
+        Mx /= mx
 
         assert My is not None, "No cost matrix provided for yt."
-        assert My.shape == (m, m), "Incompatible cost matrix.\
-            Expected (%i,%i), found (%i,%i)." % (m, m, *My.shape)
+        assert My.shape == (m, m), "Incompatible cost matrix. "\
+            f"Expected ({m},{m}), found ({My.shape})."
         if slicing:
             My = My[sel_y][:,sel_y]
-        My /= My.max()
+        mx = My.max()
+        if mx == 0:
+            warn("Empty cost matrix.")
+            mx = 1.0
+        My /= mx
 
         if unbalanced:
             raise NotImplementedError
         elif entropy:
-            transport_plan = ot.gromov.entropic_gromov_wasserstein(Mx, My, wx, wy, 'square_loss', hreg, max_iter=max_iter)
+            transport_plan = ot.gromov.entropic_gromov_wasserstein(
+                Mx,
+                My,
+                wx,
+                wy,
+                'square_loss',
+                hreg,
+                max_iter=max_iter,
+                verbose=verbose
+            )
         else:
-            transport_plan = ot.gromov.gromov_wasserstein(Mx, My, wx, wy, 'square_loss', numItermax=max_iter)
+            transport_plan = ot.gromov.gromov_wasserstein(
+                Mx,
+                My,
+                wx,
+                wy,
+                'square_loss',
+                numItermax=max_iter,
+                verbose=verbose
+            )
 
     # TODO: optimize this inefficient block
     if slicing:

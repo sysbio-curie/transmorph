@@ -33,7 +33,7 @@ setuptools.setup(
         'pynndescent',
         'scikit-learn',
         'scipy',
-        'umap'
+        'umap-learn'
     ],
     python_requires=">=3.7",
 )

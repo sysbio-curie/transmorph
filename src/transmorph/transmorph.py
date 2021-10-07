@@ -489,6 +489,7 @@ class Transmorph:
             weighting_strategy=self.weighting_strategy, #FIXME: type jumping
             weights=xs_weights,
             labels=xs_labels,
+            latent_space=self.latent_space,
             low_memory=self.low_memory,
             verbose=self.verbose
         )
@@ -510,6 +511,7 @@ class Transmorph:
             weighting_strategy=self.weighting_strategy,
             weights=yt_weights,
             labels=yt_labels,
+            latent_space=self.latent_space,
             low_memory=self.low_memory,
             verbose=self.verbose
         )
@@ -567,7 +569,8 @@ class Transmorph:
             entropy=self.entropy,
             hreg=self.hreg,
             unbalanced=self.unbalanced,
-            mreg=self.mreg
+            mreg=self.mreg,
+            verbose=self.verbose==3
         )
 
         self.transport = Transport(self.tdata_x, self.tdata_y, Pxy)
@@ -671,10 +674,10 @@ class Transmorph:
                 weighting_strategy="uniform",
                 weights=None,
                 labels=None,
+                latent_space=True,
                 low_memory=self.low_memory,
                 verbose=self.verbose
             )
-            tdata_x12.neighbors()
 
             tdata_x21 = TData(
                 np.concatenate( (X1, X21), axis=0 ),
@@ -689,12 +692,13 @@ class Transmorph:
                 weighting_strategy="uniform",
                 weights=None,
                 labels=None,
+                latent_space=True,
                 low_memory=self.low_memory,
                 verbose=self.verbose
             )
-            tdata_x21.neighbors()
 
             self._log("Embedding in latent space...")
+
             # Compute embedding
             xt = transform_latent_space(
                 tdata_x.get_extra("strength_graph"),
@@ -702,7 +706,9 @@ class Transmorph:
                 tdata_x12.get_extra("strength_graph"),
                 tdata_x21.get_extra("strength_graph"),
                 x_anchors,
+                x_mapping,
                 y_anchors,
+                y_mapping,
                 latent_dim=self.latent_dim,
                 umap_kwargs=self.umap_kwargs,
                 n_neighbors=self.n_neighbors,

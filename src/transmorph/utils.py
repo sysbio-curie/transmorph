@@ -29,7 +29,7 @@ def _get(ptr, ind, dat, i, j):
 
 # CSR matrices must be decomposed as np.ndarrays for
 # numba compatibility :'-(
-@njit
+# @njit TODO
 def _combine_graphs(
         # G1 (n, n)
         ptr1,
@@ -49,7 +49,9 @@ def _combine_graphs(
         dat21,
         # anchors
         x1_anchors,
+        x1_mapping,
         x2_anchors,
+        x2_mapping,
         n_neighbors
 ):
     (n, m) = (ptr1.shape[0] - 1, ptr2.shape[0] - 1)
@@ -61,6 +63,18 @@ def _combine_graphs(
     anchor_to_index_2 = np.arange(m)[x2_anchors]
     index_to_anchor_1 = {i: k for k, i in enumerate(anchor_to_index_1)}
     index_to_anchor_2 = {i: k for k, i in enumerate(anchor_to_index_2)}
+    anchor_mapping_x = {}
+    for i, a_i in enumerate(x1_mapping):
+        if a_i not in anchor_mapping_x:
+            anchor_mapping_x[a_i] = []
+        if i != a_i:
+            anchor_mapping_x[a_i].append(i)
+    anchor_mapping_y = {}
+    for j, b_j in enumerate(x2_mapping):
+        if b_j not in anchor_mapping_y:
+            anchor_mapping_y[b_j] = []
+        if j != b_j:
+            anchor_mapping_y[b_j].append(j)
     
     # Gathering edges from both graphs
     for i in range(n):
@@ -112,17 +126,41 @@ def _combine_graphs(
             val = 0.0
             if i < n and j < n:
                 val = _get(ptr1, ind1, dat1, i, j)
-            elif i >= n and j >= n:
-                val = _get(ptr2, ind2, dat2, i - n, j - n)
-            else: # i >= n, j < n
-                if x1_anchors[j] and x2_anchors[i - n]:
+                if x1_anchors[i] and x1_anchors[j]:
                     idx_i, idx_j = (
-                        index_to_anchor_1[j],
-                        n0 + index_to_anchor_2[i - n]
+                        index_to_anchor_1[i],
+                        index_to_anchor_1[j]
                     )
                     val12 = _get(ptr12, ind12, dat12, idx_i, idx_j)
                     val21 = _get(ptr21, ind21, dat21, idx_i, idx_j)
-                    val = np.sqrt(val12 * val21)
+                    val = (
+                        val + val12 + val21
+                        - val*val12 - val*val21 - val12*val21
+                        + val*val12*val21
+                    )
+            elif i >= n and j >= n:
+                val = _get(ptr2, ind2, dat2, i - n, j - n)
+                if x2_anchors[i - n] and x2_anchors[j - n]:
+                    idx_i, idx_j = (
+                        index_to_anchor_2[i - n],
+                        index_to_anchor_2[j - n]
+                    )
+                    val12 = _get(ptr12, ind12, dat12, idx_i, idx_j)
+                    val21 = _get(ptr21, ind21, dat21, idx_i, idx_j)
+                    val = (
+                        val + val12 + val21
+                        - val*val12 - val*val21 - val12*val21
+                        + val*val12*val21
+                    )
+            else: # i >= n, j < n
+                if x1_anchors[j] and x2_anchors[i - n]:
+                    idx_i, idx_j = (
+                        n0 + index_to_anchor_2[i - n],
+                        index_to_anchor_1[j]
+                    )
+                    val12 = _get(ptr12, ind12, dat12, idx_i, idx_j)
+                    val21 = _get(ptr21, ind21, dat21, idx_i, idx_j)
+                    val = val12 + val21 - val12 * val21
             if val > 0.0:
                 rows.append(i)
                 rows.append(j)
@@ -130,6 +168,24 @@ def _combine_graphs(
                 cols.append(i)
                 data.append(val)
                 data.append(val)
+                if i < n or j >= n:
+                    continue
+                # If a_i <-> b_j then we link all a_i-dependent points
+                # to b_j and vice-versa
+                for ai_nb in anchor_mapping_x[j]:
+                    rows.append(ai_nb)
+                    rows.append(i)
+                    cols.append(i)
+                    cols.append(ai_nb)
+                    data.append(val)
+                    data.append(val)
+                for bj_nb in anchor_mapping_y[i - n]:
+                    rows.append(j)
+                    rows.append(bj_nb + n)
+                    cols.append(bj_nb + n)
+                    cols.append(j)
+                    data.append(val)
+                    data.append(val)
 
     return rows, cols, data
 
@@ -141,7 +197,17 @@ def within_modality_stabilize(X, indices, n_neighbors=15):
     return X_stabilized
 
 
-def combine_graphs(G1, G2, G12, G21, x_anchors, y_anchors, n_neighbors):
+def combine_graphs(
+        G1,
+        G2,
+        G12,
+        G21,
+        x_anchors,
+        x_mapping,
+        y_anchors,
+        y_mapping,
+        n_neighbors
+):
     
     n_neighbors = max(
         (G1 > 0).sum(axis=0).max(),
@@ -164,10 +230,18 @@ def combine_graphs(G1, G2, G12, G21, x_anchors, y_anchors, n_neighbors):
         G21.indices,
         G21.data,
         x_anchors,
+        x_mapping,
         y_anchors,
-        n_neighbors
+        y_mapping,
+        3*n_neighbors
     )
-    return coo_matrix( (data, (rows, cols)), dtype=np.float32 ).tocsr()
+
+    N = G1.shape[0] + G2.shape[0]
+    return coo_matrix(
+        (data, (rows, cols)),
+        shape=(N, N),
+        dtype=np.float32
+    ).tocsr()
 
 
 def compute_umap_graph(
@@ -184,6 +258,7 @@ def compute_umap_graph(
         low_memory: bool = False,
         n_jobs: int = -1,
 ):
+    # TODO: disconnection distance
     # Borrowed from UMAP's implementation
     # https://github.com/lmcinnes/umap
     n_trees = min(min_trees, 5 + int(round((X.shape[0]) ** 0.5 / 20.0)))

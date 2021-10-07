@@ -141,5 +141,5 @@ def optimal_weights(K: np.ndarray, alpha_qp: float = 1.0, eps=1e-12):
 
     # Solve problem
     x = prob.solve().x
-    x = np.clip(x, eps, 1)
+    x = np.clip(x, eps, 1.0)
     return x / x.sum()
