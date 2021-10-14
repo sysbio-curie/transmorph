@@ -9,7 +9,6 @@ from warnings import warn
 from .constants import *
 from .integration import compute_transport
 from .integration import (
-    project,
     transform_reference_space,
     transform_latent_space
 )
@@ -17,6 +16,7 @@ from .tdata import TData
 
 
 # TODO: better cacheing
+# TODO: n datasets integration
 
 
 weighting_strategies = [

@@ -29,7 +29,7 @@ def _get(ptr, ind, dat, i, j):
 
 # CSR matrices must be decomposed as np.ndarrays for
 # numba compatibility :'-(
-# @njit TODO
+# @njit(fastmath=True) TODO
 def _combine_graphs(
         # G1 (n, n)
         ptr1,
@@ -50,9 +50,11 @@ def _combine_graphs(
         # anchors
         x1_anchors,
         x1_mapping,
+        # x1_strengths, TODO: add the w(a_i <-> a_ik)
         x2_anchors,
         x2_mapping,
-        n_neighbors
+        # x2_strengths, TODO: add the w(a_i <-> a_ik)
+        n_neighbors 
 ):
     (n, m) = (ptr1.shape[0] - 1, ptr2.shape[0] - 1)
     (n0, m0) = int(x1_anchors.sum()), int(x2_anchors.sum())
