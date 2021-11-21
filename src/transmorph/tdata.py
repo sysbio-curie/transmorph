@@ -413,13 +413,16 @@ class TData:
             assert distance_graph is not None, \
                 "Neighbors must be computed first."
 
+            indices = np.arange(len(self))
             if subsampling:
-                anchors = self.get_attribute("anchors")
-                distance_graph = distance_graph[anchors][:,anchors]
-
-            Dmatrix = dijkstra(distance_graph)
+                indices = indices[self.get_attribute("anchors")]
+                
+            Dmatrix = dijkstra(
+                distance_graph,
+                indices=indices
+            )[:,indices]
             M = Dmatrix[Dmatrix != float("inf")].max() # removing inf values
-            Dmatrix[Dmatrix == float("inf")] = M
+            Dmatrix[Dmatrix == float("inf")] = 1e6*M
 
         else:
 

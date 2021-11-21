@@ -5,7 +5,7 @@ import ot
 
 from numba import njit
 from numpy.random import RandomState
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, coo_matrix
 from sklearn.utils import check_array
 from umap.umap_ import (
     find_ab_params,
@@ -16,7 +16,6 @@ from warnings import warn
 from .tdata import TData
 from .constants import *
 from .utils import (
-    combine_graphs,
     compute_umap_graph,
     within_modality_stabilize
 )
@@ -33,18 +32,153 @@ default_umap = {
     "densmap_keywords": {}
 }
 
+@njit
+def normalize_transport(P, yw):
+    T = P @ np.diag(1 / yw)
+    return np.diag(1 / T.sum(axis=1)) @ T
 
 @njit
 def project(P, y, yw):
-    T = P @ np.diag(1 / yw)
-    return np.diag(1 / T.sum(axis=1)) @ T @ y
+    return normalize_transport(P, yw) @ y
+
+
+def compute_matching_matrix(
+        P,
+        x_anchors,
+        y_anchors,
+        x_mapping,
+        y_mapping,
+        y_weights
+):
+    
+    n, m = P.shape[0], P.shape[1]
+    n0, m0 = x_anchors.shape[0], y_anchors.shape[0]
+
+    anchor2index_x = np.arange(n0)[x_anchors]
+    anchor2index_y = np.arange(m0)[y_anchors]
+
+    rows, cols, data = [], [], []
+    for i in range(n):
+        for j in range(m):
+            if P[i, j] > 0:
+                ai = anchor2index_x[i]
+                aj = anchor2index_y[j]
+                rows.append(ai)
+                cols.append(aj)
+                data.append(P[i,j])
+
+    N = n0 + m0
+    return coo_matrix(
+        (data, (rows, cols)),
+        shape=(n0, m0),
+        dtype=np.float32
+    ).tocsr()
+
+
+def combine_graphs(
+        G1,
+        G2,
+        G12,
+        G21,
+        x_anchors,
+        x_mapping,
+        y_anchors,
+        y_mapping,
+        n_neighbors
+):
+    """
+    Combines three weighted graphs: G1, G2, G12 and G21 expressed
+    as adjacency matrices. Each edge is weighted by its probability
+    of existence. G1 nodes are samples from the first dataset, G2
+    nodes are samples from the second dataset and G12/G21 nodes
+    are samples from both datasets, with edges possibly linking
+    nodes across datasets.
+
+    Parameters:
+    -----------
+
+    G1: (n,n) scipy.sparse.csr_matrix
+        Adjacency matrix representing relationships in the first
+        dataset. Weights correspond to probability of existence.
+
+    G2: (m,m) scipy.sparse.csr_matrix
+        Adjacency matrix representing relationships in the second
+        dataset. Weights correspond to probability of existence.
+
+    G12: (n+m,n+m) scipy.sparse.csr_matrix
+        Adjacency matrix representing relationships among samples
+        from both datasets projected in space 2. Weights correspond
+        to probability of existence.
+
+    G21: (n+m,n+m) scipy.sparse.csr_matrix
+        Adjacency matrix representing relationships among samples
+        from both datasets projected in space 1. Weights correspond
+        to probability of existence.
+
+    x_anchors: (n,) np.ndarray
+        Boolean vector indicating vertex cover anchors in the first
+        dataset.
+    
+    x_mapping: (n,) np.ndarray
+        Integer vector indicating sample-to-anchor relationship in the
+        first dataset.
+    
+    y_anchors: (m,) np.ndarray
+        Boolean vector indicating vertex cover anchors in the second
+        dataset.
+    
+    y_mapping: (m,) np.ndarray
+        Integer vector indicating sample-to-anchor relationship in the
+        second dataset.
+    """
+    
+    # Computing the maximum number of neighbors
+    n_neighbors = (
+        max(
+            (G1 > 0).sum(axis=0).max(),
+            (G2 > 0).sum(axis=0).max()
+        )
+        + (G12 > 0).sum(axis=0).max()
+        + (G21 > 0).sum(axis=0).max()
+    )
+
+    # Creating adjacency matrix using a numba-accelerated
+    # procedure. Numba cannot deal with sparse matrices,
+    # so we provide them in CSR format (ptr, ind, data)
+    rows, cols, data = _combine_graphs(
+
+        G1.indptr,
+        G1.indices,
+        G1.data,
+
+        G2.indptr,
+        G2.indices,
+        G2.data,   
+
+        G12.indptr,
+        G12.indices,
+        G12.data,
+
+        G21.indptr,
+        G21.indices,
+        G21.data,
+
+        x_anchors,
+        x_mapping,
+        y_anchors,
+        y_mapping,
+        n_neighbors
+
+    )
+
+    # Result is in COO format, we need
+    # to convert it back to CSR.
 
 
 def transform_latent_space(
         G1,
         G2,
-        G12,
-        G21,
+        P,
         x_anchors,
         x_mapping,
         y_anchors,
@@ -57,17 +191,29 @@ def transform_latent_space(
         random_state=42,
 ):
     # Unified graph representation
-    A = combine_graphs(
-        G1,
-        G2,
-        G12,
-        G21,
-        x_anchors,
-        x_mapping,
-        y_anchors,
-        y_mapping,
-        n_neighbors
-    )
+    # A = combine_graphs(
+    #     G1,
+    #     G2,
+    #     G12,
+    #     G21,
+    #     x_anchors,
+    #     x_mapping,
+    #     y_anchors,
+    #     y_mapping,
+    #     n_neighbors
+    # )
+
+    print(G1.shape)
+    print(G2.shape)
+    print(P.shape)
+    
+    n, m = G1.shape[0], G2.shape[0]
+    N = n + m
+    A = csr_matrix(np.zeros((N, N), dtype=np.float32))
+    A[:n, :n] = G1
+    A[n:, n:] = G2
+    A[:n, n:] = P
+    A[n:, :n] = P.T
     
     # Embedding
     umap_params = {
@@ -93,7 +239,7 @@ def transform_latent_space(
         umap_params["densmap_keywords"],
         False
     )
-    return integrated_umap
+    return A, integrated_umap
 
 
 def transform_reference_space(
@@ -211,6 +357,7 @@ def _transform_reference_space(
     return X + delta_int[small_idx]
 
 
+
 def compute_transport(
         wx: np.ndarray,
         wy: np.ndarray,
@@ -322,7 +469,7 @@ def compute_transport(
             Mx = Mx[sel_x][:,sel_x]
         mx = Mx.max()
         if mx == 0:
-            warn("Empty cost matrix.")
+            warn("Empty cost matrix (source).")
             mx = 1.0
         Mx /= mx
 
@@ -333,7 +480,7 @@ def compute_transport(
             My = My[sel_y][:,sel_y]
         mx = My.max()
         if mx == 0:
-            warn("Empty cost matrix.")
+            warn("Empty cost matrix (reference).")
             mx = 1.0
         My /= mx
 

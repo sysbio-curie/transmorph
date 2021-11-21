@@ -7,7 +7,11 @@ from sklearn.utils import check_array
 from warnings import warn
 
 from .constants import *
-from .integration import compute_transport
+from .integration import (
+    compute_matching_matrix,
+    compute_transport,
+    normalize_transport
+)
 from .integration import (
     transform_reference_space,
     transform_latent_space
@@ -179,7 +183,8 @@ class Transmorph:
             max_iter: int = None,
             low_memory: bool = False,
             random_seed: int = 42,
-            verbose: int = 1
+            verbose: int = 1,
+            debug: bool = False
     ):
         self.metric = metric
         self.same_space_input = same_space_input
@@ -203,9 +208,11 @@ class Transmorph:
         self.low_memory = low_memory
         self.random_seed = random_seed
         self.verbose = verbose
+        self.debug = debug
 
         self.transport = None
         self.fitted = False
+        self.debug_info = {}
 
         self.validate_parameters()
 
@@ -486,7 +493,7 @@ class Transmorph:
             custom_pca=None,
             n_neighbors=self.n_neighbors,
             n_hops=self.n_hops,
-            weighting_strategy=self.weighting_strategy, #FIXME: type jumping
+            weighting_strategy=self.weighting_strategy,
             weights=xs_weights,
             labels=xs_labels,
             latent_space=self.latent_space,
@@ -495,7 +502,11 @@ class Transmorph:
         )
 
         custom_pca = None
-        if self.n_comps > 0 and self.method == TR_METHOD_OT:
+        if (
+                self.n_comps > 0
+                and self.method == TR_METHOD_OT
+                and self.same_space_input
+        ):
             custom_pca = self.tdata_x.get_extra("pca")
 
         self.tdata_y = TData(
@@ -558,7 +569,7 @@ class Transmorph:
 
         # Projecting query to ref
         self._log("Computing transport plan...", level=1)
-        Pxy = compute_transport(
+        P = compute_transport(
             wx,
             wy,
             method=self.method,
@@ -573,10 +584,42 @@ class Transmorph:
             verbose=self.verbose==3
         )
 
-        self.transport = Transport(self.tdata_x, self.tdata_y, Pxy)
+        self.transport = Transport(self.tdata_x, self.tdata_y, P)
 
         self.fitted = True
         self._log("Transmorph fitted.", level=1)
+
+        if self.debug:
+            self.debug_info["Mx"] = Mx
+            self.debug_info["My"] = My
+            self.debug_info["Mxy"] = Mxy
+            self.debug_info["P"] = P
+            self.debug_info["wx"] = wx
+            self.debug_info["wy"] = wy
+            for attribute in self.tdata_x.attributes:
+                (
+                    self.debug_info[f"tx_{attribute}"],
+                    self.debug_info[f"ty_{attribute}"],
+                ) = (
+                    self.tdata_x.get_attribute(attribute),
+                    self.tdata_y.get_attribute(attribute)
+                )
+            for extra in self.tdata_x.extras:
+                (
+                    self.debug_info[f"tx_{extra}"],
+                    self.debug_info[f"ty_{extra}"],
+                ) = (
+                    self.tdata_x.get_extra(extra),
+                    self.tdata_y.get_extra(extra)
+                )
+            for layer in self.tdata_x.layers:
+                (
+                    self.debug_info[f"tx_{layer}"],
+                    self.debug_info[f"ty_{layer}"],
+                ) = (
+                    self.tdata_x.get_attribute(layer),
+                    self.tdata_y.get_attribute(layer)
+                )
 
 
     def transform(
@@ -624,87 +667,26 @@ class Transmorph:
         subsample = self.n_hops > 0
         if self.latent_space:
 
-            # Within-dataset smoothed representations
-            tdata_x.smooth_by_pooling()
-            tdata_y.smooth_by_pooling()
-            X1 = tdata_x.get_layer("pooled", subsample=subsample)
-            X2 = tdata_y.get_layer("pooled", subsample=subsample)
-
-            self._log("Computing reciprocal projections...")
-            # Project X1 in S2
-            X12 = transform_reference_space(
-                P,
-                X1,
-                x_weights,
-                x_anchors[x_anchors],
-                x_mapping[x_anchors],
-                X2,
-                y_weights,
-                y_anchors[y_anchors],
-                y_mapping[y_anchors],
-                continuous_displacement=False
-            )
-            
-            # Project X2 in S1
-            X21 = transform_reference_space(
-                P.T,
-                X2,
-                y_weights,
-                y_anchors[y_anchors],
-                y_mapping[y_anchors],
-                X1,
-                x_weights,
-                x_anchors[x_anchors],
-                x_mapping[x_anchors],
-                continuous_displacement=False
-            )
-
-            self._log("Building joint graphs...")
-            # Build joint graphs
-            tdata_x12 = TData(
-                np.concatenate( (X12, X2), axis=0 ),
-                metric=self.metric,
-                metric_kwargs=self.metric_kwargs,
-                geodesic=False,
-                normalize=self.normalize,
-                n_comps=-1,
-                custom_pca=None,
-                n_neighbors=self.n_neighbors,
-                n_hops=0,
-                weighting_strategy="uniform",
-                weights=None,
-                labels=None,
-                latent_space=True,
-                low_memory=self.low_memory,
-                verbose=self.verbose
-            )
-
-            tdata_x21 = TData(
-                np.concatenate( (X1, X21), axis=0 ),
-                metric=self.metric,
-                metric_kwargs=self.metric_kwargs,
-                geodesic=False,
-                normalize=self.normalize,
-                n_comps=-1,
-                custom_pca=None,
-                n_neighbors=self.n_neighbors,
-                n_hops=0,
-                weighting_strategy="uniform",
-                weights=None,
-                labels=None,
-                latent_space=True,
-                low_memory=self.low_memory,
-                verbose=self.verbose
-            )
-
             self._log("Embedding in latent space...")
 
+            P = normalize_transport(
+                P.toarray(),
+                y_weights
+            )
+            if subsample:
+                P = compute_matching_matrix(
+                    P,
+                    x_anchors,
+                    y_anchors,
+                    x_mapping,
+                    y_mapping,
+                    y_weights
+                )
             # Compute embedding
-            xt = transform_latent_space(
+            A, xt = transform_latent_space(
                 tdata_x.get_extra("strength_graph"),
                 tdata_y.get_extra("strength_graph"),
-                tdata_x12.get_extra("strength_graph"),
-                tdata_x21.get_extra("strength_graph"),
+                P,
                 x_anchors,
                 x_mapping,
                 y_anchors,
@@ -716,6 +698,7 @@ class Transmorph:
                 metric_keywords=self.metric_kwargs,
                 random_state=self.random_seed
             )
+            self.debug_info["adjacency"] = A
 
         else:
 
