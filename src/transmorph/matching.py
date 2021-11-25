@@ -8,6 +8,7 @@ from ot.gromov import (
     gromov_wasserstein
 )
 from scipy.spatial.distance import cdist
+from scipy.sparse import csr_matrix
 
 import numpy as np
 
@@ -45,7 +46,9 @@ class Matching(ABC):
         for i in range(nd):
             di = datasets[i]
             for j in range(i):
-                self.matchings.append(self._match2(di, datasets[j]))
+                self.matchings.append(
+                    csr_matrix(self._match2(di, datasets[j]))
+                )
         self.fitted = True
         return self.matchings
 
@@ -60,7 +63,6 @@ class MatchingEMD(Matching):
             metric_kwargs={},
             max_iter=1e6
     ):
-        super()
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.max_iter = int(max_iter)
@@ -90,7 +92,6 @@ class MatchingSinkhorn(Matching):
             epsilon=1e-2,
             max_iter=1e6
     ):
-        super()
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.epsilon = epsilon
@@ -129,7 +130,6 @@ class MatchingGW(Matching):
             loss="square_loss",
             max_iter=1e6
     ):
-        super()
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         if metric2 is None:
@@ -164,8 +164,7 @@ class MatchingGW(Matching):
             M2,
             w1,
             w2,
-            self.loss,
-            max_iter=self.max_iter
+            self.loss
         )
 
 
@@ -183,7 +182,6 @@ class MatchingGWEntropic(Matching):
             loss="square_loss",
             max_iter=1e6
     ):
-        super()
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         if metric2 is None:
