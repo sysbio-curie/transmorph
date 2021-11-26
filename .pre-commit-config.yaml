@@ -8,3 +8,11 @@ repos:
     rev: v1.2.3
     hooks:
     - id: flake8
+-   repo: local
+    hooks:
+    -   id: pytest
+        name: pytest
+        entry: venv/bin/pytest
+        language: script
+        pass_filenames: false
+        always_run: true
