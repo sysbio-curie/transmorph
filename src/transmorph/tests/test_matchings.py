@@ -7,6 +7,7 @@ from scipy.sparse import csr_matrix
 from ..datasets import load_spirals
 from ..matching.matchingEMD import MatchingEMD
 
+
 def test_MatchingEMD():
     xs, yt = load_spirals()
     matching = MatchingEMD()
