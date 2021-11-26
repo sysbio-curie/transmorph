@@ -82,7 +82,9 @@ class MatchingABC(ABC):
             else:
                 raise NotImplementedError
         if normalize:
-            return T / T.sum(axis=1)
+            normalizer = T.sum(axis=1)
+            normalizer[normalizer == 0.0] = 1.0
+            return T / normalizer
         return T
 
     def match(self, *datasets: np.ndarray) -> List[np.ndarray]:
