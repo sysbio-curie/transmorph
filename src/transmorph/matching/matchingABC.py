@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from scipy.sparse import csr_matrix
 
 import numpy as np
-from typing import Union
+from typing import Union, List
 
 
 class MatchingABC(ABC):
@@ -34,27 +34,17 @@ class MatchingABC(ABC):
     """
 
     @abstractmethod
-    def __init__(
-            self,
-            use_sparse: bool = True
-    ):
+    def __init__(self, use_sparse: bool = True):
         self.fitted = False
         self.matchings = []
         self.use_sparse = use_sparse
 
     @abstractmethod
-    def _match2(
-            self,
-            x1: np.ndarray,
-            x2: np.ndarray
-    ) -> np.ndarray:
+    def _match2(self, x1: np.ndarray, x2: np.ndarray) -> np.ndarray:
         pass
 
     def get(
-            self,
-            i: int,
-            j: int,
-            normalize: bool = False
+        self, i: int, j: int, normalize: bool = False
     ) -> Union[np.ndarray, csr_matrix]:
         """
         Return the matching between datasets i and j. Throws an error
@@ -76,16 +66,13 @@ class MatchingABC(ABC):
         T = (xi.shape[0], xj.shape[0]) sparse array, where Tkl is the
         matching strength between xik and xjl.
         """
-        assert self.fitted, \
-            "Error: matching not fitted, call match() first."
-        assert i != j, \
-            "Error: i = j."
+        assert self.fitted, "Error: matching not fitted, call match() first."
+        assert i != j, "Error: i = j."
         transpose = i < j
         if transpose:
             i, j = j, i
         index = int(i * (i - 1) / 2 + j)
-        assert index < len(self.matchings), \
-            f"Index ({i}, {j}) out of bounds."
+        assert index < len(self.matchings), f"Index ({i}, {j}) out of bounds."
         T = self.matchings[index]
         if transpose:
             if type(T) == np.ndarray:
@@ -98,10 +85,7 @@ class MatchingABC(ABC):
             return T / T.sum(axis=1)
         return T
 
-    def match(
-            self,
-            *datasets: np.ndarray
-    ) -> list[np.ndarray]:
+    def match(self, *datasets: np.ndarray) -> List[np.ndarray]:
         """
         Matches all pairs of different datasets together. Returns results
         in a dictionary, where d[i,j] is the matching between datasets i
