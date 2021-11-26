@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from abc import ABC, abstractmethod
 from ot import emd 
 from ot.bregman import sinkhorn_stabilized
 from ot.gromov import (
@@ -8,12 +7,15 @@ from ot.gromov import (
     gromov_wasserstein
 )
 from scipy.spatial.distance import cdist
-from scipy.sparse import csr_matrix
 
 import numpy as np
 
+from abc import ABC, abstractmethod
+from scipy.sparse import csr_matrix
+from typing import Union
 
-class Matching(ABC):
+
+class MatchingABC(ABC):
     """
     A matching is a class containing a function match(x1, ..., xn), able
     to predict matching between dataset samples (possibly fuzzy). Any class
@@ -39,18 +41,30 @@ class Matching(ABC):
         matching between xi and xj (with i > j).
     """
     @abstractmethod
-    def __init__(self, use_sparse=True):
+    def __init__(
+            self,
+            use_sparse: bool=True
+    ):
         self.fitted = False
         self.matchings = []
         self.use_sparse = use_sparse    
         
 
     @abstractmethod
-    def _match2(self, x1, x2):
+    def _match2(
+            self,
+            x1: np.ndarray,
+            x2: np.ndarray
+    ) -> np.ndarray:
         pass
 
 
-    def get(self, i, j, normalize=False):
+    def get(
+            self,
+            i: int,
+            j: int,
+            normalize: bool=False
+    ) -> Union[np.ndarray, csr_matrix]:
         """
         Return the matching between datasets i and j. Throws an error
         if Matching is not fitted, or if i == j.
@@ -68,7 +82,8 @@ class Matching(ABC):
 
         Returns
         -------
-        T = (xi.shape[0], xj.shape[0]) sparse array, where Tkl is the
+        T = (xi.shape[0], xj.shape[0]) as a numpy array or a CSR
+        matrix depending on self.use_sparse, where Tkl is the
         matching strength between xik and xjl.
         """
         assert self.fitted, \
@@ -89,7 +104,7 @@ class Matching(ABC):
         return T
 
 
-    def match(self, *datasets):
+    def match(self, *datasets: np.ndarray):
         """
         Matches all pairs of different datasets together. Returns results
         in a dictionary, where d[i,j] is the matching between datasets i
@@ -97,8 +112,8 @@ class Matching(ABC):
 
         Parameters:
         -----------
-        *datasets: list of datasets
-            List of at least two datasets. 
+        *datasets: tuple of arrays
+            Tuple of at least two datasets. 
         """
         self.fitted = False
         self.matchings = []
@@ -115,9 +130,31 @@ class Matching(ABC):
         return self.matchings
 
 
-class MatchingEMD(Matching):
+class MatchingEMD(MatchingABC):
     """
+    Earth Mover's Distance-based matching. Embeds the ot.emd
+    method from POT:
 
+        https://github.com/PythonOT/POT
+
+    ot.emd solves exactly the earth mover's distance problem using
+    a C-accelerated backend. Both datasets need to be in the same
+    space in order to compute a cost matrix.
+    TODO: allow the user to define a custom callable metric?
+
+    Parameters
+    ----------
+    metric: str or callable, default = "sqeuclidean"
+        Scipy-compatible metric.
+
+    metric_kwargs: dict, default = {}
+        Additional metric parameters.
+
+    max_iter: int, default = 1e6
+        Maximum number of iterations to solve the optimization problem.
+
+    use_sparse: boolean, default = True
+        Save matching as sparse matrices.
     """
     def __init__(
             self,
@@ -126,7 +163,7 @@ class MatchingEMD(Matching):
             max_iter=1e6,
             use_sparse=True
     ):
-        Matching.__init__(self, use_sparse=use_sparse)
+        MatchingABC.__init__(self, use_sparse=use_sparse)
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.max_iter = int(max_iter)
@@ -145,9 +182,47 @@ class MatchingEMD(Matching):
         return emd(w1, w2, M, numItermax=self.max_iter)
 
 
-class MatchingSinkhorn(Matching):
+class MatchingSinkhorn(MatchingABC):
     """
+    Entropic optimal transport-based matching. Embeds the sinkhorn_stabilized
+    method from POT:
 
+        https://github.com/PythonOT/POT
+
+    This approximately computes the optimal transport plan between both datasets
+    using entropy regularization [1], which makes the problem strongly convex.
+    Furthermore, additional robustness is achieved through logarithmic
+    stabilization [2]. Both datasets need to be in the same
+    space in order to compute a cost matrix. This can typically scale to larger
+    dataset, at a cost of a regularization parameter and less sparsity in the
+    final matching.
+    TODO: allow the user to define a custom callable metric?
+
+    Parameters
+    ----------
+    metric: str or callable, default = "sqeuclidean"
+        Scipy-compatible metric.
+
+    metric_kwargs: dict, default = {}
+        Additional metric parameters.
+
+    epsilon: float, default = 1e-2
+        Entropy regularization parameter.
+
+    max_iter: int, default = 1e6
+        Maximum number of iterations to solve the optimization problem.
+
+    use_sparse: boolean, default = True
+        Save matching as sparse matrices.
+
+    References
+    ----------
+    [1] M. Cuturi, Sinkhorn Distances : Lightspeed Computation of
+        Optimal Transport, Advances in Neural Information Processing
+        Systems (NIPS) 26, 2013
+    [2] Schmitzer, B. (2016). Stabilized Sparse Scaling Algorithms
+        for Entropy Regularized Transport Problems.
+        arXiv preprint arXiv:1610.06519.
     """
     def __init__(
             self,
@@ -157,7 +232,7 @@ class MatchingSinkhorn(Matching):
             max_iter=5e2,
             use_sparse=True
     ):
-        Matching.__init__(self, use_sparse=use_sparse)
+        MatchingABC.__init__(self, use_sparse=use_sparse)
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.epsilon = epsilon
@@ -183,29 +258,59 @@ class MatchingSinkhorn(Matching):
         )
 
 
-class MatchingGW(Matching):
+class MatchingGW(MatchingABC):
     """
+    Gromov-Wasserstein-based matching. Embeds the gromov_wasserstein
+    method from POT:
 
+        https://github.com/PythonOT/POT
+
+    Gromov-Wasserstein (GW) computes a transport plan between two distributions,
+    and does not require them to be defined in the same space. It rather use
+    relative topology of each distribution in its own metric space to define a
+    cost that assumes similar locations to have similar relative positions with
+    respect to the other regions. This combinatorial cost is typically more
+    expansive than the optimal transport alternative, but comes very handy when
+    a ground cost is difficult (or impossible) to compute between distributions.
+
+    Parameters
+    ----------
+    metric: str or callable, default = "sqeuclidean"
+        Scipy-compatible metric.
+
+    metric_kwargs: dict, default = {}
+        Additional metric parameters.
+
+    loss: str, default = "square_loss"
+        Either "square_loss" or "kl_loss". Passed to gromov_wasserstein for the
+        optimization.
+
+    max_iter: int, default = 1e6
+        Maximum number of iterations to solve the optimization problem.
+
+    use_sparse: boolean, default = True
+        Save matching as sparse matrices.
+
+    References
+    ----------
+    [1] Gabriel Peyré, Marco Cuturi, and Justin Solomon,
+        "Gromov-Wasserstein averaging of kernel and distance matrices."
+        International Conference on Machine Learning (ICML). 2016.
+    [2] Mémoli, Facundo. Gromov–Wasserstein distances and the
+        metric approach to object matching. Foundations of computational
+        mathematics 11.4 (2011): 417-487.
     """
     def __init__(
             self,
             metric="sqeuclidean",
             metric_kwargs={},
-            metric2=None,
-            metric2_kwargs={},
             loss="square_loss",
             max_iter=1e6,
             use_sparse=True
     ):
-        Matching.__init__(self, use_sparse=use_sparse)
+        MatchingABC.__init__(self, use_sparse=use_sparse)
         self.metric = metric
         self.metric_kwargs = metric_kwargs
-        if metric2 is None:
-            self.metric2 = self.metric
-            self.metric2_kwargs = self.metric_kwargs
-        else:
-            self.metric2 = metric2
-            self.metric2_kwargs = metric2_kwargs
         self.loss = loss
         self.max_iter = int(max_iter)
 
@@ -236,7 +341,7 @@ class MatchingGW(Matching):
         )
 
 
-class MatchingGWEntropic(Matching):
+class MatchingGWEntropic(MatchingABC):
     """
 
     """
@@ -293,7 +398,7 @@ class MatchingGWEntropic(Matching):
         )
 
 
-class MatchingMNN(Matching):
+class MatchingMNN(MatchingABC):
     """
 
     """
