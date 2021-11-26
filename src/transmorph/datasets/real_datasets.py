@@ -3,14 +3,11 @@
 import numpy as np
 from os.path import dirname
 
-DPATH = '%s/data/%s'
+DPATH = "%s/data/%s"
 
 
 def load_dataset(module_path, filename):
-    return np.loadtxt(
-        DPATH % (module_path, filename),
-        delimiter=','
-    )
+    return np.loadtxt(DPATH % (module_path, filename), delimiter=",")
 
 
 def load_spirals():
