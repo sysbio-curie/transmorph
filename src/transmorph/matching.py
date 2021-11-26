@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
 from abc import ABC, abstractmethod
-from ot import emd 
+from typing import Dict, Tuple
+
+from ot import emd
 from ot.bregman import sinkhorn_stabilized
 from ot.gromov import (
     entropic_gromov_wasserstein,
-    gromov_wasserstein
+    gromov_wasserstein,
+    fused_gromov_wasserstein,
 )
 from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix
@@ -17,7 +20,7 @@ class Matching(ABC):
     """
     A matching is a class containing a function match(x1, ..., xn), able
     to predict matching between dataset samples (possibly fuzzy). Any class
-    implementing Matching must implement a
+    implementing matching must implement a
 
         _match2(self, x1: np.ndarray, x2: np.ndarray)
 
@@ -53,7 +56,7 @@ class Matching(ABC):
     def get(self, i, j, normalize=False):
         """
         Return the matching between datasets i and j. Throws an error
-        if Matching is not fitted, or if i == j.
+        if matching is not fitted, or if i == j.
 
         Parameters
         ----------
@@ -72,7 +75,7 @@ class Matching(ABC):
         matching strength between xik and xjl.
         """
         assert self.fitted, \
-            "Error: Matching not fitted, call match() first."
+            "Error: matching not fitted, call match() first."
         assert i != j, \
             "Error: i = j."
         transpose = i < j
@@ -322,3 +325,79 @@ class MatchingMNN(Matching):
         dy = self._compute_di(D, axis=0)
         Dxy = np.minimum.outer(dx, dy)
         return D <= Dxy
+
+
+class MatchingFusedGW(Matching):
+    """
+
+    """
+    def __init__(
+            self,
+            metricM: str = 'euclidean',
+            metricM_kwargs: Dict = {},
+            metricC1: str= 'euclidean',
+            metricC1_kwargs: Dict = {},
+            metricC2: str= 'euclidean',
+            metricC2_kwargs: Dict = {},
+            alpha: float = 0.5,
+            loss: str = "square_loss",
+            use_sparse: bool = True,
+    ):
+        Matching.__init__(self, use_sparse=use_sparse)
+        self.metricM = metricM
+        self.metricM_kwargs = metricM_kwargs
+        self.metricC1 = metricC1
+        self.metricC1_kwargs = metricC1_kwargs
+        self.metricC2 = metricC2
+        self.metricC2_kwargs = metricC2_kwargs
+        self.alpha = alpha
+        self.loss = loss
+
+    def _compute_di(self, x1: np.array, x2: np.array) -> Tuple[np.array]:
+        """
+        Compute cost matrices for FGW problem.
+        Parameters
+        ----------
+        x1: np.array
+            A dataset.
+        x2 np.array
+            A dataset
+
+        Returns
+        -------
+        M, C1, C2, 3 matrices for the costs in FGW problem.
+        """
+        M = cdist(x1, x2, metric=self.metricM, **self.metricM_kwargs)
+        C1 = cdist(x1, x1, metric=self.metricC1, **self.metricC1_kwargs)
+        C2 = cdist(x2, x2, metric=self.metricC2, **self.metricC2_kwargs)
+        return M, C1, C2
+
+    def _match2(self, x1: np.array, x2: np.array) -> np.array:
+        """
+        Compute optimal transport plan for the FGW problem.
+        Parameters
+        ----------
+        x1: np.array
+            A dataset.
+        x2: np.array
+            A dataset
+
+        Returns
+        -------
+        T = (xi.shape[0], xj.shape[0]) sparse array, where Tkl is the
+        matching strength between xik and xjl.
+        """
+        n1, n2 = x1.shape[0], x2.shape[0]
+        w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
+        M, C1, C2 = self._compute_di(x1, x2)
+        C1 /= C1.max()
+        C2 /= C2.max()
+        return fused_gromov_wasserstein(
+            M,
+            C1,
+            C2,
+            w1,
+            w2,
+            self.loss,
+            self.alpha,
+        )
