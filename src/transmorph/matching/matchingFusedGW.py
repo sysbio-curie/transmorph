@@ -11,20 +11,19 @@ from .matchingABC import MatchingABC
 
 
 class MatchingFusedGW(MatchingABC):
-    """
+    """ """
 
-    """
     def __init__(
-            self,
-            metricM: str = 'euclidean',
-            metricM_kwargs: Dict = {},
-            metricC1: str= 'euclidean',
-            metricC1_kwargs: Dict = {},
-            metricC2: str= 'euclidean',
-            metricC2_kwargs: Dict = {},
-            alpha: float = 0.5,
-            loss: str = "square_loss",
-            use_sparse: bool = True,
+        self,
+        metricM: str = "euclidean",
+        metricM_kwargs: Dict = {},
+        metricC1: str = "euclidean",
+        metricC1_kwargs: Dict = {},
+        metricC2: str = "euclidean",
+        metricC2_kwargs: Dict = {},
+        alpha: float = 0.5,
+        loss: str = "square_loss",
+        use_sparse: bool = True,
     ):
         MatchingABC.__init__(self, use_sparse=use_sparse)
         self.metricM = metricM

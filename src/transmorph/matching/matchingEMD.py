@@ -4,10 +4,7 @@ from ot import emd
 from scipy.spatial.distance import cdist
 
 from .matchingABC import MatchingABC
-from typing import (
-    Callable,
-    Union
-)
+from typing import Callable, Union
 
 import numpy as np
 
@@ -38,31 +35,22 @@ class MatchingEMD(MatchingABC):
     use_sparse: boolean, default = True
         Save matching as sparse matrices.
     """
+
     def __init__(
-            self,
-            metric: Union[str, Callable] = "sqeuclidean",
-            metric_kwargs: dict = {},
-            max_iter: int = int(1e6),
-            use_sparse: bool = True
+        self,
+        metric: Union[str, Callable] = "sqeuclidean",
+        metric_kwargs: dict = {},
+        max_iter: int = int(1e6),
+        use_sparse: bool = True,
     ):
         MatchingABC.__init__(self, use_sparse=use_sparse)
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.max_iter = int(max_iter)
 
-
-    def _match2(
-            self,
-            x1: np.ndarray,
-            x2: np.ndarray
-    ):
+    def _match2(self, x1: np.ndarray, x2: np.ndarray):
         n1, n2 = x1.shape[0], x2.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M = cdist(
-            x1,
-            x2,
-            metric=self.metric,
-            **self.metric_kwargs
-        )
+        M = cdist(x1, x2, metric=self.metric, **self.metric_kwargs)
         M /= M.max()
         return emd(w1, w2, M, numItermax=self.max_iter)

@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 
 from scipy.spatial.distance import cdist
-from typing import (
-    Union,
-    Callable
-)
+from typing import Union, Callable
 
 import numpy as np
 
@@ -32,11 +29,12 @@ class MatchingMNN(MatchingABC):
     use_sparse: bool, default = True
         Save matching as sparse matrices.
     """
+
     def __init__(
-            self,
-            metric: Union[str, Callable] = "sqeuclidean",
-            k: int = 10,
-            use_sparse: bool = True
+        self,
+        metric: Union[str, Callable] = "sqeuclidean",
+        k: int = 10,
+        use_sparse: bool = True,
     ):
         MatchingABC.__init__(self, use_sparse=use_sparse)
         self.metric = metric
