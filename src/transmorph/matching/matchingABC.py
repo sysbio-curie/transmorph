@@ -20,8 +20,13 @@ class MatchingABC(ABC):
 
     Parameters
     ----------
-    use_sparse: boolean
+    use_sparse: boolean, default = True
         Save matchings as sparse matrices.
+
+    use_reference: int, default = -1
+        When matching, use the dataset i as the reference for matching. In this
+        case, self.matchings will contain n - 1 matchings, where matching[k] is
+        the matching between k and i if k < i and between k + 1 and i if k > i.
 
     Attributes
     ----------
@@ -34,17 +39,27 @@ class MatchingABC(ABC):
     """
 
     @abstractmethod
-    def __init__(self, use_sparse: bool = True):
+    def __init__(
+            self,
+            use_sparse: bool = True,
+            use_reference: int = -1
+    ):
         self.fitted = False
         self.matchings = []
         self.use_sparse = use_sparse
+        self.use_reference = use_reference
+
 
     @abstractmethod
     def _match2(self, x1: np.ndarray, x2: np.ndarray) -> np.ndarray:
         pass
 
+
     def get(
-        self, i: int, j: int, normalize: bool = False
+        self,
+            i: int,
+            j: int = -1,
+            normalize: bool = False
     ) -> Union[np.ndarray, csr_matrix]:
         """
         Return the matching between datasets i and j. Throws an error
@@ -56,22 +71,26 @@ class MatchingABC(ABC):
             Index of the source dataset (samples in rows).
 
         j: int
-            Index of the reference dataset (samples in columns).
+            Index of the reference dataset (samples in columns), useless
+            if self.use_reference = True.
 
         normalize: bool
-            Normalize each row to one.
+            Normalize each non-zero row to sum up to one.
 
         Returns
         -------
         T = (xi.shape[0], xj.shape[0]) sparse array, where Tkl is the
-        matching strength between xik and xjl.
+        matching strength between xik and xjl (or reference).
         """
         assert self.fitted, "Error: matching not fitted, call match() first."
         assert i != j, "Error: i = j."
         transpose = i < j
         if transpose:
             i, j = j, i
-        index = int(i * (i - 1) / 2 + j)
+        if self.use_reference:
+            index = i if i < self.use_reference else i - 1
+        else:
+            index = int(i * (i - 1) / 2 + j)
         assert index < len(self.matchings), f"Index ({i}, {j}) out of bounds."
         T = self.matchings[index]
         if transpose:
@@ -86,6 +105,7 @@ class MatchingABC(ABC):
             normalizer[normalizer == 0.0] = 1.0
             return T / normalizer
         return T
+
 
     def match(self, *datasets: np.ndarray) -> List[np.ndarray]:
         """

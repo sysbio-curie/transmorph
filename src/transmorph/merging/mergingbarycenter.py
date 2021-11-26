@@ -4,7 +4,6 @@ from ..matching.matchingABC import MatchingABC
 from .mergingABC import MergingABC
 from scipy.sparse import csr_matrix
 from typing import (
-    Union,
     List
 )
 
@@ -13,7 +12,25 @@ import numpy as np
 
 class MergingBarycenter(MergingABC):
     """
+    Barycentric merging is the most naive way of merging datasets.
+    Given n vectorized datasets x1, ..., xn and a reference dataset y,
+    and n row-normalized matchings m1, ..., mn, we compute the following
+    projection:
 
+        f(xi) = mi @ y
+
+    In other terms, every sample from xi is projected to the weighted sum
+    of its matches in y. This works quite well with optimal transport-based
+    methods, but is quite limited in the MNN case due to unmatched samples.
+
+    Parameters
+    ----------
+    reference_index: int, default = 0
+        Reference dataset index
+
+    Return type
+    -----------
+    np.ndarray containing an embedding of all datasets in y's space.
     """
     def __init__(
             self,
