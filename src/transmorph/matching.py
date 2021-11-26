@@ -1,13 +1,6 @@
 #!/usr/bin/env python3
 
-<<<<<<< HEAD
 from ot import emd 
-=======
-from abc import ABC, abstractmethod
-from typing import Dict, Tuple
-
-from ot import emd
->>>>>>> c372138d008e30af65630061a2ed98ce6ac4ed79
 from ot.bregman import sinkhorn_stabilized
 from ot.gromov import (
     entropic_gromov_wasserstein,
@@ -27,7 +20,7 @@ class MatchingABC(ABC):
     """
     A matching is a class containing a function match(x1, ..., xn), able
     to predict matching between dataset samples (possibly fuzzy). Any class
-    implementing matching must implement a
+    implementing Matching must implement a
 
         _match2(self, x1: np.ndarray, x2: np.ndarray)
 
@@ -75,7 +68,7 @@ class MatchingABC(ABC):
     ) -> Union[np.ndarray, csr_matrix]:
         """
         Return the matching between datasets i and j. Throws an error
-        if matching is not fitted, or if i == j.
+        if Matching is not fitted, or if i == j.
 
         Parameters
         ----------
@@ -95,7 +88,7 @@ class MatchingABC(ABC):
         matching strength between xik and xjl.
         """
         assert self.fitted, \
-            "Error: matching not fitted, call match() first."
+            "Error: Matching not fitted, call match() first."
         assert i != j, \
             "Error: i = j."
         transpose = i < j
