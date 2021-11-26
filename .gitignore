@@ -14,3 +14,5 @@ docs/_build/
 dist/
 transmorph.egg-info/
 .archive/
+**/__pycache__/**
+venv
