@@ -13,3 +13,4 @@ examples/*.png
 docs/_build/
 dist/
 transmorph.egg-info/
+.archive/
