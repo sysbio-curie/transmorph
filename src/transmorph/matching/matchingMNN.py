@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
 from scipy.spatial.distance import cdist
+from typing import (
+    Union,
+    Callable
+)
 
 import numpy as np
 
@@ -9,13 +13,30 @@ from .matchingABC import MatchingABC
 
 class MatchingMNN(MatchingABC):
     """
+    Mutual Nearest Neighbors (MNN) matching. Two samples xi and yj
+    are matched if xi belongs to the k-nearest neighbors (kNNs) of yj
+    and vice-versa. If we denote by dk(x) the distance from x to its
+    kNN, then xi and yj are matched if d(xi, yj) < min{dk(xi), dk(yj)}.
 
+    Parameters
+    ----------
+    metric: str or Callable, default = "sqeuclidean"
+        Scipy-compatible metric.
+
+    metric_kwargs: dict, default = {}
+        Additional metric parameters.
+
+    k: int, default = 10
+        Number of neighbors to use for computing the kNNs.
+
+    use_sparse: bool, default = True
+        Save matching as sparse matrices.
     """
     def __init__(
             self,
-            metric="sqeuclidean",
-            k=10,
-            use_sparse=True
+            metric: Union[str, Callable] = "sqeuclidean",
+            k: int = 10,
+            use_sparse: bool = True
     ):
         MatchingABC.__init__(self, use_sparse=use_sparse)
         self.metric = metric
@@ -23,7 +44,8 @@ class MatchingMNN(MatchingABC):
 
     def _compute_di(self, D, axis):
         """
-        Returns the distance of each xi to its kth nearest neighbor
+        Returns the distance of each point along the specified axis to its kth
+        nearest neighbor.
         """
         D_sorted = np.sort(D, axis=axis)
         if axis == 0:

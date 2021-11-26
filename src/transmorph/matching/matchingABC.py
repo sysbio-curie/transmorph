@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 from abc import ABC, abstractmethod
-
 from scipy.sparse import csr_matrix
+
+import numpy as np
+from typing import Union
 
 
 class MatchingABC(ABC):
@@ -32,16 +34,28 @@ class MatchingABC(ABC):
     """
 
     @abstractmethod
-    def __init__(self, use_sparse=True):
+    def __init__(
+            self,
+            use_sparse: bool = True
+    ):
         self.fitted = False
         self.matchings = []
         self.use_sparse = use_sparse
 
     @abstractmethod
-    def _match2(self, x1, x2):
+    def _match2(
+            self,
+            x1: np.ndarray,
+            x2: np.ndarray
+    ) -> np.ndarray:
         pass
 
-    def get(self, i, j, normalize=False):
+    def get(
+            self,
+            i: int,
+            j: int,
+            normalize: bool = False
+    ) -> Union[np.ndarray, csr_matrix]:
         """
         Return the matching between datasets i and j. Throws an error
         if matching is not fitted, or if i == j.
@@ -74,12 +88,20 @@ class MatchingABC(ABC):
             f"Index ({i}, {j}) out of bounds."
         T = self.matchings[index]
         if transpose:
-            T = T.T
+            if type(T) == np.ndarray:
+                T = T.T
+            elif type(T) == csr_matrix:
+                T = csr_matrix(T.transpose())
+            else:
+                raise NotImplementedError
         if normalize:
             return T / T.sum(axis=1)
         return T
 
-    def match(self, *datasets):
+    def match(
+            self,
+            *datasets: np.ndarray
+    ) -> list[np.ndarray]:
         """
         Matches all pairs of different datasets together. Returns results
         in a dictionary, where d[i,j] is the matching between datasets i
