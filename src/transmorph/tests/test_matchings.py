@@ -4,7 +4,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 from ..datasets import load_spirals
-from ..matching.matchingEMD import MatchingEMD
+from ..matching import MatchingEMD
 
 
 def test_MatchingEMD():
@@ -20,7 +20,7 @@ def test_MatchingEMD():
     matching = MatchingEMD(metric="cosine")  # Test metric argument
     matching.match(xs, yt)
     assert matching.fitted
-    matching = MatchingEMD(max_iter=int(1e4))  # Test max_iter argument
+    matching = MatchingEMD(max_iter=int(1e7))  # Test max_iter argument
     matching.match(xs, yt)
     assert matching.fitted
     matching = MatchingEMD(use_sparse=False)  # Test sparsity argument
