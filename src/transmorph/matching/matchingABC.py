@@ -39,27 +39,18 @@ class MatchingABC(ABC):
     """
 
     @abstractmethod
-    def __init__(
-            self,
-            use_sparse: bool = True,
-            use_reference: int = -1
-    ):
+    def __init__(self, use_sparse: bool = True, use_reference: int = -1):
         self.fitted = False
         self.matchings = []
         self.use_sparse = use_sparse
         self.use_reference = use_reference
 
-
     @abstractmethod
     def _match2(self, x1: np.ndarray, x2: np.ndarray) -> np.ndarray:
         pass
 
-
     def get(
-        self,
-            i: int,
-            j: int = -1,
-            normalize: bool = False
+        self, i: int, j: int = -1, normalize: bool = False
     ) -> Union[np.ndarray, csr_matrix]:
         """
         Return the matching between datasets i and j. Throws an error
@@ -105,7 +96,6 @@ class MatchingABC(ABC):
             normalizer[normalizer == 0.0] = 1.0
             return T / normalizer
         return T
-
 
     def match(self, *datasets: np.ndarray) -> List[np.ndarray]:
         """
