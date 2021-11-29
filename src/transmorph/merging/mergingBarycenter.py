@@ -32,8 +32,9 @@ class MergingBarycenter(MergingABC):
     np.ndarray containing an embedding of all datasets in y's space.
     """
 
-    def __init__(self, reference_index: int = 0):
-        self.reference_index = reference_index
+    def __init__(self, reference: np.ndarray):
+        MergingABC.__init__(self, merge_on_reference=True)
+        self.reference = reference
 
     def _check_input(self, datasets: List[np.ndarray], matching: MatchingABC) -> None:
         super()._check_input(datasets, matching)
