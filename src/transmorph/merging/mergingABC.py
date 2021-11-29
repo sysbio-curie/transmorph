@@ -6,10 +6,8 @@ from scipy.sparse import csr_matrix
 from ..matching.matchingABC import MatchingABC
 
 import numpy as np
-from typing import (
-    Union,
-    List
-)
+from typing import Union, List
+
 
 class MergingABC(ABC):
     """
@@ -18,16 +16,18 @@ class MergingABC(ABC):
     contains the matching between xi and xj. merge() outputs a common representation
     for all samples from datasets x1 to xn that can be an embedding or a network.
     """
+
     @abstractmethod
-    def __init__(
-            self
-    ):
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def _check_input(self, datasets: List[np.ndarray], matching: MatchingABC) -> None:
         pass
 
     @abstractmethod
     def merge(
-            self,
-            datasets: List[np.ndarray],
-            matching: MatchingABC
+        self, datasets: List[np.ndarray], matching: MatchingABC
     ) -> Union[np.ndarray, csr_matrix]:
+        self._check_input(datasets, matching)
         pass
