@@ -16,3 +16,4 @@ transmorph.egg-info/
 .archive/
 **/__pycache__/**
 venv
+.pre-commit-config.yaml
