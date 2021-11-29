@@ -42,6 +42,7 @@ class MatchingABC(ABC):
     def __init__(self, use_sparse: bool = True, use_reference: int = -1):
         self.fitted = False
         self.matchings = []
+        self.n_matchings = 0
         self.use_sparse = use_sparse
         self.use_reference = use_reference
 

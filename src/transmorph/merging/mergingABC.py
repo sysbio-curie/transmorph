@@ -26,13 +26,33 @@ class MergingABC(ABC):
     """
 
     @abstractmethod
-    def __init__(self, merge_on_reference, reference: np.ndarray = None):
+    def __init__(self, merge_on_reference, reference_array: np.ndarray = None):
         self.merge_on_reference = merge_on_reference
-        self.reference = reference
+        self.reference_array = reference_array
 
     @abstractmethod
     def _check_input(self, datasets: List[np.ndarray], matching: MatchingABC) -> None:
-        pass
+        """
+        Checking if number of matchings and datasets coincides with reference strategy.
+        This method should be called at the beginning of any MatchingABC._check_input()
+        implementation.
+        """
+        n_datasets = len(datasets)
+        assert n_datasets > 0, "Error: No datasets found for merging."
+        if self.merge_on_reference:
+            assert n_datasets == matching.n_matchings, (
+                "Error: Inconsistent number of matchings and datasets "
+                f"for merging strategy using a reference. Found {n_datasets} "
+                f"datasets for {matching.n_matchings} matchings."
+            )
+        else:
+            n_matchings = (n_datasets - 1) * (n_datasets - 2) / 2
+            assert n_matchings == matching.n_matchings, (
+                "Error: Inconsistent number of matchings and datasets "
+                f"for merging strategy without reference. Found {n_datasets} "
+                f"datasets for {matching.n_matchings} matchings "
+                f"(expected {n_matchings})."
+            )
 
     @abstractmethod
     def merge(
