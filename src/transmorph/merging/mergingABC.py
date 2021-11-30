@@ -25,17 +25,15 @@ class MergingABC(ABC):
         If merge_on_reference=True, reference dataset.
     """
 
-    @abstractmethod
     def __init__(self, merge_on_reference, reference_array: np.ndarray = None):
         self.merge_on_reference = merge_on_reference
         self.reference_array = reference_array
 
-    @abstractmethod
     def _check_input(self, datasets: List[np.ndarray], matching: MatchingABC) -> None:
         """
         Checking if number of matchings and datasets coincides with reference strategy.
-        This method should be called at the beginning of any MatchingABC._check_input()
-        implementation.
+        This method is automatically called at the beginning MergingABC._check_input().
+        Any class inheriting from MergingABC can add rules to this method.
         """
         n_datasets = len(datasets)
         assert n_datasets > 0, "Error: No datasets found for merging."
@@ -59,4 +57,3 @@ class MergingABC(ABC):
         self, datasets: List[np.ndarray], matching: MatchingABC
     ) -> Union[np.ndarray, csr_matrix]:
         self._check_input(datasets, matching)
-        pass

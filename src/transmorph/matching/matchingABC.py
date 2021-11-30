@@ -38,13 +38,18 @@ class MatchingABC(ABC):
         matching between xi and xj (with i > j).
     """
 
-    @abstractmethod
-    def __init__(self, use_sparse: bool = True, use_reference: int = -1):
+    def __init__(
+        self,
+        use_sparse: bool = True,
+        use_reference: bool = False,
+        reference: np.ndarray = None,
+    ):
         self.fitted = False
         self.matchings = []
         self.n_matchings = 0
         self.use_sparse = use_sparse
         self.use_reference = use_reference
+        self.reference = reference
 
     @abstractmethod
     def _match2(self, x1: np.ndarray, x2: np.ndarray) -> np.ndarray:
@@ -80,16 +85,17 @@ class MatchingABC(ABC):
         if transpose:
             i, j = j, i
         if self.use_reference:
-            index = i if i < self.use_reference else i - 1
+            assert j == -1, "Error: impossible to set j when use_reference=True."
+            index = i
         else:
             index = int(i * (i - 1) / 2 + j)
-        assert index < len(self.matchings), f"Index ({i}, {j}) out of bounds."
+        assert index < len(self.matchings), f"Index ({i}, {j}) is out of bounds."
         T = self.matchings[index]
         if transpose:
             if type(T) == np.ndarray:
                 T = T.T
             elif type(T) == csr_matrix:
-                T = csr_matrix(T.transpose())
+                T = csr_matrix(T.transpose())  # Cast necessary (avoids CSC)
             else:
                 raise NotImplementedError
         if normalize:
@@ -120,5 +126,6 @@ class MatchingABC(ABC):
                 if self.use_sparse:
                     matching = csr_matrix(matching)
                 self.matchings.append(matching)
+        self.n_matchings = len(self.matchings)
         self.fitted = True
         return self.matchings

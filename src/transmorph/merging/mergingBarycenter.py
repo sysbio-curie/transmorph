@@ -39,9 +39,7 @@ class MergingBarycenter(MergingABC):
     def _check_input(self, datasets: List[np.ndarray], matching: MatchingABC) -> None:
         super()._check_input(datasets, matching)
         for k, dataset in enumerate(datasets):
-            if k == self.reference_index:
-                continue
-            T = matching.get(k, self.reference_index, normalize=True)
+            T = matching.get(k, normalize=True)
             if type(T) == csr_matrix:
                 T = T.toarray()
             if any(T.sum(axis=1) == 0.0):
