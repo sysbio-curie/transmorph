@@ -73,6 +73,6 @@ class MatchingGW(MatchingABC):
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
         M1 = cdist(x1, x1, metric=self.metric, **self.metric_kwargs)
         M1 /= M1.max()
-        M2 = cdist(x2, x2, metric=self.metric2, **self.metric2_kwargs)
+        M2 = cdist(x2, x2, metric=self.metric, **self.metric_kwargs)
         M2 /= M2.max()
         return gromov_wasserstein(M1, M2, w1, w2, self.loss)

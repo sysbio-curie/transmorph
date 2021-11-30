@@ -143,8 +143,10 @@ class MatchingABC(ABC):
             assert nd > 0, "Error: at least 1 dataset required."
             for di in datasets:
                 matching = self._match2(di, self.reference)
-                if self.use_sparse:
+                if self.use_sparse and type(matching) is np.ndarray:
                     matching = csr_matrix(matching, shape=matching.shape)
+                if not self.use_sparse and type(matching) is csr_matrix:
+                    matching = matching.toarray()
                 self.matchings.append(matching)
         else:
             assert nd > 1, "Error: at least 2 datasets required."

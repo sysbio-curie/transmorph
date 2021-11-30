@@ -6,7 +6,14 @@ from scipy.sparse import csr_matrix
 from numpy.testing import assert_array_almost_equal
 
 from ..datasets import load_spirals
-from ..matching import MatchingEMD
+from ..matching import (
+    MatchingEMD,
+    MatchingSinkhorn,
+    MatchingGW,
+    MatchingGWEntropic,
+    MatchingMNN,
+    MatchingFusedGW,
+)
 
 
 def _generic_matching_test(matching_class):
@@ -35,6 +42,41 @@ def _generic_matching_test(matching_class):
 
 def test_MatchingEMD():
     """
-    Test function for test related to matching.
+    Earth Mover's Distance-based matching
     """
     _generic_matching_test(MatchingEMD)
+
+
+def test_MatchingSinkhorn():
+    """
+    Sinkhorn-Knopp-based matching
+    """
+    _generic_matching_test(MatchingSinkhorn)
+
+
+def test_MatchingGW():
+    """
+    Gromov-Wasserstein-based matching
+    """
+    _generic_matching_test(MatchingGW)
+
+
+def test_MatchingGWEntropic():
+    """
+    Entropic Gromov-Wasserstein-based matching
+    """
+    _generic_matching_test(MatchingGWEntropic)
+
+
+def test_MatchingMNN():
+    """
+    Mutual Nearest Neighbors-based matching
+    """
+    _generic_matching_test(MatchingMNN)
+
+
+def test_MatchingFusedGW():
+    """
+    Fused Gromov-Wasserstein-based matching
+    """
+    _generic_matching_test(MatchingFusedGW)
