@@ -56,7 +56,7 @@ def nearest_neighbors(
         dx = distance_to_knn(D, n_neighbors, 1)
         dy = distance_to_knn(D, n_neighbors, 0)
         Dxy = np.minimum.outer(dx, dy)
-        return csr_matrix(D[D <= Dxy])
+        return csr_matrix((D <= Dxy), shape=D.shape)
 
     if use_nndescent:
         # PyNNDescent provides a high speed implementation of kNN
@@ -95,3 +95,7 @@ def nearest_neighbors(
     )
     nn.fit(X)
     return nn.kneighbors_graph(X, n_neighbors=n_neighbors, mode="distance")
+
+
+def augment_matching(T, x1, x2) -> csr_matrix:
+    pass

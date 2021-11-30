@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
+import warnings
 import numpy as np
 
 from scipy.sparse import csr_matrix
-from typing import List
+
+from .mergingABC import MergingABC
 
 from ..matching.matchingABC import MatchingABC
-from .mergingABC import MergingABC
 
 
 class MergingBarycenter(MergingABC):
@@ -32,42 +33,39 @@ class MergingBarycenter(MergingABC):
     np.ndarray containing an embedding of all datasets in y's space.
     """
 
-    def __init__(self, reference: np.ndarray, handle_unmatched: bool = False):
-        MergingABC.__init__(self, merge_on_reference=True)
-        self.reference = reference
-        self.handle_unmatched = handle_unmatched
+    def __init__(self, matching: MatchingABC):
+        MergingABC.__init__(self, matching)
 
-    def _check_input(self, datasets: List[np.ndarray], matching: MatchingABC) -> None:
-        super()._check_input(datasets, matching)
-        if self.handle_unmatched:
-            return
-        for k, dataset in enumerate(datasets):
-            T = matching.get(k, normalize=True)
-            if type(T) == csr_matrix:
-                T = T.toarray()
+    def _check_input(self, matching: MatchingABC) -> None:
+        super()._check_input(matching)
+        assert matching.use_reference and matching.reference is not None
+        for k in range(matching.n_datasets):
+            T = matching.get_matching(k, normalize=True)
             if any(T.sum(axis=1) == 0.0):
-                print(
-                    "Warning: Some samples are unmatched. "
-                    "Try a different matching or merging strategy."
+                warnings.warn(
+                    "Warning: Some samples are unmatched and will result on origin. "
+                    "You may want to try another matching (e.g. MatchingEMD or"
+                    "MatchingGW) or merging (e.g. MergingLinearCorrection) strategy."
                 )
-                raise ValueError
 
-    def merge(self, datasets: List[np.ndarray], matching: MatchingABC) -> np.ndarray:
-        self._check_input(datasets, matching)
-        ref_dataset = datasets[self.reference_index]
+    def transform(self, matching: MatchingABC) -> np.ndarray:
+        self._check_input(matching)
+        reference = matching.get_reference()
         output = np.zeros(
-            (sum(dataset.shape[0] for dataset in datasets), ref_dataset.shape[1])
+            (
+                reference.shape[0]
+                + sum(dataset.shape[0] for dataset in matching.datasets),
+                reference.shape[1],
+            )
         )
-        offset = 0
-        for k, dataset in enumerate(datasets):
+        output[: reference.shape[0]] = reference
+        offset = reference.shape[0]
+        for k, dataset in enumerate(matching.datasets):
             n = dataset.shape[0]
-            projection = ref_dataset
-            if k == self.reference_index:
-                continue
-            T = matching.get(k, self.reference_index, normalize=True)
-            if type(T) == csr_matrix:
+            T = matching.get_matching(k, normalize=True)
+            if type(T) is csr_matrix:
                 T = T.toarray()
-            projection = T @ ref_dataset
+            projection = T @ reference
             output[offset : offset + n] = projection
             offset += n
         return output

@@ -41,21 +41,29 @@ class MatchingABC(ABC):
     def __init__(
         self,
         use_sparse: bool = True,
-        use_reference: bool = False,
-        reference: np.ndarray = None,
     ):
         self.fitted = False
+        self.datasets = []
+        self.n_datasets = 0
         self.matchings = []
         self.n_matchings = 0
         self.use_sparse = use_sparse
-        self.use_reference = use_reference
-        self.reference = reference
+        self.use_reference = False
+        self.reference = None
 
     @abstractmethod
     def _match2(self, x1: np.ndarray, x2: np.ndarray) -> np.ndarray:
         pass
 
-    def get(
+    def iter_datasets(self):
+        for dataset in self.datasets:
+            yield dataset
+
+    def get_dataset(self, i: int):
+        assert i < self.n_datasets, "Error: dataset index out of bounds."
+        return self.datasets[i]
+
+    def get_matching(
         self, i: int, j: int = -1, normalize: bool = False
     ) -> Union[np.ndarray, csr_matrix]:
         """
@@ -81,14 +89,14 @@ class MatchingABC(ABC):
         """
         assert self.fitted, "Error: matching not fitted, call match() first."
         assert i != j, "Error: i = j."
-        transpose = i < j
+        transpose = j != -1 and j < i
         if transpose:
             i, j = j, i
         if self.use_reference:
             assert j == -1, "Error: impossible to set j when use_reference=True."
             index = i
         else:
-            index = int(i * (i - 1) / 2 + j)
+            index = int(j * (j - 1) / 2 + i)
         assert index < len(self.matchings), f"Index ({i}, {j}) is out of bounds."
         T = self.matchings[index]
         if transpose:
@@ -104,7 +112,14 @@ class MatchingABC(ABC):
             return T / normalizer
         return T
 
-    def match(self, *datasets: np.ndarray) -> List[np.ndarray]:
+    def get_reference(self):
+        return self.reference
+
+    def fit(
+        self,
+        datasets: Union[np.ndarray, List[np.ndarray]],
+        reference: np.ndarray = None,
+    ) -> List[np.ndarray]:
         """
         Matches all pairs of different datasets together. Returns results
         in a dictionary, where d[i,j] is the matching between datasets i
@@ -115,17 +130,30 @@ class MatchingABC(ABC):
         *datasets: list of datasets
             List of at least two datasets.
         """
+        if type(datasets) is np.ndarray:
+            datasets = [datasets]
+        self.datasets = datasets.copy()
+        self.n_datasets = len(self.datasets)
+        self.reference = reference
+        self.use_reference = reference is not None
         self.fitted = False
         self.matchings = []
         nd = len(datasets)
-        assert nd > 1, "Error: at least 2 datasets required."
-        for i in range(nd):
-            di = datasets[i]
-            for j in range(i):
-                matching = self._match2(di, datasets[j])
+        if self.use_reference:
+            assert nd > 0, "Error: at least 1 dataset required."
+            for di in datasets:
+                matching = self._match2(di, self.reference)
                 if self.use_sparse:
-                    matching = csr_matrix(matching)
+                    matching = csr_matrix(matching, shape=matching.shape)
                 self.matchings.append(matching)
+        else:
+            assert nd > 1, "Error: at least 2 datasets required."
+            for j, dj in enumerate(datasets):
+                for di in datasets[:j]:
+                    matching = self._match2(di, dj)
+                    if self.use_sparse:
+                        matching = csr_matrix(matching, shape=matching.shape)
+                    self.matchings.append(matching)
         self.n_matchings = len(self.matchings)
         self.fitted = True
         return self.matchings

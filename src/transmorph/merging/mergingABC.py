@@ -6,7 +6,7 @@ from scipy.sparse import csr_matrix
 from ..matching.matchingABC import MatchingABC
 
 import numpy as np
-from typing import Union, List
+from typing import Union
 
 
 class MergingABC(ABC):
@@ -25,35 +25,32 @@ class MergingABC(ABC):
         If merge_on_reference=True, reference dataset.
     """
 
-    def __init__(self, merge_on_reference, reference_array: np.ndarray = None):
-        self.merge_on_reference = merge_on_reference
-        self.reference_array = reference_array
+    def __init__(self, matching: MatchingABC):
+        self.use_reference = matching.get_reference() is not None
 
-    def _check_input(self, datasets: List[np.ndarray], matching: MatchingABC) -> None:
+    def _check_input(self, matching: MatchingABC) -> None:
         """
         Checking if number of matchings and datasets coincides with reference strategy.
         This method is automatically called at the beginning MergingABC._check_input().
         Any class inheriting from MergingABC can add rules to this method.
         """
-        n_datasets = len(datasets)
+        n_datasets = matching.n_datasets
         assert n_datasets > 0, "Error: No datasets found for merging."
-        if self.merge_on_reference:
+        if self.use_reference:
             assert n_datasets == matching.n_matchings, (
                 "Error: Inconsistent number of matchings and datasets "
                 f"for merging strategy using a reference. Found {n_datasets} "
-                f"datasets for {matching.n_matchings} matchings."
+                f"dataset(s) for {matching.n_matchings} matching(s)."
             )
         else:
             n_matchings = (n_datasets - 1) * (n_datasets - 2) / 2
             assert n_matchings == matching.n_matchings, (
                 "Error: Inconsistent number of matchings and datasets "
                 f"for merging strategy without reference. Found {n_datasets} "
-                f"datasets for {matching.n_matchings} matchings "
+                f"dataset(s) for {matching.n_matchings} matching(s) "
                 f"(expected {n_matchings})."
             )
 
     @abstractmethod
-    def merge(
-        self, datasets: List[np.ndarray], matching: MatchingABC
-    ) -> Union[np.ndarray, csr_matrix]:
-        self._check_input(datasets, matching)
+    def transform(self, matching: MatchingABC) -> Union[np.ndarray, csr_matrix]:
+        self._check_input(matching)
