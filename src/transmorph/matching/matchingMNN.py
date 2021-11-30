@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
-from scipy.spatial.distance import cdist
 from typing import Union, Callable
 
-import numpy as np
-
 from .matchingABC import MatchingABC
+from ..utils import nearest_neighbors
 
 
 class MatchingMNN(MatchingABC):
@@ -33,26 +31,21 @@ class MatchingMNN(MatchingABC):
     def __init__(
         self,
         metric: Union[str, Callable] = "sqeuclidean",
-        k: int = 10,
+        metric_kwargs: dict = {},
+        n_neighbors: int = 10,
         use_sparse: bool = True,
     ):
         MatchingABC.__init__(self, use_sparse=use_sparse)
         self.metric = metric
-        self.k = k
-
-    def _compute_di(self, D, axis):
-        """
-        Returns the distance of each point along the specified axis to its kth
-        nearest neighbor.
-        """
-        D_sorted = np.sort(D, axis=axis)
-        if axis == 0:
-            D_sorted = D_sorted.T
-        return D_sorted[:, self.k]
+        self.metric_kwargs = metric_kwargs
+        self.n_neighbors = n_neighbors
 
     def _match2(self, x1, x2):
-        D = cdist(x1, x2, metric=self.metric)
-        dx = self._compute_di(D, axis=1)
-        dy = self._compute_di(D, axis=0)
-        Dxy = np.minimum.outer(dx, dy)
-        return D <= Dxy
+        return nearest_neighbors(
+            x1,
+            Y=x2,
+            metric=self.metric,
+            metric_kwargs=self.metric_kwargs,
+            n_neighbors=self.n_neighbors,
+            use_nndescent=False,
+        )

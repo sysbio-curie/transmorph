@@ -32,12 +32,15 @@ class MergingBarycenter(MergingABC):
     np.ndarray containing an embedding of all datasets in y's space.
     """
 
-    def __init__(self, reference: np.ndarray):
+    def __init__(self, reference: np.ndarray, handle_unmatched: bool = False):
         MergingABC.__init__(self, merge_on_reference=True)
         self.reference = reference
+        self.handle_unmatched = handle_unmatched
 
     def _check_input(self, datasets: List[np.ndarray], matching: MatchingABC) -> None:
         super()._check_input(datasets, matching)
+        if self.handle_unmatched:
+            return
         for k, dataset in enumerate(datasets):
             T = matching.get(k, normalize=True)
             if type(T) == csr_matrix:
@@ -50,6 +53,7 @@ class MergingBarycenter(MergingABC):
                 raise ValueError
 
     def merge(self, datasets: List[np.ndarray], matching: MatchingABC) -> np.ndarray:
+        self._check_input(datasets, matching)
         ref_dataset = datasets[self.reference_index]
         output = np.zeros(
             (sum(dataset.shape[0] for dataset in datasets), ref_dataset.shape[1])

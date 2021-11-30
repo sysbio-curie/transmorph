@@ -13,7 +13,9 @@ repos:
     hooks:
     -   id: pytest
         name: pytest
-        entry: /bin/pytest
-        language: script
+        entry: /home/risitop/.local/share/virtualenvs/transmorph_local-9qMrZcwm/bin/pytest
+        language: python
         pass_filenames: false
         always_run: true
+        additional_dependencies:
+            - pynndescent
