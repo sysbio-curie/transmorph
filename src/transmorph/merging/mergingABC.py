@@ -18,22 +18,27 @@ class MergingABC(ABC):
 
     Parameters
     ----------
-    merge_on_reference: bool
-        Do the merging use a reference dataset or is it symmetrical?
-
-    reference: np.ndarray, default = None
-        If merge_on_reference=True, reference dataset.
+    Matching:
     """
 
     def __init__(self, matching: MatchingABC):
+        self.matching = matching
         self.use_reference = matching.get_reference() is not None
+        self._check_input(matching)
 
-    def _check_input(self, matching: MatchingABC) -> None:
+    def _check_input(self, matching: MatchingABC = None) -> None:
         """
         Checking if number of matchings and datasets coincides with reference strategy.
         This method is automatically called at the beginning MergingABC._check_input().
         Any class inheriting from MergingABC can add rules to this method.
         """
+        if matching is None:
+            matching = self.matching
+        assert matching is not None
+        assert matching.fitted, (
+            "Matching is unfitted. Calling first the"
+            " method Matching.fit([datasets], reference=None) is necessary."
+        )
         n_datasets = matching.n_datasets
         assert n_datasets > 0, "Error: No datasets found for merging."
         if self.use_reference:
@@ -52,5 +57,5 @@ class MergingABC(ABC):
             )
 
     @abstractmethod
-    def transform(self, matching: MatchingABC) -> Union[np.ndarray, csr_matrix]:
-        self._check_input(matching)
+    def transform(self) -> Union[np.ndarray, csr_matrix]:
+        pass

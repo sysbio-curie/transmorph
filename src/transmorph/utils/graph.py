@@ -95,7 +95,3 @@ def nearest_neighbors(
     )
     nn.fit(X)
     return nn.kneighbors_graph(X, n_neighbors=n_neighbors, mode="distance")
-
-
-def augment_matching(T, x1, x2) -> csr_matrix:
-    pass

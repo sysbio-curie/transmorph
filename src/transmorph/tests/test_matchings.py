@@ -9,12 +9,12 @@ from ..datasets import load_spirals
 from ..matching import MatchingEMD
 
 
-def test_MatchingEMD():
+def _generic_matching_test(matching_class):
     """
-    Test function for test related to matching.
+    Verify a given matching verifies abstraction requirements.
     """
     xs, yt = load_spirals()
-    matching = MatchingEMD()
+    matching = matching_class()
     matching.fit(xs, reference=yt)
     assert matching.fitted
     assert matching.use_reference is True
@@ -26,14 +26,15 @@ def test_MatchingEMD():
     result_noref = matching.get_matching(0, 1)
     assert type(result_noref) is csr_matrix
     assert_array_almost_equal(result_ref.toarray(), result_noref.toarray())
-    matching = MatchingEMD(metric="cosine")  # Test metric argument
-    matching.fit(xs, reference=yt)
-    assert matching.fitted
-    matching = MatchingEMD(max_iter=int(1e7))  # Test max_iter argument
-    matching.fit(xs, reference=yt)
-    assert matching.fitted
-    matching = MatchingEMD(use_sparse=False)  # Test sparsity argument
+    matching = matching_class(use_sparse=False)  # Test sparsity argument
     matching.fit(xs, reference=yt)
     assert matching.fitted
     result = matching.get_matching(0)
     assert type(result) == np.ndarray
+
+
+def test_MatchingEMD():
+    """
+    Test function for test related to matching.
+    """
+    _generic_matching_test(MatchingEMD)
