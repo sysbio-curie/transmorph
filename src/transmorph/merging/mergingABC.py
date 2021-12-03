@@ -23,17 +23,17 @@ class MergingABC(ABC):
 
     def __init__(self, matching: MatchingABC):
         self.matching = matching
-        self.use_reference = matching.get_reference() is not None
-        self._check_input(matching)
+        assert matching is not None, "self.matching cannot be None."
+        self.use_reference = matching.use_reference
+        self._check_input()
 
-    def _check_input(self, matching: MatchingABC = None) -> None:
+    def _check_input(self) -> None:
         """
         Checking if number of matchings and datasets coincides with reference strategy.
         This method is automatically called at the beginning MergingABC._check_input().
         Any class inheriting from MergingABC can add rules to this method.
         """
-        if matching is None:
-            matching = self.matching
+        matching = self.matching
         assert matching is not None
         assert matching.fitted, (
             "Matching is unfitted. Calling first the"

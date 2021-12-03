@@ -31,10 +31,12 @@ class MergingBarycenter(MergingABC):
     def __init__(self, matching: MatchingABC):
         MergingABC.__init__(self, matching)
 
-    def _check_input(self, matching: MatchingABC) -> None:
+    def _check_input(self) -> None:
         """
         Raises an additional warning if some source samples are unmatched.
         """
+        super()._check_input()
+        matching = self.matching
         assert matching.use_reference and matching.reference is not None, (
             "Error: Matching must be fit with reference=X_target for "
             "barycentric merging."

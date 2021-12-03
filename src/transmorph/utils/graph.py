@@ -30,6 +30,8 @@ def nearest_neighbors(
     metric: Union[str, Callable] = "euclidean",
     metric_kwargs: dict = {},
     n_neighbors: int = 10,
+    include_self_loops: bool = False,
+    symmetrize: bool = False,
     use_nndescent: bool = False,
     random_seed: int = 42,
     min_iters: int = 5,
@@ -58,10 +60,14 @@ def nearest_neighbors(
         Dxy = np.minimum.outer(dx, dy)
         return csr_matrix((D <= Dxy), shape=D.shape)
 
+    # Nearest neighbors
+    connectivity = None
     if use_nndescent:
         # PyNNDescent provides a high speed implementation of kNN
         # Parameters borrowed from UMAP's implementation
         # https://github.com/lmcinnes/umap
+        if not include_self_loops:
+            n_neighbors += 1
         n_trees = min(min_trees, 5 + int(round((X.shape[0]) ** 0.5 / 20.0)))
         n_iters = max(min_iters, int(round(np.log2(X.shape[0]))))
         knn_result = NNDescent(
@@ -77,21 +83,34 @@ def nearest_neighbors(
             n_jobs=n_jobs,
             verbose=False,
         )
-        knn_indices, knn_dists = knn_result.neighbor_graph
+        knn_indices, _ = knn_result.neighbor_graph
         rows, cols, data = [], [], []
-        for i, (row_indices, row_dists) in enumerate(zip(knn_indices, knn_dists)):
-            for j, dij in zip(row_indices, row_dists):
+        for i, row_indices in enumerate(knn_indices):
+            for j in row_indices:
+                if not include_self_loops and i == j:
+                    continue
                 rows.append(i)
                 cols.append(j)
-                data.append(dij)
-        return coo_matrix((data, (rows, cols)), shape=(nx, nx)).tocsr()
+                data.append(1.0)
+        connectivity = coo_matrix((data, (rows, cols)), shape=(nx, nx)).tocsr()
 
-    # Classical exact MNN
-    nn = NearestNeighbors(
-        n_neighbors=n_neighbors,
-        metric=metric,
-        metric_params=metric_kwargs,
-        n_jobs=n_jobs,
-    )
-    nn.fit(X)
-    return nn.kneighbors_graph(X, n_neighbors=n_neighbors, mode="distance")
+    else:
+
+        # Classical exact MNN
+        nn = NearestNeighbors(
+            n_neighbors=n_neighbors,
+            metric=metric,
+            metric_params=metric_kwargs,
+            n_jobs=n_jobs,
+        )
+        nn.fit(X)
+        if include_self_loops:
+            connectivity = nn.kneighbors_graph(X, n_neighbors=n_neighbors)
+        else:
+            connectivity = nn.kneighbors_graph(n_neighbors=n_neighbors)
+
+    if symmetrize:
+        connectivity = (
+            connectivity + connectivity.T - connectivity.multiply(connectivity.T)
+        )
+    return connectivity
