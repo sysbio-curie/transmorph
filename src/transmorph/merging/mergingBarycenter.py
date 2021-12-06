@@ -23,9 +23,10 @@ class MergingBarycenter(MergingABC):
     of its matches in y. This works quite well with optimal transport-based
     methods, but is quite limited in the MNN case due to unmatched samples.
 
-    Merging type
-    ------------
-    np.ndarray containing an embedding of all datasets in y's space.
+    Parameters
+    ----------
+    matching: MatchingABC
+        Fitted, referenced matching between datasets.
     """
 
     def __init__(self, matching: MatchingABC):

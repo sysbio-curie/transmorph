@@ -11,7 +11,52 @@ from ..utils import nearest_neighbors
 
 
 class MergingLinearCorrection(MergingABC):
-    """ """
+    """
+    LinearCorrection is a way to merge vectorized datasets embedded
+    in the same vector space onto a reference, aiming to solve issues
+    of barycentric merging with partial matchings and overfitting.
+
+    Starting from two datasets X (source) and Y (reference) and a
+    matching M[x, y] > 0 if x and y are matched, M[x, y] = 0 otherwise,
+    we compute correction vectors c(x) between matched points and the
+    barycenter of their matches,
+
+        c(x) = (1 / \\sum_y M[x, y]) * (\\sum_y M[x, y] * y) - x
+
+    We end up with a set of correction vectors c(x) for some x, and
+    need to guess c(x) for unmatched x.
+
+    The strategy we adopt is to build a k-NN graph of X points,
+    smoothing correction vectors with respect to kNN neighborhood.
+    Doing so, all points that are matched or neighboring a matched
+    point are associated with a smoothed correction vector. To
+    finish, we set for all uncorrected points a correction vector
+    equal to the one of their closest corrected neighbor.
+
+    Parameters
+    ----------
+    matching: MatchingABC
+        Fitted, referenced matching between datasets.
+
+    n_neighbors: int, default = 5
+        Number of neighbors to use to compute correction smoothing.
+
+    metric: str, default = "sqeuclidean"
+        Distance metric to use for kNN graph construction.
+
+    metric_kwargs: dict, default = {}
+        Extra parameters for the metric to pass to scipy.distance.cdist.
+
+    use_nndescent: bool, default = False
+        Use the quicker, approximate solver for nearest neighbors.
+
+    low_memory: bool, default = False
+        If using use_nndescent=True, switch to a low memory/high time
+        strategy.
+
+    n_jobs: int, default = -1
+        Number of threads to use.
+    """
 
     def __init__(
         self,
@@ -78,6 +123,7 @@ class MergingLinearCorrection(MergingABC):
             @ knn_graph[connected][:, matched]
             @ corr_vectors[matched]
         )
+        # Correct the remaining points
         if not np.all(connected):
             unconnected = np.logical_not(connected)
             unmatched = X[unconnected]

@@ -18,7 +18,8 @@ class MergingABC(ABC):
 
     Parameters
     ----------
-    Matching:
+    matching: MatchingABC
+        Fitted, referenced matching between datasets.
     """
 
     def __init__(self, matching: MatchingABC):
