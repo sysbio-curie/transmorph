@@ -12,3 +12,15 @@ def test_nearest_neighbors():
     nearest_neighbors(X)
     nearest_neighbors(X, use_nndescent=True)
     nearest_neighbors(X, Y)
+
+
+def test_vertex_cover():
+    pass
+
+
+def test_pca():
+    pass
+
+
+def test_pca_multi():
+    pass
