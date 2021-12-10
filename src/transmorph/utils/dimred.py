@@ -35,7 +35,7 @@ def pca(
     pca = PCA(n_components=n_components)
     pca.fit(X)
     if return_transformation:
-        return pca.transform(X), pca.components_
+        return pca.transform(X), pca.components_.T
     return pca.transform(X)
 
 
@@ -114,7 +114,7 @@ def pca_multi(
         )
         datasets = [X_ref_pca]
         for X in Xs[1:]:
-            datasets.append(X @ components)
+            datasets.append((X - X.mean(axis=0)) @ components)
         if return_transformation:
             return (datasets, components)
         return datasets
