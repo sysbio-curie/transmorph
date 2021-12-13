@@ -8,6 +8,8 @@ from typing import Callable, Union
 
 import numpy as np
 
+from ..TData import TData
+
 
 class MatchingPartialOT(MatchingABC):
     """
@@ -62,10 +64,10 @@ class MatchingPartialOT(MatchingABC):
         self.metric_kwargs = metric_kwargs
         self.max_iter = int(max_iter)
 
-    def _match2(self, x1: np.ndarray, x2: np.ndarray):
-        n1, n2 = x1.shape[0], x2.shape[0]
+    def _match2(self, t1: TData, t2: TData):
+        n1, n2 = t1.X.shape[0], t2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M = cdist(x1, x2, metric=self.metric, **self.metric_kwargs)
+        M = cdist(t1.X, t2.X, metric=self.metric, **self.metric_kwargs)
         M /= M.max()
         transport_mass = min(self.transport_mass, min(w1.sum(), w2.sum()))
         return partial_wasserstein(
