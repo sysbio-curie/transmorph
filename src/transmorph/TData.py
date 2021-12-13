@@ -15,8 +15,8 @@ class TData:
         self,
         X: np.ndarray,
         metric: Optional[str],
-        metric_kwarg: Optional[Dict],
-        geodesic_distance: Optional[bool],
+        metric_kwarg: Optional[Dict] = {},
+        geodesic_distance: Optional[bool] = False,
     ):
         self.X = X
         if metric:

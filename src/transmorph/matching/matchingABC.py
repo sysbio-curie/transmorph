@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
 from abc import ABC, abstractmethod
+import copy
 from scipy.sparse import csr_matrix
 
 import numpy as np
 from typing import Union, List
 
-from src.transmorph.TData import TData
+from transmorph.TData import TData
 
 
 class MatchingABC(ABC):
@@ -132,16 +133,19 @@ class MatchingABC(ABC):
         *datasets: list of datasets
             List of at least two datasets.
         """
-        self.datasets = datasets.copy()
+        self.datasets = copy.deepcopy(datasets)
+        if isinstance(self.datasets, TData):
+            self.datasets = [self.datasets]
+
         self.n_datasets = len(self.datasets)
         self.reference = reference
         self.use_reference = reference is not None
         self.fitted = False
         self.matchings = []
-        nd = len(datasets)
+        nd = len(self.datasets)
         if self.use_reference:
             assert nd > 0, "Error: at least 1 dataset required."
-            for di in datasets:
+            for di in self.datasets:
                 matching = self._match2(di, self.reference)
                 if self.use_sparse and type(matching) is np.ndarray:
                     matching = csr_matrix(matching, shape=matching.shape)

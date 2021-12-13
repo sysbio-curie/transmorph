@@ -8,7 +8,7 @@ from typing import Callable, Union
 
 import numpy as np
 
-from src.transmorph.TData import TData
+from transmorph.TData import TData
 
 
 class MatchingEMD(MatchingABC):

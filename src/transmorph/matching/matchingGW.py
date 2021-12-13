@@ -5,7 +5,7 @@ from ot.gromov import gromov_wasserstein
 import numpy as np
 
 from .matchingABC import MatchingABC
-from src.transmorph.TData import TData
+from transmorph.TData import TData
 
 
 class MatchingGW(MatchingABC):

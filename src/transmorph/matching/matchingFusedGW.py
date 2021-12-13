@@ -9,7 +9,7 @@ import numpy as np
 
 from .matchingABC import MatchingABC
 
-from src.transmorph.TData import TData
+from transmorph.TData import TData
 
 
 class MatchingFusedGW(MatchingABC):
@@ -63,8 +63,10 @@ class MatchingFusedGW(MatchingABC):
         """
         n1, n2 = t1.X.shape[0], t2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M, C1, C2 = self._compute_di(t1.X, t2.X)
+        M = self._compute_di(t1.X, t2.X)
+        C1 = t1.D
         C1 /= C1.max()
+        C2 = t2.D
         C2 /= C2.max()
         return fused_gromov_wasserstein(
             M,
