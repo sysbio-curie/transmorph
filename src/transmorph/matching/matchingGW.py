@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 
 from ot.gromov import gromov_wasserstein
-from scipy.spatial.distance import cdist
-from typing import Union, Callable
 
 import numpy as np
 
 from .matchingABC import MatchingABC
+from src.transmorph.TData import TData
 
 
 class MatchingGW(MatchingABC):
@@ -56,23 +55,19 @@ class MatchingGW(MatchingABC):
     def __init__(
         self,
         # geodesic: bool = True,
-        metric: Union[str, Callable] = "sqeuclidean",
-        metric_kwargs: dict = {},
         loss: str = "square_loss",
         max_iter: int = int(1e6),
         use_sparse: bool = True,
     ):
         MatchingABC.__init__(self, use_sparse=use_sparse)
-        self.metric = metric
-        self.metric_kwargs = metric_kwargs
         self.loss = loss
         self.max_iter = int(max_iter)
 
-    def _match2(self, x1, x2):
-        n1, n2 = x1.shape[0], x2.shape[0]
+    def _match2(self, t1: TData, t2: TData):
+        n1, n2 = t1.X.shape[0], t2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M1 = cdist(x1, x1, metric=self.metric, **self.metric_kwargs)
+        M1 = t1.D.copy()
         M1 /= M1.max()
-        M2 = cdist(x2, x2, metric=self.metric, **self.metric_kwargs)
+        M2 = t2.D.copy()
         M2 /= M2.max()
         return gromov_wasserstein(M1, M2, w1, w2, self.loss)

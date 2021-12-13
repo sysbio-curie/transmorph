@@ -3,6 +3,7 @@
 from typing import Union, Callable
 
 from .matchingABC import MatchingABC
+from ..TData import TData
 from ..utils import nearest_neighbors
 
 
@@ -40,10 +41,10 @@ class MatchingMNN(MatchingABC):
         self.metric_kwargs = metric_kwargs
         self.n_neighbors = n_neighbors
 
-    def _match2(self, x1, x2):
+    def _match2(self, t1: TData, t2: TData):
         return nearest_neighbors(
-            x1,
-            Y=x2,
+            t1.X,
+            Y=t2.X,
             metric=self.metric,
             metric_kwargs=self.metric_kwargs,
             n_neighbors=self.n_neighbors,

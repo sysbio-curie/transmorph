@@ -57,19 +57,19 @@ class MergingBarycenter(MergingABC):
         assert reference is not None
         output = np.zeros(
             (
-                reference.shape[0]
+                reference.X.shape[0]
                 + sum(dataset.shape[0] for dataset in matching.datasets),
-                reference.shape[1],
+                reference.X.shape[1],
             )
         )
-        output[: reference.shape[0]] = reference
-        offset = reference.shape[0]
+        output[: reference.X.shape[0]] = reference.X
+        offset = reference.X.shape[0]
         for k, dataset in enumerate(matching.datasets):
-            n = dataset.shape[0]
+            n = dataset.X.shape[0]
             T = matching.get_matching(k, normalize=True)
             if type(T) is csr_matrix:
                 T = T.toarray()
-            projection = T @ reference
+            projection = T @ reference.X
             output[offset : offset + n] = projection
             offset += n
         return output

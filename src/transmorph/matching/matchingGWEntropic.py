@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 from ot.gromov import entropic_gromov_wasserstein
-from scipy.spatial.distance import cdist
 from typing import Union, Callable
 
 import numpy as np
 
 from .matchingABC import MatchingABC
+from src.transmorph.TData import TData
 
 
 class MatchingGWEntropic(MatchingABC):
@@ -72,12 +72,12 @@ class MatchingGWEntropic(MatchingABC):
         self.loss = loss
         self.max_iter = int(max_iter)
 
-    def _match2(self, x1: np.ndarray, x2: np.ndarray):
-        n1, n2 = x1.shape[0], x2.shape[0]
+    def _match2(self, t1: TData, t2: TData):
+        n1, n2 = t1.X.shape[0], t2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M1 = cdist(x1, x1, metric=self.metric, **self.metric_kwargs)
+        M1 = t1.D.copy()
         M1 /= M1.max()
-        M2 = cdist(x2, x2, metric=self.metric, **self.metric_kwargs)
+        M2 = t2.D.copy()
         M2 /= M2.max()
         return entropic_gromov_wasserstein(
             M1, M2, w1, w2, self.loss, self.epsilon, max_iter=self.max_iter

@@ -9,13 +9,3 @@ repos:
     hooks:
     - id: flake8
       entry: flake8 --ignore=E203,W503
--   repo: local
-    hooks:
-    -   id: pytest
-        name: pytest
-        entry: /home/risitop/.local/share/virtualenvs/transmorph_local-9qMrZcwm/bin/pytest --testmon
-        language: python
-        pass_filenames: false
-        always_run: true
-        additional_dependencies:
-            - pynndescent
