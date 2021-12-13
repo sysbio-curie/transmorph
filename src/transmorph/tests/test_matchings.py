@@ -12,6 +12,7 @@ from ..matching import (
     MatchingGW,
     MatchingGWEntropic,
     MatchingMNN,
+    MatchingPartialOT,
     MatchingFusedGW,
 )
 
@@ -80,3 +81,10 @@ def test_MatchingFusedGW():
     Fused Gromov-Wasserstein-based matching
     """
     _generic_matching_test(MatchingFusedGW)
+
+
+def test_MatchingPartialOT():
+    """
+    Partial OT-based matching
+    """
+    _generic_matching_test(MatchingPartialOT)

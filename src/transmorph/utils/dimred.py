@@ -9,7 +9,7 @@ from sklearn.decomposition import PCA
 
 def pca(
     X: np.ndarray, n_components: int = 2, return_transformation: bool = False
-) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+) -> Union[np.ndarray, Tuple[np.ndarray, PCA]]:
     """
     Small wrapper for sklearn.decomposition.PCA
 
@@ -22,7 +22,7 @@ def pca(
         Number of principal components to use. If > d, then it is set to d.
 
     return_transformation: bool, default = False
-        Return the components matrix together with the transformed dataset.
+        Return the sklearn PCA object together with the transformed dataset.
     """
     assert n_components > 0, "Number of components must be positive."
     n, d = X.shape
@@ -35,7 +35,7 @@ def pca(
     pca = PCA(n_components=n_components)
     pca.fit(X)
     if return_transformation:
-        return pca.transform(X), pca.components_.T
+        return pca.transform(X), pca
     return pca.transform(X)
 
 
@@ -44,7 +44,9 @@ def pca_multi(
     n_components: int = 2,
     strategy: str = "concatenate",
     return_transformation: bool = False,
-) -> Union[List[np.ndarray], Tuple[List[np.ndarray], np.ndarray]]:
+) -> Union[
+    List[np.ndarray], Tuple[List[np.ndarray], PCA], Tuple[List[np.ndarray], np.ndarray]
+]:
     """
     Embeds a set of datasets in a common PC space, following one of the following
     strategies:
@@ -75,7 +77,10 @@ def pca_multi(
         'composite' and 'independent'
 
     return_transformation: bool = False
-        If strategy != 'independent', returns the transform matrix.
+        If strategy == 'independent', throws an error.
+        If strategy in 'reference', 'concatenate', returns the
+            sklearn PCA object.
+        If strategy == 'composite', returns the transformation matrix.
     """
     assert len(Xs) > 0, "No datasets provided."
     if len(Xs) == 1:
@@ -91,38 +96,33 @@ def pca_multi(
             X.shape[1] == d for X in Xs
         ), "All datasets must be of similar dimensionality."
     if strategy == "concatenate":
-        pc_result = pca(
+        embeddings, pca_object = pca(
             np.concatenate(Xs, axis=0),
             n_components=n_components,
-            return_transformation=return_transformation,
+            return_transformation=True,
         )
-        Xs_pca, components = None, None
-        if return_transformation:
-            Xs_pca, components = pc_result
-        else:
-            Xs_pca = pc_result
         offset, datasets = 0, []
         for X in Xs:
-            datasets.append(Xs_pca[offset : offset + X.shape[0]])
+            datasets.append(embeddings[offset : offset + X.shape[0]])
             offset += X.shape[0]
         if return_transformation:
-            return (datasets, components)
+            return datasets, pca_object
         return datasets
     elif strategy == "reference":
-        X_ref_pca, components = pca(
+        X_ref_pca, pc_object = pca(
             Xs[0], n_components=n_components, return_transformation=True
         )
         datasets = [X_ref_pca]
         for X in Xs[1:]:
-            datasets.append((X - X.mean(axis=0)) @ components)
+            datasets.append(pc_object.transform(X))
         if return_transformation:
-            return (datasets, components)
+            return datasets, pc_object
         return datasets
     elif strategy == "composite":
         total_pca = np.zeros((Xs[0].shape[1], n_components))
         for X in Xs:
             _, transform = pca(X, n_components=n_components, return_transformation=True)
-            total_pca += transform
+            total_pca += transform.components_.T
         total_pca /= len(Xs)
         datasets = [X @ total_pca for X in Xs]
         if return_transformation:

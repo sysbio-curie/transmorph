@@ -126,7 +126,7 @@ def nearest_neighbors(
 
     else:
 
-        # Classical exact MNN
+        # Classical exact kNN
         nn = NearestNeighbors(
             n_neighbors=n_neighbors,
             metric=metric,
@@ -169,7 +169,7 @@ def vertex_cover(adjacency: csr_matrix, hops: int = 1) -> Tuple[np.ndarray, np.n
         cover: Boolean vector representing belonging to the cover
         mapping: mapping[i] is the index of the node covering node i.
     """
-    assert hops > 0, "Hops must be positive."
+    assert hops >= 0, "Hops must be non-negative."
     if hops == 0:
         n = adjacency.shape[0]
         cover, mapping = np.ones(n), np.arange(n)
