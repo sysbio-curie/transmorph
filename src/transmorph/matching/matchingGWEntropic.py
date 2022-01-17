@@ -47,6 +47,8 @@ class MatchingGWEntropic(MatchingABC):
     use_sparse: boolean, default = True
         Save matching as sparse matrices.
 
+    low_cut:
+
     References
     ----------
     [1] Gabriel Peyré, Marco Cuturi, and Justin Solomon,
@@ -63,6 +65,7 @@ class MatchingGWEntropic(MatchingABC):
         loss: str = "square_loss",
         max_iter: int = int(1e6),
         use_sparse: bool = True,
+        low_cut: float = 1e-3,
     ):
         MatchingABC.__init__(self, use_sparse=use_sparse)
         self.geodesic = geodesic
@@ -71,6 +74,7 @@ class MatchingGWEntropic(MatchingABC):
         self.epsilon = epsilon
         self.loss = loss
         self.max_iter = int(max_iter)
+        self.low_cut = low_cut
 
     def _match2(self, x1: np.ndarray, x2: np.ndarray):
         n1, n2 = x1.shape[0], x2.shape[0]
@@ -79,6 +83,10 @@ class MatchingGWEntropic(MatchingABC):
         M1 /= M1.max()
         M2 = cdist(x2, x2, metric=self.metric, **self.metric_kwargs)
         M2 /= M2.max()
-        return entropic_gromov_wasserstein(
+        T = entropic_gromov_wasserstein(
             M1, M2, w1, w2, self.loss, self.epsilon, max_iter=self.max_iter
         )
+        if self.use_sparse:
+            low_cut = self.low_cut / n1
+            T = T * (T > low_cut)
+        return T

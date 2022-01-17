@@ -49,7 +49,7 @@ class MergingABC(ABC):
                 f"dataset(s) for {matching.n_matchings} matching(s)."
             )
         else:
-            n_matchings = (n_datasets - 1) * (n_datasets - 2) / 2
+            n_matchings = (n_datasets) * (n_datasets - 1) / 2
             assert n_matchings == matching.n_matchings, (
                 "Error: Inconsistent number of matchings and datasets "
                 f"for merging strategy without reference. Found {n_datasets} "

@@ -19,7 +19,6 @@ class MatchingEMD(MatchingABC):
     ot.emd solves exactly the earth mover's distance problem using
     a C-accelerated backend. Both datasets need to be in the same
     space in order to compute a cost matrix.
-    TODO: allow the user to define a custom callable metric?
 
     Parameters
     ----------

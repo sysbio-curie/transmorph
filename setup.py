@@ -25,6 +25,7 @@ setuptools.setup(
     install_requires=[
         "numpy<1.21,>=1.17",
         "pot",
+        "pymde",
         "pynndescent",
         "scikit-learn",
         "scipy",

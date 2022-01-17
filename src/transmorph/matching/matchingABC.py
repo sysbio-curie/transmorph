@@ -109,7 +109,7 @@ class MatchingABC(ABC):
         if normalize:
             normalizer = T.sum(axis=1)
             normalizer[normalizer == 0.0] = 1.0
-            return T / normalizer
+            return csr_matrix(T / normalizer)  # / returns a np.matrix
         return T
 
     def get_reference(self):

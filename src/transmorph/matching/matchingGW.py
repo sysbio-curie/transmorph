@@ -75,4 +75,4 @@ class MatchingGW(MatchingABC):
         M1 /= M1.max()
         M2 = cdist(x2, x2, metric=self.metric, **self.metric_kwargs)
         M2 /= M2.max()
-        return gromov_wasserstein(M1, M2, w1, w2, self.loss)
+        return gromov_wasserstein(M1, M2, w1, w2, self.loss, numItermax=self.max_iter)

@@ -2,5 +2,6 @@
 
 from .mergingBarycenter import MergingBarycenter
 from .mergingLinearCorrection import MergingLinearCorrection
+from .mergingMDI import MergingMDI
 
-__all__ = ["MergingBarycenter", "MergingLinearCorrection"]
+__all__ = ["MergingBarycenter", "MergingLinearCorrection", "MergingMDI"]
