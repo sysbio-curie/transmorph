@@ -4,6 +4,8 @@
 from abc import abstractmethod
 from typing import List
 
+from scipy.sparse.csr import csr_matrix
+
 from transmorph.TData import TData
 from transmorph.matching.matchingABC import MatchingABC
 
@@ -17,10 +19,13 @@ class TransmorphLayer:
         self,
         type_: str = "undefined",
         compatible_types=[],
+        maximum_inputs: int = -1,
         maximum_outputs: int = -1,
     ) -> None:
         self.type = type_
+        self.input_layers = []
         self.output_layers = []
+        self.maximum_inputs = maximum_inputs
         self.maximum_outputs = maximum_outputs
         self.compatible_types = compatible_types
         self.output_data = None
@@ -30,15 +35,20 @@ class TransmorphLayer:
         assert (
             len(self.output_layers) < self.maximum_outputs or self.maximum_outputs == -1
         ), f"Error: too many output layers. Maximum: {self.maximum_outputs}"
+        assert (
+            len(t.input_layers) < t.maximum_outputs or t.maximum_outputs == -1
+        ), f"Error: too many input layers. Maximum: {t.maximum_outputs}"
         self.output_layers.append(t)
+        t.input_layers.append(self)
 
     def iter_outputs(self):
         for layer in self.output_layers:
             yield layer
 
     @abstractmethod
-    def run(self, input_layers):
-        pass
+    def run(self, datasets):
+        for layer in self.input_layers:
+            layer.run()
 
 
 class LayerInput(TransmorphLayer):
@@ -47,19 +57,13 @@ class LayerInput(TransmorphLayer):
     """
 
     def __init__(self) -> None:
-        super().__init__("input", [LayerMatching], 1)
+        super().__init__("input", [LayerMatching], 0, -1)
 
-    def load_datasets(self, datasets: List[TData]):
+    def run(self, datasets):
         """
         TODO
         """
         self.output_data = [d for d in datasets]
-
-    def run(self, input_layers):
-        """
-        TODO
-        """
-        assert len(input_layers) == 0, "Input layers cannot have predecessors."
 
 
 class LayerMatching(TransmorphLayer):
@@ -75,12 +79,15 @@ class LayerMatching(TransmorphLayer):
         )
         self.matching = matching
 
-    def run(self, input_layers):
+    def get_datasets(self):
+        return self.matching.datasets
+
+    def run(self, datasets):
         """
         TODO
         """
-        assert len(input_layers) == 1, "Matching layer must have only one input."
-        input_layer = input_layers[0]
+        TransmorphLayer.run(self, datasets)
+        input_layer = self.input_layers[0]
         T = self.matching.fit(input_layer.output_data)
         self.output_data = T
 
@@ -90,24 +97,52 @@ class LayerCombineMatching(TransmorphLayer):
     TODO
     """
 
-    def __init__(self) -> None:
+    def __init__(self, mode: str) -> None:
         super().__init__(
             "combine_matching",
             [LayerMerging, LayerCombineMatching],
             1,
         )
+        assert mode in ["additive", "multiplicative", "intersection"], (
+            f"Unknown mode {mode}. Expected 'additive', 'multiplicative' or"
+            "'intersection'."
+        )
+        self.datasets = []
+        self.mode = mode
 
-    def run(self, input_layers):
+    def get_datasets(self):
+        return self.datasets
+
+    def normalize(self, T_matching):
         """
         TODO
         """
-        assert len(input_layers) > 0, "At least one input layer required."
+        T_matching = csr_matrix(T_matching / T_matching.sum(axis=1))
+        return T_matching + T_matching.T - T_matching.multiply(T_matching)
+
+    def run(self, datasets):
+        """
+        TODO
+        """
+        TransmorphLayer.run(self, datasets)
+        input_layers = self.input_layers
         assert all(
             type(layer) is LayerMatching or type(layer) is LayerCombineMatching
             for layer in input_layers
         ), "At least one input layer is not of Matching type."
-        Ts = [layer.output_data for layer in input_layers]
-        print(Ts)
+        Ts = [self.normalize(layer.output_data.copy()) for layer in input_layers]
+        self.output_data = Ts[0]
+        if self.mode == "additive":
+            for T in Ts[1:]:
+                self.output_data += T
+        if self.mode == "multiplicative":
+            for T in Ts[1:]:
+                self.output_data = self.output_data.multiply(T)
+        if self.mode == "intersection":
+            for T in Ts[1:]:
+                self.output_data = self.output_data.minimum(T)
+        self.output_data = self.normalize(self.output_data)
+        self.datasets = input_layers[0].get_datasets()
 
 
 class LayerMerging(TransmorphLayer):
@@ -115,8 +150,20 @@ class LayerMerging(TransmorphLayer):
     TODO
     """
 
-    def __init__(self) -> None:
-        super().__init__("merging", [LayerMatching, LayerChecking])
+    def __init__(self, merging, datasets) -> None:
+        super().__init__("merging", [LayerMatching, LayerChecking, LayerOutput])
+        self.datasets = datasets
+        self.merging = merging
+
+    def run(self, datasets):
+        TransmorphLayer.run(self, datasets)
+        X_final = self.merging.transform()  # TODO: link with previous matching
+        self.output_data = []
+        offset = 0
+        for dataset in self.datasets:
+            n_obs = dataset.n_obs
+            self.output_data.append(X_final[offset : offset + n_obs])
+            offset += n_obs
 
 
 class LayerChecking(TransmorphLayer):
@@ -124,8 +171,24 @@ class LayerChecking(TransmorphLayer):
     TODO
     """
 
-    def __init__(self) -> None:
+    def __init__(self, checking) -> None:
         super().__init__("checking", [LayerMatching, LayerOutput], 2)
+        self.valid = False
+        self.checking = checking
+
+    def run(self, datasets):
+        self.input_layers[0].run(datasets)
+        self.valid = self.checking.check(self.input_layers[0].output_data.copy())
+        if not self.valid:
+            previous_input = self.output_layers[
+                0
+            ].input_layers  # We temporarily rewire the loop
+            self.output_layers[0].input_layers = [self]
+            while not self.valid:
+                self.output_data = self.input_layers[0].output_data
+                self.input_layers[0].run(datasets)
+            self.output_layers[0].input_layers = previous_input  # We restore the links
+        self.output_data = self.input_layers[0].output_data
 
 
 class LayerOutput(TransmorphLayer):
@@ -135,6 +198,10 @@ class LayerOutput(TransmorphLayer):
 
     def __init__(self) -> None:
         super().__init__("output", [], 0)
+
+    def run(self, datasets):
+        TransmorphLayer.run(self, datasets)
+        self.output_data = self.input_layers[0].output_data.copy()
 
 
 class TransmorphPipeline:
@@ -172,4 +239,5 @@ class TransmorphPipeline:
         """
         TODO
         """
-        pass
+        for output_layer in self.output_layers:
+            output_layer.run()
