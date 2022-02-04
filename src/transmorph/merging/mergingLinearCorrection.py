@@ -85,7 +85,7 @@ class MergingLinearCorrection(MergingABC):
             "barycentric merging."
         )
         assert all(
-            dataset.shape[1] == reference.shape[1] for dataset in matching.datasets
+            dataset.X.shape[1] == reference.X.shape[1] for dataset in matching.datasets
         ), (
             "Error: Cannot use"
             " LinearCorrection to merge datasets from different"
@@ -140,7 +140,7 @@ class MergingLinearCorrection(MergingABC):
         output = np.zeros(
             (
                 reference.X.shape[0]
-                + sum(dataset.shape[0] for dataset in matching.datasets),
+                + sum(dataset.X.shape[0] for dataset in matching.datasets),
                 reference.X.shape[1],
             )
         )

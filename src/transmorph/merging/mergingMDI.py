@@ -7,6 +7,8 @@ import pymde
 from pymde.preprocess import Graph
 from scipy.sparse import csr_matrix, coo_matrix
 
+from transmorph.utils.dimred import pca
+
 from .mergingABC import MergingABC
 from ..matching.matchingABC import MatchingABC
 from ..utils import nearest_neighbors
@@ -39,9 +41,9 @@ def combine_matchings(
         data += list(knn_graph.data)
         # Matchings
         offset_j = 0
-        ni = matching.datasets[i].shape[0]
+        ni = matching.datasets[i].X.shape[0]
         for j in range(matching.n_datasets):
-            nj = matching.datasets[j].shape[0]
+            nj = matching.datasets[j].X.shape[0]
             if i >= j:
                 offset_j += nj
                 continue
@@ -126,9 +128,11 @@ class MergingMDI(MergingABC):
         embedding_dimension: int = 2,
         initialization: str = "quadratic",
         n_neighbors: int = 10,
+        n_pcs: int = -1,
         knn_metric: str = "sqeuclidean",
         knn_metric_kwargs: dict = {},
         repulsive_fraction: float = 1.0,
+        concentration: float = 1.0,
         device: str = "cpu",
         verbose: bool = False,
     ):
@@ -136,9 +140,11 @@ class MergingMDI(MergingABC):
         self.embedding_dimension = embedding_dimension
         self.initialization = initialization
         self.n_neighbors = n_neighbors
+        self.n_pcs = n_pcs
         self.knn_metric = knn_metric
         self.knn_metric_kwargs = knn_metric_kwargs
         self.repulsive_fraction = repulsive_fraction
+        self.concentration = concentration
         self.device = device
         self.verbose = verbose
 
@@ -151,9 +157,13 @@ class MergingMDI(MergingABC):
     def transform(self) -> np.ndarray:
         inner_graphs = []
         for dataset in self.matching.datasets:
+            X = dataset.X
+            if self.n_pcs >= 0:
+                assert self.n_pcs <= X.shape[1]
+                X = pca(X, n_components=self.n_pcs)
             inner_graphs.append(
                 nearest_neighbors(
-                    dataset,
+                    X,
                     n_neighbors=self.n_neighbors,
                     metric=self.knn_metric,
                     metric_kwargs=self.knn_metric_kwargs,
@@ -162,9 +172,14 @@ class MergingMDI(MergingABC):
                 )
             )
         edges = combine_matchings(self.matching, inner_graphs)
-        edges.data = (
-            1 - edges.data + 1e-8
-        )  # TODO: improve conversion weight -> distance
+        edges.data = np.clip(edges.data, 0.0, 1.0)
+        edges = edges + edges.T - edges.multiply(edges.T)  # symmetrize
+        edges.data[edges.data == 0] = 1e-9
+        # Gaussian model
+        # pij = exp(-dij**2 * lambda)
+        # iff dij = sqrt(-ln(pij) / lambda)
+        # + epsilon to stabilize MDE solver
+        edges.data = np.sqrt(-np.log(edges.data) / self.concentration) + 1e-9
         mde = pymde.preserve_neighbors(
             Graph(edges),
             embedding_dim=self.embedding_dimension,

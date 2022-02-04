@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 
 from abc import ABC, abstractmethod
-import copy
 from scipy.sparse import csr_matrix
 
 import numpy as np
-from typing import Union, List
+from typing import Iterable, Tuple, Union, List
 
 from transmorph.TData import TData
 
@@ -23,52 +22,135 @@ class MatchingABC(ABC):
 
     Parameters
     ----------
-    use_sparse: boolean, default = True
-        Save matchings as sparse matrices.
-
     use_reference: int, default = -1
         When matching, use the dataset i as the reference for matching. In this
         case, self.matchings will contain n - 1 matchings, where matching[k] is
         the matching between k and i if k < i and between k + 1 and i if k > i.
 
+    metadata_needed: List[str], default = []
+        TData.metadata keywords needed by the matching method.
+
     Attributes
     ----------
+    datasets: List[TData]
+        Datasets the matching has been fitted with.
+
     fitted: boolean
         Is true if match() method has been successfully exectuted.
 
+    n_datasets: int
+        Number of TData used during fitting.
+
+    n_matchings: int
+        Number of matchings between datasets. Is equal to n_datasets - 1 if
+        matching is referenced, (2 choose n_datasets) otherwise.
+
     matchings: list of arrays
-        After calling match(x0, ..., xn), matching[i(i-1)/2+j] contains the
+        After calling match(x0, ..., xn), list of matchings. If matching is
+        referenced, matching[i] contains matching between datasets[i] and
+        reference dataset. Otherwise, matching[i(i-1)/2+j] contains the
         matching between xi and xj (with i > j).
+
+    reference: TData
+        If matching is referenced, contains a link to the reference TData.
     """
 
     def __init__(
         self,
         use_sparse: bool = True,
+        metadata_needed: List[str] = [],
     ):
-        self.fitted = False
         self.datasets = []
+        self.fitted = False
         self.n_datasets = 0
-        self.matchings = []
         self.n_matchings = 0
-        self.use_sparse = use_sparse
-        self.use_reference = False
+        self.matchings = []
+        self.metadata_needed = metadata_needed
         self.reference = None
+        self.use_reference = False
+
+    def _check_input(self, t: TData) -> bool:
+        """
+        Checks if a TData is eligible for the given matching. By default, only
+        checks if the parameter is a TData and if it contains required metadata.
+        Can be inherited or overrode when implementing matchings.
+
+        Parameters
+        ----------
+        t: TData
+            TData object to check
+
+        Returns
+        -------
+        Whether $t is a valid TData object for the current matching.
+        """
+        if type(t) is not TData:
+            print("Error: TData expected.")
+            return False
+        for key in self.metadata_needed:
+            if key not in t.metadata:
+                print(f"Error: missing metadata {key}.")
+                return False
+        return True
+
+    def _preprocess(self, t1: TData, t2: TData) -> Tuple[TData, TData]:
+        """
+        Preprocessing pipeline of pairs of datasets prior to matching. By
+        default, identity mapping. Can be overrode when implementing matchings.
+
+        Parameters
+        ----------
+        t1: TData
+            Source dataset in the matching.
+
+        t2: TData
+            Reference dataset in the matching.
+
+        Returns
+        -------
+        Preprocessed representations of $t1 and $t2.
+        """
+        return t1, t2  # Default: identity mapping
 
     @abstractmethod
-    def _match2(self, t1: TData, t2: TData) -> np.ndarray:
+    def _match2(self, t1: TData, t2: TData) -> Union[csr_matrix, np.ndarray]:
+        """
+        Returns a discrete matching T between $t1 and $t2. In this matching,
+        T[i,j] is the matching strength between $t1[i] and $t2[j], the higher
+        the more probable the correspondence is. There is no requirement such
+        that being a probabilistic or boolean matching.
+
+        This method *must* be implemented in every MatchingABC implementation.
+
+        Parameters
+        ----------
+        t1: TData
+            Source dataset
+
+        t2: TData
+            Reference dataset
+
+        Returns
+        -------
+        Possibly sparse matching T of size #t1, #t2.
+        """
         pass
 
-    def iter_datasets(self):
+    def iter_datasets(self) -> Iterable[TData]:
+        """
+        Use this iterator to iterate over datasets.
+        """
         for dataset in self.datasets:
             yield dataset
 
-    def get_dataset(self, i: int):
+    def get_dataset(self, i: int) -> TData:
+        """
+        Returns dataset at the i-th position.
+        """
         assert i < self.n_datasets, "Error: dataset index out of bounds."
         return self.datasets[i]
 
-    def get_matching(
-        self, i: int, j: int = -1, normalize: bool = False
-    ) -> Union[np.ndarray, csr_matrix]:
+    def get_matching(self, i: int, j: int = -1, normalize: bool = False) -> csr_matrix:
         """
         Return the matching between datasets i and j. Throws an error
         if matching is not fitted, or if i == j.
@@ -92,7 +174,7 @@ class MatchingABC(ABC):
         """
         assert self.fitted, "Error: matching not fitted, call match() first."
         assert i != j, "Error: i = j."
-        transpose = j != -1 and j < i
+        transpose = j != -1 and j < i  # We only store matchings for i < j
         if transpose:
             i, j = j, i
         if self.use_reference:
@@ -103,20 +185,12 @@ class MatchingABC(ABC):
         assert index < len(self.matchings), f"Index ({i}, {j}) is out of bounds."
         T = self.matchings[index]
         if transpose:
-            if type(T) == np.ndarray:
-                T = T.T
-            elif type(T) == csr_matrix:
-                T = csr_matrix(T.transpose())  # Cast necessary (avoids CSC)
-            else:
-                raise NotImplementedError
+            T = csr_matrix(T.transpose())  # Cast necessary (avoids CSC)
         if normalize:
             normalizer = T.sum(axis=1)
             normalizer[normalizer == 0.0] = 1.0
-            return csr_matrix(T / normalizer)  # / returns a np.matrix
+            T = csr_matrix(T / normalizer)  # / returns a np.matrix
         return T
-
-    def get_reference(self):
-        return self.reference
 
     def fit(
         self,
@@ -124,40 +198,47 @@ class MatchingABC(ABC):
         reference: TData = None,
     ) -> List[np.ndarray]:
         """
-        Matches all pairs of different datasets together. Returns results
-        in a dictionary, where d[i,j] is the matching between datasets i
-        and j represented as a (ni, nj) numpy array -- possibly fuzzy.
+        Computes the matching between a set of TData. Should not be overrode in
+        the implementation in order to ensure compatibility between Matching and
+        all Mergings.
 
         Parameters:
         -----------
-        *datasets: list of datasets
-            List of at least two datasets.
-        """
-        self.datasets = copy.deepcopy(datasets)
-        if isinstance(self.datasets, TData):
-            self.datasets = [self.datasets]
+        *datasets: List[TData]
+            List of datasets.
 
+        reference: TData, default = None
+            Optional reference dataset. If left empty, all $datasets are matched
+            between one another.
+        """
+        if reference is not None:  # By convention, reference dataset is put on head
+            self.reference = reference
+            self.datasets = [reference] + datasets
+        else:
+            self.datasets = datasets
+        for dataset in self.datasets:
+            assert self._check_input(dataset)
         self.n_datasets = len(self.datasets)
         self.reference = reference
         self.use_reference = reference is not None
         self.fitted = False
         self.matchings = []
         nd = len(self.datasets)
-        if self.use_reference:
-            assert nd > 0, "Error: at least 1 dataset required."
+        if reference is not None:
+            assert nd > 1, "Error: at least 1 dataset required."
             for di in self.datasets:
-                matching = self._match2(di, self.reference)
-                if self.use_sparse and type(matching) is np.ndarray:
+                t1, t2 = self._preprocess(di, reference)
+                matching = self._match2(t1, t2)
+                if type(matching) is np.ndarray:
                     matching = csr_matrix(matching, shape=matching.shape)
-                if not self.use_sparse and type(matching) is csr_matrix:
-                    matching = matching.toarray()
                 self.matchings.append(matching)
         else:
             assert nd > 1, "Error: at least 2 datasets required."
-            for j, dj in enumerate(datasets):
-                for di in datasets[:j]:
-                    matching = self._match2(di, dj)
-                    if self.use_sparse:
+            for j, dj in enumerate(self.datasets):
+                for di in self.datasets[:j]:
+                    t1, t2 = self._preprocess(di, dj)
+                    matching = self._match2(t1, t2)
+                    if type(matching) is np.ndarray:
                         matching = csr_matrix(matching, shape=matching.shape)
                     self.matchings.append(matching)
         self.n_matchings = len(self.matchings)

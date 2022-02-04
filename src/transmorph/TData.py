@@ -1,23 +1,34 @@
-from typing import Optional, Dict
+from typing import Dict
 
 import numpy as np
-from scipy.spatial.distance import cdist
 
 
 class TData:
     """
-    Class that contains the object representing our data.
-    In this class, you can find the gene expression matrices and
-    also the distance matrix between samples.
+    Wrapper for a vectorized dataset.
+
+    Parameters
+    ----------
+    X: np.ndarray
+        Vectorized dataset of shape (n_samples, n_features).
+
+    metadata: Dict, default = {}
+        Additional key->data information to provide, necessary for
+        some matchings.
+
+    Example
+    -------
+    >>> import numpy as np
+    >>> import transmorph as tr
+    >>> X = np.ndarray([[2, 1], [1, 1], [-1, 3]])
+    >>> metadata = {"type": ["dog", "dog", "cat"]}
+    >>> td = tr.TData(X, metadata=metadata)
     """
 
-    def __init__(
-        self,
-        X: np.ndarray,
-        metric: Optional[str],
-        metric_kwarg: Optional[Dict] = {},
-        geodesic_distance: Optional[bool] = False,
-    ):
+    def __init__(self, X: np.ndarray, metadata: Dict = {}):
         self.X = X
-        if metric:
-            self.D = cdist(X, X, metric=metric, **metric_kwarg)
+        self.metadata = metadata
+        self.shape = self.X.shape
+
+    def __str__(self):
+        return f"<TData {self.shape}>"

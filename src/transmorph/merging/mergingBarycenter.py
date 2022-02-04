@@ -58,7 +58,7 @@ class MergingBarycenter(MergingABC):
         output = np.zeros(
             (
                 reference.X.shape[0]
-                + sum(dataset.shape[0] for dataset in matching.datasets),
+                + sum(dataset.X.shape[0] for dataset in matching.datasets),
                 reference.X.shape[1],
             )
         )

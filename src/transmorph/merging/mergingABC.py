@@ -41,21 +41,29 @@ class MergingABC(ABC):
             " method Matching.fit([datasets], reference=None) is necessary."
         )
         n_datasets = matching.n_datasets
+        n_matchings = matching.n_matchings
         assert n_datasets > 0, "Error: No datasets found for merging."
-        if self.use_reference:
-            assert n_datasets == matching.n_matchings, (
-                "Error: Inconsistent number of matchings and datasets "
-                f"for merging strategy using a reference. Found {n_datasets} "
-                f"dataset(s) for {matching.n_matchings} matching(s)."
-            )
-        else:
-            n_matchings = (n_datasets) * (n_datasets - 1) / 2
-            assert n_matchings == matching.n_matchings, (
-                "Error: Inconsistent number of matchings and datasets "
-                f"for merging strategy without reference. Found {n_datasets} "
-                f"dataset(s) for {matching.n_matchings} matching(s) "
-                f"(expected {n_matchings})."
-            )
+        valid_n_datasets = False
+        if self.use_reference and n_datasets == n_matchings:
+            valid_n_datasets = True
+        if not valid_n_datasets:
+            valid_n_datasets = n_matchings == ((n_datasets) * (n_datasets - 1) / 2)
+        if not valid_n_datasets:
+            if self.use_reference:
+                raise ValueError(
+                    "Error: Inconsistent number of matchings and datasets "
+                    f"for merging strategy using a reference. Found {n_datasets} "
+                    f"dataset(s) for {n_matchings} matching(s). Expected "
+                    f"{n_datasets} or {n_datasets * (n_datasets - 1) / 2} "
+                    f"matchings."
+                )
+            else:
+                raise ValueError(
+                    "Error: Inconsistent number of matchings and datasets "
+                    f"for merging strategy without reference. Found {n_datasets} "
+                    f"dataset(s) for {n_matchings} matching(s) "
+                    f"(expected {n_datasets * (n_datasets - 1) / 2})."
+                )
 
     @abstractmethod
     def transform(self) -> Union[np.ndarray, csr_matrix]:
