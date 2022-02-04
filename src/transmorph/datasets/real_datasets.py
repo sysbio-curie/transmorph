@@ -2,7 +2,6 @@
 
 import numpy as np
 from os.path import dirname
-import scanpy as sc
 
 DPATH = "%s/data/%s"
 
@@ -12,8 +11,8 @@ def load_dataset(module_path, filename):
 
 
 def load_spirals():
-    xs = sc.AnnData(load_dataset(dirname(__file__), "spiralA.csv"))
-    yt = sc.AnnData(load_dataset(dirname(__file__), "spiralB.csv"))
+    xs = load_dataset(dirname(__file__), "spiralA.csv")
+    yt = load_dataset(dirname(__file__), "spiralB.csv")
     return xs, yt
 
 

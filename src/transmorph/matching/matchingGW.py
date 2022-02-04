@@ -6,7 +6,6 @@ import numpy as np
 
 from .matchingABC import MatchingABC
 from scipy.spatial.distance import cdist
-from transmorph.TData import TData
 from scipy.sparse.csgraph import dijkstra
 from ..utils import nearest_neighbors, pca
 
@@ -71,7 +70,7 @@ class MatchingGW(MatchingABC):
         self.n_neighbors = n_neighbors
 
     def _check_input(self, adata: sc.AnnData):
-        if "metric_kwargs" not in adata.metadata:
+        if "metric_kwargs" not in adata.uns["_transmorph"]["matching"]:
             adata.uns["_transmorph"]["matching"]["metric_kwargs"] = {}
         if not MatchingABC._check_input(self, adata):
             return False
@@ -80,7 +79,7 @@ class MatchingGW(MatchingABC):
             return False
         return True
 
-    def _preprocess(self, adata1: TData, adata2: TData):
+    def _preprocess(self, adata1: sc.AnnData, adata2: sc.AnnData):
         for adata in (adata1, adata2):
             if "GW_distance" in adata.uns["_transmorph"]:
                 continue
@@ -88,7 +87,10 @@ class MatchingGW(MatchingABC):
             if self.n_pcs >= 0:
                 X = pca(X, n_components=self.n_pcs)
             D = cdist(
-                X, X, metric=adata.metadata["metric"], **adata.metadata["metric_kwargs"]
+                X,
+                X,
+                metric=adata.uns["_transmorph"]["matching"]["metric"],
+                **adata.uns["_transmorph"]["matching"]["metric_kwargs"]
             )
             if self.geodesic:
                 A = nearest_neighbors(
@@ -101,7 +103,7 @@ class MatchingGW(MatchingABC):
             adata.uns["_transmorph"]["GW_distance"] = D
         return adata1, adata2
 
-    def _match2(self, adata1: TData, adata2: TData):
+    def _match2(self, adata1: sc.AnnData, adata2: sc.AnnData):
         n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
         M1 = adata1.uns["_transmorph"]["GW_distance"]

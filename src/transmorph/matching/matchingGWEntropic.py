@@ -7,7 +7,6 @@ import numpy as np
 import scanpy as sc
 from .matchingABC import MatchingABC
 from scipy.spatial.distance import cdist
-from transmorph.TData import TData
 from scipy.sparse.csgraph import dijkstra
 from ..utils import nearest_neighbors, pca
 
@@ -80,7 +79,7 @@ class MatchingGWEntropic(MatchingABC):
         self.low_cut = low_cut
 
     def _check_input(self, adata: sc.AnnData):
-        if "metric_kwargs" not in adata.metadata:
+        if "metric_kwargs" not in adata.uns["_transmorph"]["matching"]:
             adata.uns["_transmorph"]["matching"]["metric_kwargs"] = {}
         if not MatchingABC._check_input(self, adata):
             return False
@@ -89,7 +88,7 @@ class MatchingGWEntropic(MatchingABC):
             return False
         return True
 
-    def _preprocess(self, adata1: TData, adata2: TData):
+    def _preprocess(self, adata1: sc.AnnData, adata2: sc.AnnData):
         for adata in (adata1, adata2):
             if "GW_distance" in adata.uns["_transmorph"]:
                 continue
@@ -97,7 +96,10 @@ class MatchingGWEntropic(MatchingABC):
             if self.n_pcs >= 0:
                 X = pca(X, n_components=self.n_pcs)
             D = cdist(
-                X, X, metric=adata.metadata["metric"], **adata.metadata["metric_kwargs"]
+                X,
+                X,
+                metric=adata.uns["_transmorph"]["matching"]["metric"],
+                **adata.uns["_transmorph"]["matching"]["metric_kwargs"]
             )
             if self.geodesic:
                 A = nearest_neighbors(
