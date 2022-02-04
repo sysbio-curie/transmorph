@@ -5,8 +5,7 @@ from scipy.sparse import csr_matrix
 
 import numpy as np
 from typing import Iterable, Tuple, Union, List
-
-from transmorph.TData import TData
+import scanpy as sc
 
 
 class MatchingABC(ABC):
@@ -69,7 +68,7 @@ class MatchingABC(ABC):
         self.reference = None
         self.use_reference = False
 
-    def _check_input(self, t: TData) -> bool:
+    def _check_input(self, adata: sc.AnnData) -> bool:
         """
         Checks if a TData is eligible for the given matching. By default, only
         checks if the parameter is a TData and if it contains required metadata.
@@ -84,36 +83,40 @@ class MatchingABC(ABC):
         -------
         Whether $t is a valid TData object for the current matching.
         """
-        if type(t) is not TData:
-            print("Error: TData expected.")
+        if type(adata) is not sc.AnnData:
+            print("Error: sc.AnnData expected.")
             return False
         for key in self.metadata_needed:
-            if key not in t.metadata:
+            if key not in adata.uns["_transmorph"]["matching"]:
                 print(f"Error: missing metadata {key}.")
                 return False
         return True
 
-    def _preprocess(self, t1: TData, t2: TData) -> Tuple[TData, TData]:
+    def _preprocess(
+        self, adata1: sc.AnnData, adata2: sc.AnnData
+    ) -> Tuple[sc.AnnData, sc.AnnData]:
         """
         Preprocessing pipeline of pairs of datasets prior to matching. By
         default, identity mapping. Can be overrode when implementing matchings.
 
         Parameters
         ----------
-        t1: TData
+        adata1: TData
             Source dataset in the matching.
 
-        t2: TData
+        adata2: TData
             Reference dataset in the matching.
 
         Returns
         -------
         Preprocessed representations of $t1 and $t2.
         """
-        return t1, t2  # Default: identity mapping
+        return adata1, adata2  # Default: identity mapping
 
     @abstractmethod
-    def _match2(self, t1: TData, t2: TData) -> Union[csr_matrix, np.ndarray]:
+    def _match2(
+        self, adata1: sc.AnnData, adata2: sc.AnnData
+    ) -> Union[csr_matrix, np.ndarray]:
         """
         Returns a discrete matching T between $t1 and $t2. In this matching,
         T[i,j] is the matching strength between $t1[i] and $t2[j], the higher
@@ -124,10 +127,10 @@ class MatchingABC(ABC):
 
         Parameters
         ----------
-        t1: TData
+        adata1: TData
             Source dataset
 
-        t2: TData
+        adata2: TData
             Reference dataset
 
         Returns
@@ -136,14 +139,14 @@ class MatchingABC(ABC):
         """
         pass
 
-    def iter_datasets(self) -> Iterable[TData]:
+    def iter_datasets(self) -> Iterable[sc.AnnData]:
         """
         Use this iterator to iterate over datasets.
         """
         for dataset in self.datasets:
             yield dataset
 
-    def get_dataset(self, i: int) -> TData:
+    def get_dataset(self, i: int) -> sc.AnnData:
         """
         Returns dataset at the i-th position.
         """
@@ -194,8 +197,8 @@ class MatchingABC(ABC):
 
     def fit(
         self,
-        datasets: List[TData],
-        reference: TData = None,
+        datasets: List[sc.AnnData],
+        reference: sc.AnnData = None,
     ) -> List[np.ndarray]:
         """
         Computes the matching between a set of TData. Should not be overrode in
@@ -227,8 +230,8 @@ class MatchingABC(ABC):
         if reference is not None:
             assert nd > 1, "Error: at least 1 dataset required."
             for di in self.datasets:
-                t1, t2 = self._preprocess(di, reference)
-                matching = self._match2(t1, t2)
+                adata1, adata2 = self._preprocess(di, reference)
+                matching = self._match2(adata1, adata2)
                 if type(matching) is np.ndarray:
                     matching = csr_matrix(matching, shape=matching.shape)
                 self.matchings.append(matching)
@@ -236,8 +239,8 @@ class MatchingABC(ABC):
             assert nd > 1, "Error: at least 2 datasets required."
             for j, dj in enumerate(self.datasets):
                 for di in self.datasets[:j]:
-                    t1, t2 = self._preprocess(di, dj)
-                    matching = self._match2(t1, t2)
+                    adata1, adata2 = self._preprocess(di, dj)
+                    matching = self._match2(adata1, adata2)
                     if type(matching) is np.ndarray:
                         matching = csr_matrix(matching, shape=matching.shape)
                     self.matchings.append(matching)

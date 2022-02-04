@@ -10,6 +10,8 @@ from transmorph.TData import TData
 from scipy.sparse.csgraph import dijkstra
 from ..utils import nearest_neighbors, pca
 
+import scanpy as sc
+
 
 class MatchingGW(MatchingABC):
     """
@@ -68,24 +70,26 @@ class MatchingGW(MatchingABC):
         self.geodesic = geodesic
         self.n_neighbors = n_neighbors
 
-    def _check_input(self, t: TData):
-        if "metric_kwargs" not in t.metadata:
-            t.metadata["metric_kwargs"] = {}
-        if not MatchingABC._check_input(self, t):
+    def _check_input(self, adata: sc.AnnData):
+        if "metric_kwargs" not in adata.metadata:
+            adata.uns["_transmorph"]["matching"]["metric_kwargs"] = {}
+        if not MatchingABC._check_input(self, adata):
             return False
-        if self.n_pcs >= 0 and t.X.shape[1] < self.n_pcs:
+        if self.n_pcs >= 0 and adata.X.shape[1] < self.n_pcs:
             print("n_pcs >= X.shape[1]")
             return False
         return True
 
-    def _preprocess(self, t1: TData, t2: TData):
-        for t in (t1, t2):
-            if "GW_distance" in t.metadata:
+    def _preprocess(self, adata1: TData, adata2: TData):
+        for adata in (adata1, adata2):
+            if "GW_distance" in adata.uns["_transmorph"]:
                 continue
-            X = t.X
+            X = adata.X
             if self.n_pcs >= 0:
                 X = pca(X, n_components=self.n_pcs)
-            D = cdist(X, X, metric=t.metadata["metric"], **t.metadata["metric_kwargs"])
+            D = cdist(
+                X, X, metric=adata.metadata["metric"], **adata.metadata["metric_kwargs"]
+            )
             if self.geodesic:
                 A = nearest_neighbors(
                     X, n_neighbors=self.n_neighbors, use_nndescent=True
@@ -94,12 +98,12 @@ class MatchingGW(MatchingABC):
                 M = D[D != float("inf")].max()  # removing inf values
                 D[D == float("inf")] = M
             D /= D.max()
-            t.metadata["GW_distance"] = D
-        return t1, t2
+            adata.uns["_transmorph"]["GW_distance"] = D
+        return adata1, adata2
 
-    def _match2(self, t1: TData, t2: TData):
-        n1, n2 = t1.X.shape[0], t2.X.shape[0]
+    def _match2(self, adata1: TData, adata2: TData):
+        n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M1 = t1.metadata["GW_distance"]
-        M2 = t2.metadata["GW_distance"]
+        M1 = adata1.uns["_transmorph"]["GW_distance"]
+        M2 = adata2.uns["_transmorph"]["GW_distance"]
         return gromov_wasserstein(M1, M2, w1, w2, self.loss, numItermax=self.max_iter)
