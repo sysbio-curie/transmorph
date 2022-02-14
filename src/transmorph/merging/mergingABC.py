@@ -26,7 +26,6 @@ class MergingABC(ABC):
         self.matching = matching
         assert matching is not None, "self.matching cannot be None."
         self.use_reference = matching.use_reference
-        self._check_input()
 
     def _check_input(self) -> None:
         """

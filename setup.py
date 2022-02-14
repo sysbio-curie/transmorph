@@ -23,6 +23,7 @@ setuptools.setup(
     package_dir={"": "src"},
     include_package_data=True,
     install_requires=[
+        "anndata",
         "numpy<1.21,>=1.17",
         "pot",
         "pymde",
