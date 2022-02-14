@@ -4,9 +4,11 @@ from ot.gromov import entropic_gromov_wasserstein
 from typing import Union, Callable
 
 import numpy as np
-
+import scanpy as sc
 from .matchingABC import MatchingABC
-from transmorph.TData import TData
+from scipy.spatial.distance import cdist
+from scipy.sparse.csgraph import dijkstra
+from ..utils import nearest_neighbors, pca
 
 
 class MatchingGWEntropic(MatchingABC):
@@ -76,13 +78,45 @@ class MatchingGWEntropic(MatchingABC):
         self.max_iter = int(max_iter)
         self.low_cut = low_cut
 
-    def _match2(self, t1: TData, t2: TData):
-        n1, n2 = t1.X.shape[0], t2.X.shape[0]
+    def _check_input(self, adata: sc.AnnData):
+        if "metric_kwargs" not in adata.uns["_transmorph"]["matching"]:
+            adata.uns["_transmorph"]["matching"]["metric_kwargs"] = {}
+        if not MatchingABC._check_input(self, adata):
+            return False
+        if self.n_pcs >= 0 and adata.X.shape[1] < self.n_pcs:
+            print("n_pcs >= X.shape[1]")
+            return False
+        return True
+
+    def _preprocess(self, adata1: sc.AnnData, adata2: sc.AnnData):
+        for adata in (adata1, adata2):
+            if "GW_distance" in adata.uns["_transmorph"]:
+                continue
+            X = adata.X
+            if self.n_pcs >= 0:
+                X = pca(X, n_components=self.n_pcs)
+            D = cdist(
+                X,
+                X,
+                metric=adata.uns["_transmorph"]["matching"]["metric"],
+                **adata.uns["_transmorph"]["matching"]["metric_kwargs"]
+            )
+            if self.geodesic:
+                A = nearest_neighbors(
+                    X, n_neighbors=self.n_neighbors, use_nndescent=True
+                )
+                D = dijkstra(A.multiply(D))
+                M = D[D != float("inf")].max()  # removing inf values
+                D[D == float("inf")] = M
+            D /= D.max()
+            adata.uns["_transmorph"]["GW_distance"] = D
+        return adata1, adata2
+
+    def _match2(self, adata1: sc.AnnData, adata2: sc.AnnData):
+        n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M1 = t1.D.copy()
-        M1 /= M1.max()
-        M2 = t2.D.copy()
-        M2 /= M2.max()
+        M1 = adata1.uns["_transmorph"]["GW_distance"].copy()
+        M2 = adata2.uns["_transmorph"]["GW_distance"].copy()
         T = entropic_gromov_wasserstein(
             M1, M2, w1, w2, self.loss, self.epsilon, max_iter=self.max_iter
         )
