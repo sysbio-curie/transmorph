@@ -7,8 +7,7 @@ from .matchingABC import MatchingABC
 from typing import Callable, Union
 
 import numpy as np
-
-from transmorph.TData import TData
+import scanpy as sc
 
 
 class MatchingEMD(MatchingABC):
@@ -49,9 +48,9 @@ class MatchingEMD(MatchingABC):
         self.metric_kwargs = metric_kwargs
         self.max_iter = int(max_iter)
 
-    def _match2(self, t1: TData, t2: TData):
-        n1, n2 = t1.X.shape[0], t2.X.shape[0]
+    def _match2(self, adata1: sc.AnnData, adata2: sc.AnnData):
+        n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M = cdist(t1.X, t2.X, metric=self.metric, **self.metric_kwargs)
+        M = cdist(adata1.X, adata2.X, metric=self.metric, **self.metric_kwargs)
         M /= M.max()
         return emd(w1, w2, M, numItermax=self.max_iter)
