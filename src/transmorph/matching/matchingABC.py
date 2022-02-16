@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 from scipy.sparse import csr_matrix
 
 import numpy as np
-from typing import Iterable, Tuple, Union, List
-import scanpy as sc
+from typing import Dict, List, Tuple
+from anndata import AnnData
 
 
 class MatchingABC(ABC):
@@ -54,69 +54,171 @@ class MatchingABC(ABC):
         If matching is referenced, contains a link to the reference TData.
     """
 
-    def __init__(
-        self,
-        use_sparse: bool = True,
-        metadata_needed: List[str] = [],
-    ):
-        self.datasets = []
-        self.fitted = False
-        self.n_datasets = 0
-        self.n_matchings = 0
-        self.matchings = []
-        self.metadata_needed = metadata_needed
-        self.reference = None
-        self.use_reference = False
+    def __init__(self, metadata_keys: List[str]):
+        self.metadata_keys: List[str] = metadata_keys
+        self.matchings: Dict[Tuple[int, int], csr_matrix] = {}
+        self.n_matchings: int = 0
+        self.datasets: List[AnnData] = []  # pointer to AnnDatas
+        self.reference_idx: int = -1
+        self.n_datasets: int = 0
+        self.fitted: bool = False
 
-    def _check_input(self, adata: sc.AnnData) -> bool:
+    def is_referenced(self) -> bool:
         """
-        Checks if a TData is eligible for the given matching. By default, only
-        checks if the parameter is a TData and if it contains required metadata.
+        Returns True if the matching uses a reference dataset.
+        """
+        return self.reference_idx != -1
+
+    def get_dataset_idx(self, adata: AnnData) -> int:
+        """
+        Internal methods that returns AnnData index in self.datasets.
+        Raises a KeyError if the AnnData is not found.
+
+        Parameters
+        ----------
+        adata: AnnData
+            Dataset to seek in self.datasets.
+        """
+        for i, adata_i in enumerate(self.datasets):
+            if adata_i is adata:
+                return i
+        raise KeyError("AnnData not found in self.datasets.")
+
+    def set_matrix(self, adata: AnnData, dataset_key: str, X: np.ndarray) -> None:
+        """
+        Registers a matrix in an AnnData object, under a unique string identifier.
+
+        Parameters
+        ----------
+        adata: AnnData
+            Target dataset
+
+        dataset_key: str
+            Target matrix identifier
+
+        X: np.ndarray
+            Matrix to write
+        """
+        assert dataset_key not in adata.uns["transmorph"]
+        adata.uns["transmorph"][dataset_key] = X
+
+    def get_matrix(self, adata: AnnData, dataset_key: str) -> np.ndarray:
+        """
+        Retrieves a matrix stored in the AnnData object by set_matrix.
+
+        Parameters
+        ----------
+        adata: AnnData
+            Target dataset
+
+        dataset_key: str
+            Target matrix identifier
+
+        Returns
+        -------
+        The required np.ndarray.
+        """
+        assert dataset_key in adata.uns["transmorph"]
+        return adata.uns["transmorph"][dataset_key]
+
+    def to_match(self, adata: AnnData):
+        """
+        Retrieves the vectorized preprocessed dataset, to use when implementing
+        _match2.
+
+        Parameters
+        ----------
+        adata: AnnData
+            Target dataset
+        """
+        return self.get_matrix(adata, "_to_match")
+
+    def delete_matrix(self, adata: AnnData, dataset_key: str) -> None:
+        """
+        Deletes the matrix stored in the AnnData object by set_matrix.
+
+        Parameters
+        ----------
+        adata: AnnData
+            Target dataset
+
+        dataset_key: str
+            Target matrix identifier
+        """
+        assert dataset_key in adata.uns["transmorph"]
+        del adata.uns["transmorph"][dataset_key]
+
+    def _check_input(self, adata: AnnData, dataset_key: str = "") -> None:
+        """
+        Checks if an AnnData is eligible for the given matching. By default, only
+        checks if the parameter is a AnnData and if it contains required metadata.
         Can be inherited or overrode when implementing matchings.
 
         Parameters
         ----------
-        t: TData
-            TData object to check
+        adata: AnnData
+            AnnData object to check
+
+        dataset_key: str
+            String identifier locating the vectorized dataset at this point of
+            the pipeline. If "", use adata.X instead.
 
         Returns
         -------
         Whether $t is a valid TData object for the current matching.
         """
-        if type(adata) is not sc.AnnData:
-            print("Error: sc.AnnData expected.")
-            return False
-        for key in self.metadata_needed:
-            if key not in adata.uns["_transmorph"]["matching"]:
-                print(f"Error: missing metadata {key}.")
-                return False
-        return True
+        if type(adata) is not AnnData:
+            raise TypeError(f"Error: AnnData expected, found {type(adata)}.")
+        if dataset_key != "":  # If "" then use adata.X
+            if dataset_key not in adata.uns["transmorph"]:
+                raise KeyError(f"Error: missing dataset key {dataset_key}")
+        for key in self.metadata_keys:
+            if key not in adata.uns["transmorph"]:
+                raise KeyError(f"Error: missing metadata {key}.")
 
     def _preprocess(
-        self, adata1: sc.AnnData, adata2: sc.AnnData
-    ) -> Tuple[sc.AnnData, sc.AnnData]:
+        self, adata1: AnnData, adata2: AnnData, dataset_key: str
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Preprocessing pipeline of pairs of datasets prior to matching. By
-        default, identity mapping. Can be overrode when implementing matchings.
+        Matching-specific preprocessing step, useful to avoid redundant actions.
+        It must return vectorized representations of both datasets. This method can
+        also be used to write addtitional information or metadata using set_matrix()
+        method if necessary. This method can be left as default.
 
         Parameters
         ----------
-        adata1: TData
-            Source dataset in the matching.
+        adata1: AnnData
+            Source dataset
 
-        adata2: TData
-            Reference dataset in the matching.
+        adata2: AnnData
+            Reference dataset
 
-        Returns
-        -------
-        Preprocessed representations of $t1 and $t2.
+        dataset_key: str
+            Location of vectorized datasets at this point of the pipeline.
         """
-        return adata1, adata2  # Default: identity mapping
+        if dataset_key == "":
+            return adata1.X, adata2.X
+        return (
+            self.get_matrix(adata1, dataset_key),
+            self.get_matrix(adata1, dataset_key),
+        )
+
+    def _clean(self, adata1: AnnData, adata2: AnnData) -> None:
+        """
+        Useful to delete matrices stored during _preprocess() function.
+
+        Parameters
+        ----------
+        adata1: AnnData
+            Source dataset
+
+        adata2: AnnData
+            Reference dataset
+        """
+        pass
 
     @abstractmethod
-    def _match2(
-        self, adata1: sc.AnnData, adata2: sc.AnnData
-    ) -> Union[csr_matrix, np.ndarray]:
+    def _match2(self, adata1: AnnData, adata2: AnnData) -> csr_matrix:
         """
         Returns a discrete matching T between $t1 and $t2. In this matching,
         T[i,j] is the matching strength between $t1[i] and $t2[j], the higher
@@ -127,79 +229,52 @@ class MatchingABC(ABC):
 
         Parameters
         ----------
-        adata1: TData
+        adata1: AnnData
             Source dataset
 
-        adata2: TData
+        adata2: AnnData
             Reference dataset
 
         Returns
         -------
-        Possibly sparse matching T of size #t1, #t2.
+        Sparse matching T of size (#t1, #t2).
         """
         pass
 
-    def iter_datasets(self) -> Iterable[sc.AnnData]:
+    def get_matching(self, adata1: AnnData, adata2: AnnData) -> csr_matrix:
         """
-        Use this iterator to iterate over datasets.
-        """
-        for dataset in self.datasets:
-            yield dataset
-
-    def get_dataset(self, i: int) -> sc.AnnData:
-        """
-        Returns dataset at the i-th position.
-        """
-        assert i < self.n_datasets, "Error: dataset index out of bounds."
-        return self.datasets[i]
-
-    def get_matching(self, i: int, j: int = -1, normalize: bool = False) -> csr_matrix:
-        """
-        Return the matching between datasets i and j. Throws an error
-        if matching is not fitted, or if i == j.
+        Return the matching between two datasets. Throws an error
+        if matching is not fitted, or if the required matching does not exist.
 
         Parameters
         ----------
-        i: int
-            Index of the source dataset (samples in rows).
+        adata1: AnnData
+            Source dataset.
 
-        j: int
-            Index of the reference dataset (samples in columns), useless
-            if self.use_reference = True.
-
-        normalize: bool
-            Normalize each non-zero row to sum up to one.
+        adata2: AnnData
+            Reference dataset
 
         Returns
         -------
-        T = (xi.shape[0], xj.shape[0]) sparse array, where Tkl is the
-        matching strength between xik and xjl (or reference).
+        T = (adata1.n_obs, adata2.n_obs) sparse array, where Tkl is the
+        matching strength between adata1_k and adata2_l.
         """
-        assert self.fitted, "Error: matching not fitted, call match() first."
-        assert i != j, "Error: i = j."
-        transpose = j != -1 and j < i  # We only store matchings for i < j
-        if transpose:
-            i, j = j, i
-        if self.use_reference:
-            assert j == -1, "Error: impossible to set j when use_reference=True."
-            index = i
-        else:
-            index = int(j * (j - 1) / 2 + i)
-        assert index < len(self.matchings), f"Index ({i}, {j}) is out of bounds."
-        T = self.matchings[index]
-        if transpose:
-            T = csr_matrix(T.transpose())  # Cast necessary (avoids CSC)
-        if normalize:
-            normalizer = T.sum(axis=1)
-            normalizer[normalizer == 0.0] = 1.0
-            T = csr_matrix(T / normalizer)  # / returns a np.matrix
-        return T
+        i1 = self.get_dataset_idx(adata1)
+        i2 = self.get_dataset_idx(adata2)
+        matching = self.matchings.get((i1, i2), None)
+        if matching is None:
+            matching = self.matchings.get((i2, i1), None)
+            if matching is None:
+                raise ValueError("No matching between the AnnDatas.")
+            matching = csr_matrix(matching.T)
+        return matching
 
     def fit(
         self,
-        datasets: List[sc.AnnData],
-        reference: sc.AnnData = None,
-    ) -> List[np.ndarray]:
+        datasets: List[AnnData],
+        dataset_key: str = "",
+        reference: AnnData = None,
+    ) -> None:
         """
         Computes the matching between a set of TData. Should not be overrode in
         the implementation in order to ensure compatibility between Matching and
@@ -207,43 +282,51 @@ class MatchingABC(ABC):
 
         Parameters:
         -----------
-        *datasets: List[TData]
+        datasets: List[AnnData]
             List of datasets.
+
+        dataset_key: str, default = ""
+            Dictionary key, locating where preprocessed vectorized datasets are.
 
         reference: TData, default = None
             Optional reference dataset. If left empty, all $datasets are matched
             between one another.
         """
-        if reference is not None:  # By convention, reference dataset is put on head
-            self.reference = reference
+        # Checking all datasets are correct
+        for dataset in self.datasets:
+            self._check_input(dataset, dataset_key)
+
+        self.n_datasets = len(self.datasets)
+
+        # Identifying the reference dataset, then storing it
+        ref_idx = -1
+        if reference is not None:
+            for i, adata in enumerate(datasets):
+                if adata is reference:
+                    ref_idx = i
+                    break
+            if ref_idx == -1:
+                raise ValueError("Reference not found in datasets.")
             self.datasets = [reference] + datasets
         else:
             self.datasets = datasets
-        for dataset in self.datasets:
-            assert self._check_input(dataset)
-        self.n_datasets = len(self.datasets)
-        self.reference = reference
-        self.use_reference = reference is not None
+        self.reference_idx = ref_idx
+
+        # Computing the pairwise matchings
         self.fitted = False
-        self.matchings = []
-        nd = len(self.datasets)
-        if reference is not None:
-            assert nd > 1, "Error: at least 1 dataset required."
-            for di in self.datasets:
-                adata1, adata2 = self._preprocess(di, reference)
-                matching = self._match2(adata1, adata2)
-                if type(matching) is np.ndarray:
-                    matching = csr_matrix(matching, shape=matching.shape)
-                self.matchings.append(matching)
-        else:
-            assert nd > 1, "Error: at least 2 datasets required."
-            for j, dj in enumerate(self.datasets):
-                for di in self.datasets[:j]:
-                    adata1, adata2 = self._preprocess(di, dj)
-                    matching = self._match2(adata1, adata2)
-                    if type(matching) is np.ndarray:
-                        matching = csr_matrix(matching, shape=matching.shape)
-                    self.matchings.append(matching)
+        ref_datasets = [reference] if reference is not None else datasets
+        ref_idx = [ref_idx] if reference is not None else np.arange(self.n_datasets)
+        self.matchings = {}
+        for i, src in enumerate(datasets):
+            for j, ref in zip(ref_idx, ref_datasets):
+                if i == j or (j, i) in self.matchings:
+                    continue
+                Xi, Xj = self._preprocess(src, ref, dataset_key)
+                self.set_matrix(src, "_to_match", Xi)
+                self.set_matrix(ref, "_to_match", Xj)
+                self.matchings[i, j] = self._match2(src, ref)
+                self.delete_matrix(src, "_to_match")
+                self.delete_matrix(ref, "_to_match")
+                self._clean(src, ref)
         self.n_matchings = len(self.matchings)
         self.fitted = True
-        return self.matchings
