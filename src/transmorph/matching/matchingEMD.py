@@ -31,9 +31,6 @@ class MatchingEMD(MatchingABC):
 
     max_iter: int, default = 1e6
         Maximum number of iterations to solve the optimization problem.
-
-    use_sparse: boolean, default = True
-        Save matching as sparse matrices.
     """
 
     def __init__(
@@ -41,16 +38,23 @@ class MatchingEMD(MatchingABC):
         metric: Union[str, Callable] = "sqeuclidean",
         metric_kwargs: dict = {},
         max_iter: int = int(1e6),
-        use_sparse: bool = True,
     ):
-        MatchingABC.__init__(self, use_sparse=use_sparse)
+        super().__init__(metadata_keys=[])
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.max_iter = int(max_iter)
 
-    def _match2(self, adata1: sc.AnnData, adata2: sc.AnnData):
-        n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
+    def _match2(self, adata1: sc.AnnData, adata2: sc.AnnData) -> np.ndarray:
+        """
+        Simply gathers datasets and compute exact optimal transport.
+        """
+        n1, n2 = adata1.n_obs, adata2.n_obs
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M = cdist(adata1.X, adata2.X, metric=self.metric, **self.metric_kwargs)
+        M = cdist(
+            self.to_match(adata1),
+            self.to_match(adata2),
+            metric=self.metric,
+            **self.metric_kwargs
+        )
         M /= M.max()
         return emd(w1, w2, M, numItermax=self.max_iter)

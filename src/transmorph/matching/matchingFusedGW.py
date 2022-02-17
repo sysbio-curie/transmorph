@@ -4,90 +4,76 @@ from typing import Dict
 from ot.gromov import fused_gromov_wasserstein
 
 import numpy as np
-import scanpy as sc
+
+from transmorph.utils.anndata_interface import (
+    get_attribute,
+    isset_attribute,
+    set_attribute,
+)
 from .matchingABC import MatchingABC
 from scipy.spatial.distance import cdist
-from transmorph.TData import TData
-from scipy.sparse.csgraph import dijkstra
-from ..utils import nearest_neighbors, pca
+from anndata import AnnData
 
 
 class MatchingFusedGW(MatchingABC):
-    """ """
+    """
+    Fused Gromov-Wasserstein-based matching. Embeds the
+    ot.gromov.fused_gromov_wasserstein method from POT:
+
+        https://github.com/PythonOT/POT
+
+    It computes a combination of Gromov-Wasserstein and Optimal
+    Transport, weighted by a coefficient alpha.
+    Both datasets need to be in the same
+    space in order to compute a cost matrix.
+
+    Parameters
+    ----------
+    OT_metric: str or callable, default = "sqeuclidean"
+        Scipy-compatible metric for optimal transport cost matrix.
+
+    OT_metric_kwargs: dict, default = {}
+        Additional metric parameters for OT_metric.
+
+    alpha: float, default = 0.5
+        Ratio between optimal transport and Gromov-Wasserstein terms
+        in the optimization problem.
+
+    max_iter: int, default = 1e6
+        Maximum number of iterations to solve the optimization problem.
+    """
 
     def __init__(
         self,
-        metricM: str = "euclidean",
-        metricM_kwargs: Dict = {},
+        OT_metric: str = "sqeuclidean",
+        OT_metric_kwargs: Dict = {},
         alpha: float = 0.5,
-        loss: str = "square_loss",
-        use_sparse: bool = True,
+        GW_loss: str = "square_loss",
     ):
-        MatchingABC.__init__(self, use_sparse=use_sparse)
-        self.metricM = metricM
-        self.metricM_kwargs = metricM_kwargs
+        super().__init__(metadata_keys=["metric", "metric_kwargs"])
+        self.OT_metric = OT_metric
+        self.OT_metric_kwargs = OT_metric_kwargs
         self.alpha = alpha
-        self.loss = loss
+        self.GW_loss = GW_loss
 
-    def _compute_di(self, x1: np.array, x2: np.array) -> np.ndarray:
+    def _check_input(self, adata: AnnData, dataset_key: str = "") -> None:
         """
-        Compute cost matrices for FGW problem.
-        Parameters
-        ----------
-        x1: np.array
-            A dataset.
-        x2 np.array
-            A dataset
-
-        Returns
-        -------
-        M, C1, C2, 3 matrices for the costs in FGW problem.
+        Adds some default metric information if needed.
         """
-        M = cdist(x1, x2, metric=self.metricM, **self.metricM_kwargs)
-        return M
+        if not isset_attribute(adata, "metric"):
+            set_attribute(adata, "metric", self.OT_metric)
+        if not isset_attribute(adata, "metric_kwargs"):
+            set_attribute(adata, "metric_kwargs", {})
+        return super()._check_input(adata, dataset_key)
 
-    def _check_input(self, adata: sc.AnnData):
-        if "metric_kwargs" not in adata.uns["_transmorph"]["matching"]:
-            adata.uns["_transmorph"]["matching"]["metric_kwargs"] = {}
-        if not MatchingABC._check_input(self, adata):
-            return False
-        if self.n_pcs >= 0 and adata.X.shape[1] < self.n_pcs:
-            print("n_pcs >= X.shape[1]")
-            return False
-        return True
-
-    def _preprocess(self, adata1: TData, adata2: TData):
-        for adata in (adata1, adata2):
-            if "GW_distance" in adata.uns["_transmorph"]:
-                continue
-            X = adata.X
-            if self.n_pcs >= 0:
-                X = pca(X, n_components=self.n_pcs)
-            D = cdist(
-                X,
-                X,
-                metric=adata.uns["_transmorph"]["matching"]["metric"],
-                **adata.uns["_transmorph"]["matching"]["metric_kwargs"]
-            )
-            if self.geodesic:
-                A = nearest_neighbors(
-                    X, n_neighbors=self.n_neighbors, use_nndescent=True
-                )
-                D = dijkstra(A.multiply(D))
-                M = D[D != float("inf")].max()  # removing inf values
-                D[D == float("inf")] = M
-            D /= D.max()
-            adata.uns["_transmorph"]["GW_distance"] = D
-        return adata1, adata2
-
-    def _match2(self, adata1: sc.AnnData, adata2: TData) -> np.array:
+    def _match2(self, adata1: AnnData, adata2: AnnData) -> np.ndarray:
         """
         Compute optimal transport plan for the FGW problem.
         Parameters
         ----------
-        adata1: TData
+        adata1: AnnData
             A dataset.
-        adata2: TData
+        adata2: AnnData
             A dataset
 
         Returns
@@ -97,17 +83,28 @@ class MatchingFusedGW(MatchingABC):
         """
         n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M = self._compute_di(adata1.X, adata2.X)
-        C1 = adata1.uns["_transmorph"]["GW_distance"]
+        X1 = self.to_match(adata1)
+        X2 = self.to_match(adata2)
+
+        M = cdist(X1, X2, metric=self.OT_metric, *self.OT_metric_kwargs)
+        M /= M.maw()
+
+        metric_1 = get_attribute(adata1, "metric")
+        metric_1_kwargs = get_attribute(adata1, "metric_kwargs")
+        C1 = cdist(X1, X1, metric_1, **metric_1_kwargs)
         C1 /= C1.max()
-        C2 = adata2.uns["_transmorph"]["GW_distance"]
+
+        metric_2 = get_attribute(adata2, "metric")
+        metric_2_kwargs = get_attribute(adata2, "metric_kwargs")
+        C2 = cdist(X2, X2, metric_2, **metric_2_kwargs)
         C2 /= C2.max()
+
         return fused_gromov_wasserstein(
             M,
             C1,
             C2,
             w1,
             w2,
-            self.loss,
+            self.GW_loss,
             self.alpha,
         )

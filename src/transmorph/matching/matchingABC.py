@@ -4,8 +4,10 @@ from abc import ABC, abstractmethod
 from scipy.sparse import csr_matrix
 
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 from anndata import AnnData
+
+from ..utils import anndata_interface as ad
 
 
 class MatchingABC(ABC):
@@ -84,43 +86,6 @@ class MatchingABC(ABC):
                 return i
         raise KeyError("AnnData not found in self.datasets.")
 
-    def set_matrix(self, adata: AnnData, dataset_key: str, X: np.ndarray) -> None:
-        """
-        Registers a matrix in an AnnData object, under a unique string identifier.
-
-        Parameters
-        ----------
-        adata: AnnData
-            Target dataset
-
-        dataset_key: str
-            Target matrix identifier
-
-        X: np.ndarray
-            Matrix to write
-        """
-        assert dataset_key not in adata.uns["transmorph"]
-        adata.uns["transmorph"][dataset_key] = X
-
-    def get_matrix(self, adata: AnnData, dataset_key: str) -> np.ndarray:
-        """
-        Retrieves a matrix stored in the AnnData object by set_matrix.
-
-        Parameters
-        ----------
-        adata: AnnData
-            Target dataset
-
-        dataset_key: str
-            Target matrix identifier
-
-        Returns
-        -------
-        The required np.ndarray.
-        """
-        assert dataset_key in adata.uns["transmorph"]
-        return adata.uns["transmorph"][dataset_key]
-
     def to_match(self, adata: AnnData):
         """
         Retrieves the vectorized preprocessed dataset, to use when implementing
@@ -131,22 +96,7 @@ class MatchingABC(ABC):
         adata: AnnData
             Target dataset
         """
-        return self.get_matrix(adata, "_to_match")
-
-    def delete_matrix(self, adata: AnnData, dataset_key: str) -> None:
-        """
-        Deletes the matrix stored in the AnnData object by set_matrix.
-
-        Parameters
-        ----------
-        adata: AnnData
-            Target dataset
-
-        dataset_key: str
-            Target matrix identifier
-        """
-        assert dataset_key in adata.uns["transmorph"]
-        del adata.uns["transmorph"][dataset_key]
+        return ad.get_matrix(adata, "_to_match")
 
     def _check_input(self, adata: AnnData, dataset_key: str = "") -> None:
         """
@@ -199,8 +149,8 @@ class MatchingABC(ABC):
         if dataset_key == "":
             return adata1.X, adata2.X
         return (
-            self.get_matrix(adata1, dataset_key),
-            self.get_matrix(adata1, dataset_key),
+            ad.get_matrix(adata1, dataset_key),
+            ad.get_matrix(adata1, dataset_key),
         )
 
     def _clean(self, adata1: AnnData, adata2: AnnData) -> None:
@@ -218,7 +168,9 @@ class MatchingABC(ABC):
         pass
 
     @abstractmethod
-    def _match2(self, adata1: AnnData, adata2: AnnData) -> csr_matrix:
+    def _match2(
+        self, adata1: AnnData, adata2: AnnData
+    ) -> Union[np.ndarray, csr_matrix]:
         """
         Returns a discrete matching T between $t1 and $t2. In this matching,
         T[i,j] is the matching strength between $t1[i] and $t2[j], the higher
@@ -322,11 +274,15 @@ class MatchingABC(ABC):
                 if i == j or (j, i) in self.matchings:
                     continue
                 Xi, Xj = self._preprocess(src, ref, dataset_key)
-                self.set_matrix(src, "_to_match", Xi)
-                self.set_matrix(ref, "_to_match", Xj)
-                self.matchings[i, j] = self._match2(src, ref)
-                self.delete_matrix(src, "_to_match")
-                self.delete_matrix(ref, "_to_match")
+                ad.set_matrix(src, "_to_match", Xi)
+                ad.set_matrix(ref, "_to_match", Xj)
+                T = self._match2(src, ref)
+                if type(T) is np.ndarray:
+                    T = csr_matrix(T)
+                assert type(T) is csr_matrix
+                self.matchings[i, j] = T
+                ad.delete_matrix(src, "_to_match")
+                ad.delete_matrix(ref, "_to_match")
                 self._clean(src, ref)
         self.n_matchings = len(self.matchings)
         self.fitted = True
