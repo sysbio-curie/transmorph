@@ -11,6 +11,8 @@ from .merging.mergingABC import MergingABC
 
 from anndata import AnnData
 from .utils.anndata_interface import (
+    delete_attribute,
+    delete_matrix,
     get_attribute,
     get_matrix,
     set_attribute,
@@ -114,6 +116,12 @@ class LayerTransmorph:
         """
         pass
 
+    def clean(self, datasets: List[AnnData]):
+        """
+        TODO
+        """
+        raise NotImplementedError
+
     def get_representation(self) -> str:
         """
         TODO
@@ -147,6 +155,11 @@ class LayerInput(LayerTransmorph):
         for output in self.output_layers:
             output.fit(self, datasets)
 
+    def clean(self, datasets: List[AnnData]):
+        self._log("Cleaning.")
+        for output in self.output_layers:
+            output.clean(datasets)
+
     def get_representation(self) -> str:
         """
         Returns a matrix representation of AnnData.
@@ -166,16 +179,18 @@ class LayerOutput(LayerTransmorph):
             compatible_inputs=[LayerType.INPUT, LayerType.MERGE],
             verbose=verbose,
         )
-        self.datasets = []
         self.representation_kw = ""
 
     def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
         """
         Runs the upstream pipeline and stores results in AnnData objects.
         """
-        self._log("Retrieving result.")
-        self.datasets = datasets
+        self._log("Retrieving keyword.")
         self.representation_kw = caller.get_representation()
+        self._log(f"Found '{self.representation_kw}'. Terminating the branch.")
+
+    def clean(self, datasets: List[AnnData]):
+        self._log("Cleaning ended for this branch.")
 
     def get_representation(self) -> str:
         return self.representation_kw
@@ -209,6 +224,11 @@ class LayerMatching(LayerTransmorph):
         self._log("Fitted.")
         for layer in self.output_layers:
             layer.fit(self, datasets)
+
+    def clean(self, datasets: List[AnnData]):
+        self._log("Cleaning.")
+        for output in self.output_layers:
+            output.clean(datasets)
 
     def get_representation(self) -> str:
         """
@@ -272,6 +292,13 @@ class LayerMerging(LayerTransmorph):
         self._log("Fitted.")
         for layer in self.output_layers:
             layer.fit(self, datasets)
+
+    def clean(self, datasets: List[AnnData]):
+        self._log("Cleaning.")
+        for adata in datasets:
+            delete_matrix(adata, self.mtx_id)
+        for output in self.output_layers:
+            output.clean(datasets)
 
     def get_representation(self) -> str:
         return self.mtx_id
@@ -469,4 +496,9 @@ class TransmorphPipeline:
         output_kw = self.output_layers[
             0
         ].get_representation()  # TODO several output layers
-        return [get_matrix(adata, output_kw) for adata in datasets]
+        for adata in datasets:
+            adata.obsm["transmorph"] = get_matrix(adata, output_kw)
+        self.input_layer.clean(datasets)
+        if reference is not None:
+            for adata in datasets:
+                delete_attribute(adata, "is_reference")
