@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 #
 from abc import ABC, abstractmethod
-from scipy.sparse import csr_matrix
 
 from ..matching.matchingABC import MatchingABC
 
 import numpy as np
-from typing import Union
+from typing import List
+from anndata import AnnData
 
 
 class MergingABC(ABC):
@@ -22,10 +22,8 @@ class MergingABC(ABC):
         Fitted, referenced matching between datasets.
     """
 
-    def __init__(self, matching: MatchingABC):
-        self.matching = matching
-        assert matching is not None, "self.matching cannot be None."
-        self.use_reference = matching.use_reference
+    def __init__(self, use_reference: bool = False):
+        self.use_reference = use_reference
 
     def _check_input(self) -> None:
         """
@@ -33,37 +31,14 @@ class MergingABC(ABC):
         This method is automatically called at the beginning MergingABC._check_input().
         Any class inheriting from MergingABC can add rules to this method.
         """
-        matching = self.matching
-        assert matching is not None
-        assert matching.fitted, (
-            "Matching is unfitted. Calling first the"
-            " method Matching.fit([datasets], reference=None) is necessary."
-        )
-        n_datasets = matching.n_datasets
-        n_matchings = matching.n_matchings
-        assert n_datasets > 0, "Error: No datasets found for merging."
-        valid_n_datasets = False
-        if self.use_reference and n_datasets == n_matchings:
-            valid_n_datasets = True
-        if not valid_n_datasets:
-            valid_n_datasets = n_matchings == ((n_datasets) * (n_datasets - 1) / 2)
-        if not valid_n_datasets:
-            if self.use_reference:
-                raise ValueError(
-                    "Error: Inconsistent number of matchings and datasets "
-                    f"for merging strategy using a reference. Found {n_datasets} "
-                    f"dataset(s) for {n_matchings} matching(s). Expected "
-                    f"{n_datasets} or {n_datasets * (n_datasets - 1) / 2} "
-                    f"matchings."
-                )
-            else:
-                raise ValueError(
-                    "Error: Inconsistent number of matchings and datasets "
-                    f"for merging strategy without reference. Found {n_datasets} "
-                    f"dataset(s) for {n_matchings} matching(s) "
-                    f"(expected {n_datasets * (n_datasets - 1) / 2})."
-                )
+        pass
 
     @abstractmethod
-    def transform(self) -> Union[np.ndarray, csr_matrix]:
+    def fit(
+        self,
+        datasets: List[AnnData],
+        matching: MatchingABC,
+        X_kw: str,
+        reference_idx: int = -1,
+    ) -> List[np.ndarray]:
         pass

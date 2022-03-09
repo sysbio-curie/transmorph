@@ -63,12 +63,13 @@ class MatchingFusedGW(MatchingABC):
         if not isset_attribute(adata, "metric"):
             set_attribute(adata, "metric", self.OT_metric)
         if not isset_attribute(adata, "metric_kwargs"):
-            set_attribute(adata, "metric_kwargs", {})
+            set_attribute(adata, "metric_kwargs", self.OT_metric_kwargs)
         return super()._check_input(adata, dataset_key)
 
     def _match2(self, adata1: AnnData, adata2: AnnData) -> np.ndarray:
         """
         Compute optimal transport plan for the FGW problem.
+
         Parameters
         ----------
         adata1: AnnData

@@ -44,6 +44,8 @@ def get_matrix(adata: AnnData, dataset_key: str) -> np.ndarray:
     -------
     The required np.ndarray.
     """
+    if dataset_key == "":
+        return adata.X
     assert isset_matrix(adata, dataset_key)
     return adata.uns["transmorph"]["matrices"][dataset_key]
 
@@ -76,6 +78,8 @@ def isset_matrix(adata: AnnData, dataset_key: str) -> bool:
     dataset_key: str
         Target matrix identifier
     """
+    if dataset_key == "":
+        return True
     if "transmorph" not in adata.uns:
         return False
     if "matrices" not in adata.uns["transmorph"]:

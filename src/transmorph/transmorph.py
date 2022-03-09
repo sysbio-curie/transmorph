@@ -1,14 +1,34 @@
 #!/usr/bin/env python3
 
-
 from abc import abstractmethod
-from anndata import AnnData
-from typing import Iterator, List
+from enum import Enum, auto
+from typing import List
 
 from scipy.sparse.csr import csr_matrix
 
-from transmorph.matching.matchingABC import MatchingABC
-from transmorph.matching import MatchingCombined
+from .matching.matchingABC import MatchingABC
+from .merging.mergingABC import MergingABC
+
+from anndata import AnnData
+from .utils.anndata_interface import (
+    get_attribute,
+    get_matrix,
+    set_attribute,
+    set_matrix,
+)
+
+
+class LayerType(Enum):
+    """
+    Specifies layer types for easy type checking.
+    """
+
+    BASE = auto()
+    INPUT = auto()
+    OUTPUT = auto()
+    MATCH = auto()
+    MERGE = auto()
+    CHECK = auto()
 
 
 class LayerTransmorph:
@@ -18,110 +38,93 @@ class LayerTransmorph:
 
     Parameters
     ----------
-    type: str, default = "base"
+    type: LayerType, default = LayerType.BASE
         String identifier describing module type. Can be used for compatibility
         purpose.
 
-    compatible_types: List[str]
+    compatible_types: List[LayerType]
         List of type identifiers of compatible input layers
 
     maximum_inputs: int = -1
         Maximal number of inputs, set it to -1 if there is no maximum
 
-    remove_output: bool
-        Whether layer output can be removed from AnnData when pipeline is finished.
-
     Attributes
     ----------
-    input_layers: List[LayerTransmorph]
-        List of incoming source layers.
-
     output_layers: List[LayerTransmorph]
         List of outgoing target layers.
 
-    output_key: str
-        Dictionary key indicating result storage location in AnnData.uns["transmorph"]
-
-    computed: bool
-        Indicates whether the results have been computed for cacheing purposes.
+    TODO: cacheing
     """
+
+    LayerID = 0
 
     def __init__(
         self,
-        type_: str = "base",
-        compatible_types: List[str] = [],
-        maximum_inputs: int = -1,
-        remove_output: bool = True,
+        layer_type: LayerType = LayerType.BASE,
+        compatible_inputs: List[LayerType] = [],
+        verbose: bool = False,
     ) -> None:
-        self.type: str = type_
-        self.compatible_types: List[str] = compatible_types
-        self.maximum_inputs: int = maximum_inputs
-        self.remove_output: bool = remove_output
-        self.input_layers: List["LayerTransmorph"] = []
+        self.type = layer_type
+        self.compatible_inputs = compatible_inputs
         self.output_layers: List["LayerTransmorph"] = []
-        self.output_data: str = ""
-        self.computed: bool = False  # Caches computation results
+        self.verbose = verbose
+        self.LayerID = LayerTransmorph.LayerID
+        LayerTransmorph.LayerID += 1
+        self._log("Initialized.")
+
+    def _log(self, msg: str):
+        if not self.verbose:
+            return
+        print(f"{self} >", msg)
+
+    def __str__(self):
+        return f"({self.type} {self.LayerID})"
 
     def connect(self, layer: "LayerTransmorph") -> None:
         """
-        Connects the current layer to an input layer, if compatible and if the
-        maximum number of inputs is not reached.
+        Connects the current layer to an output layer, if compatible.
 
         Parameters
         ----------
         layer: LayerTransmorph
-            Input layer of compatible type.
-        """
-        self.check_connection(layer)
-        self.output_layers.append(layer)
-        layer.input_layers.append(self)
-
-    def check_connection(self, layer: "LayerTransmorph") -> None:
-        """
-        Verifies if a candidate layer is valid.
+            Output layer of compatible type.
         """
         assert (
-            layer.type == "all" or layer.type in self.compatible_types
-        ), f"Error: Uncompatible type as input for layer {self.type}: {type(layer)}"
-        assert len(self.input_layers) < self.maximum_inputs, (
-            f"Error: too many input layers for layer {self.type}. "
-            f"Maximum: {self.maximum_inputs}"
-        )
-
-    def iter_inputs(self) -> Iterator["LayerTransmorph"]:
-        """
-        Returns an iterator of layer inputs.
-        """
-        for layer in self.input_layers:
-            yield layer
-
-    def iter_outputs(self) -> Iterator["LayerTransmorph"]:
-        """
-        Returns an iterator of layer outputs.
-        """
-        for layer in self.output_layers:
-            yield layer
-
-    def set_computed(self, b: bool) -> None:
-        """
-        For cache purposes. If a layer is "computed", then its function
-        .run() immediately returns, until another upstream node changes
-        its state.
-        """
-        # If output changes, propagates the signal downstream
-        if b is False:
-            for layer in self.output_layers:
-                layer.set_computed(b)
-        self.computed = b
+            self.type in layer.compatible_inputs
+        ), f"Incompatible connection: {self} -> {layer}"
+        assert layer not in self.output_layers, "{self} already connected to {layer}."
+        self.output_layers.append(layer)
+        self._log(f"Connected to layer {layer}.")
 
     @abstractmethod
-    def run(self, datasets: List[AnnData]):
+    def fit(self, caller: "LayerTransmorph", datasets: List[AnnData]):
         """
         This is the computational method, running an internal module.
         It then should write its output in the AnnDatas, and callback
-        the downstream run() methods.
+        the downstream fit() methods.
+
+        Parameters
+        ----------
+        caller: LayerTransmorph
+            Reference to current layer, used to retrieve relevant information
+            relative to computation results.
+
+        datasets: List[AnnData]
+            List of datasets to process.
         """
         pass
+
+    def get_representation(self) -> str:
+        """
+        TODO
+        """
+        raise NotImplementedError
+
+    def get_matching(self, adata_src: AnnData, adata_ref: AnnData) -> csr_matrix:
+        """
+        TODO
+        """
+        raise NotImplementedError
 
 
 class LayerInput(LayerTransmorph):
@@ -130,21 +133,49 @@ class LayerInput(LayerTransmorph):
     is initialized using this layer.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, verbose: bool = False) -> None:
         super().__init__(
-            type_="input",
-            compatible_types=["matching", "preprocessing"],
-            maximum_inputs=0,
+            layer_type=LayerType.INPUT, compatible_inputs=[], verbose=verbose
         )
 
-    def run(self, datasets: List[AnnData]):
+    def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
         """
         Simply calls the downstream layers.
         """
-        self.set_computed(False)
-        for layer in self.iter_outputs():
-            layer.run(datasets)
-        self.set_computed(True)
+        assert caller is None, f"{caller} called {self}."
+        self._log("Calling next layers.")
+        for output in self.output_layers:
+            output.fit(self, datasets)
+
+    def get_representation(self) -> str:
+        """
+        Returns a matrix representation of AnnData.
+        """
+        return ""
+
+
+class LayerOutput(LayerTransmorph):
+    """
+    Simple layer to manage network outputs. There can be several output layers.
+    TODO
+    """
+
+    def __init__(self, verbose: bool = False) -> None:
+        super().__init__(
+            layer_type=LayerType.OUTPUT,
+            compatible_inputs=[LayerType.INPUT, LayerType.MERGE],
+            verbose=verbose,
+        )
+        self.datasets = []
+        self.representation_kw = ""
+
+    def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
+        """
+        Runs the upstream pipeline and stores results in AnnData objects.
+        """
+        self._log("Retrieving result.")
+        self.datasets = datasets
+        self.representation_kw = caller.get_representation()
 
 
 class LayerMatching(LayerTransmorph):
@@ -153,24 +184,145 @@ class LayerMatching(LayerTransmorph):
     It wraps an object derived from MatchingABC.
     """
 
-    def __init__(self, matching: MatchingABC) -> None:
+    def __init__(self, matching: MatchingABC, verbose: bool = False) -> None:
         super().__init__(
-            "matching",
-            ["input", "merging", "preprocessing"],
-            maximum_inputs=1,
+            layer_type=LayerType.MATCH,
+            compatible_inputs=[LayerType.INPUT, LayerType.MERGE, LayerType.CHECK],
+            verbose=verbose,
         )
         self.matching = matching
+        self.fitted = False
+        self.representation_kw = ""
 
-    def run(self, datasets: List[AnnData]):
+    def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
         """
         TODO
         """
-        # TODO: what if input is pp? merging?
-        if not self.computed:
-            self.matching.fit(datasets)  # TODO: how to pass the information?
-            self.set_computed(True)
-        for layer in self.iter_outputs():
-            layer.run(datasets)
+        self._log("Requesting keyword.")
+        self.representation_kw = caller.get_representation()
+        self._log(f"Found '{self.representation_kw}'. Calling matching.")
+        self.matching.fit(datasets, self.representation_kw)
+        self.fitted = True
+        self._log("Fitted.")
+        for layer in self.output_layers:
+            layer.fit(self, datasets)
+
+    def get_representation(self) -> str:
+        """
+        TODO
+        """
+        assert self.fitted, "{self} must be fitted to access its representation."
+        return self.representation_kw
+
+    def get_matching(self, adata_src: AnnData, adata_ref: AnnData) -> csr_matrix:
+        """
+        TODO
+        """
+        assert self.fitted, "{self} must be fitted to access its matching."
+        return self.matching.get_matching(adata_src, adata_ref)
+
+
+class LayerMerging(LayerTransmorph):
+    """
+    TODO
+    """
+
+    def __init__(self, merging: MergingABC, verbose: bool = False) -> None:
+        """
+        TODO
+        """
+        super().__init__(
+            layer_type=LayerType.MERGE,
+            compatible_inputs=[LayerType.MATCH],
+            verbose=verbose,
+        )
+        self.merging = merging
+        self.use_reference = merging.use_reference
+        self.fitted = False
+        self.mtx_id = f"merging_{self.LayerID}"
+
+    def fit(self, caller: LayerMatching, datasets: List[AnnData]):
+        """
+        TODO
+        """
+        self._log("Requesting keyword.")
+        representation_kw = caller.get_representation()
+        self._log(f"Found '{representation_kw}'. Calling merging.")
+        ref_id = -1
+        if self.use_reference:
+            for k, adata in enumerate(datasets):
+                if get_attribute(adata, "is_reference"):
+                    ref_id = k
+                    break
+            assert (
+                ref_id != -1
+            ), "Error: No reference found in TransmorphPipeline.fit()."
+        X_transform = self.merging.fit(
+            datasets,
+            matching=caller.matching,
+            X_kw=representation_kw,
+            reference_idx=ref_id,
+        )
+        for adata, X_after in zip(datasets, X_transform):
+            set_matrix(adata, self.mtx_id, X_after)
+        self.fitted = True
+        self._log("Fitted.")
+        for layer in self.output_layers:
+            layer.fit(self, datasets)
+
+    def get_representation(self) -> str:
+        return self.mtx_id
+
+
+# class LayerChecking(LayerTransmorph):
+#     """
+#     TODO
+#     """
+
+#     def __init__(self, checking) -> None:
+#         super().__init__(
+#             type_="checking",
+#             compatible_types=["matching", "output"],
+#             maximum_inputs=1,
+#         )
+#         self.valid = False
+#         self.checking = checking
+
+#     def connect(self, layer: LayerTransmorph):
+#         """
+#         LayerChecking needs to specify output connection types.
+#         """
+#         raise NotImplementedError
+
+#     def connect_invalid(self, layer: LayerTransmorph):
+#         """
+#         TODO
+#         """
+#         self.check_connection(layer)
+#         # TODO
+
+#     def connect_valid(self, layer: LayerTransmorph):
+#         """
+#         TODO
+#         """
+#         self.check_connection(layer)
+#         # TODO
+
+#     def run(self, datasets: List[AnnData]):
+#         """
+#         TODO
+#         """
+#         if self.computed:
+#             return
+#         assert self.input_layers[0].output_data is not None
+#         input_data = self.input_layers[0].output_data.copy()
+#         self.valid = self.checking.check(input_data)
+#         while not self.valid:
+#             self.output_layers[0].set_computed(False)
+#             self.output_layers[0].input_layers[0].output_data = input_data
+#             pass
+#         self.output_data = self.input_layers[0].output_data
+#         self.set_computed(True)
 
 
 class LayerCombineMatching(LayerTransmorph):
@@ -179,156 +331,25 @@ class LayerCombineMatching(LayerTransmorph):
     """
 
     def __init__(self, mode: str) -> None:
-        super().__init__(
-            "combine_matching",
-            [LayerMerging, LayerCombineMatching],
-            1,
-        )
-        assert mode in ["additive", "multiplicative", "intersection"], (
-            f"Unknown mode {mode}. Expected 'additive', 'multiplicative' or"
-            "'intersection'."
-        )
-        self.datasets = []
-        self.mode = mode
-        self.matching = None
+        raise NotImplementedError
 
     def get_datasets(self):
         """
         TODO
         """
-        return self.datasets
+        raise NotImplementedError
 
     def normalize(self, T_matching):
         """
         TODO
         """
-        return csr_matrix(T_matching / T_matching.sum(axis=1))
-
-    def run(self, datasets):
-        """
-        TODO
-        """
-        LayerTransmorph.run(self, datasets)
-        assert all(
-            type(layer) is LayerMatching or type(layer) is LayerCombineMatching
-            for layer in self.input_layers
-        ), "At least one input layer is not of Matching type."
-        self.matching = MatchingCombined(
-            [layer.matching for layer in self.input_layers], mode=self.mode
-        )
-        # TODO: format the output properly
-        self.output_data = self.normalize(self.output_data)
-
-
-class LayerMerging(LayerTransmorph):
-    """
-    TODO
-    """
-
-    def __init__(self, merging, datasets) -> None:
-        """
-        TODO
-        """
-        super().__init__("merging", [LayerMatching, LayerChecking, LayerOutput])
-        self.datasets = datasets
-        self.merging = merging
-
-    def run(self, datasets):
-        """
-        TODO
-        """
-        LayerTransmorph.run(self, datasets)
-        X_final = self.merging.transform()
-        self.output_data = []
-        offset = 0
-        for dataset in self.datasets:
-            n_obs = dataset.shape[0]
-            self.output_data.append(X_final[offset : offset + n_obs])
-            offset += n_obs
-
-
-class LayerChecking(LayerTransmorph):
-    """
-    TODO
-    """
-
-    def __init__(self, checking) -> None:
-        super().__init__(
-            type_="checking",
-            compatible_types=["matching", "output"],
-            maximum_inputs=1,
-        )
-        self.valid = False
-        self.checking = checking
-
-    def connect(self, layer: LayerTransmorph):
-        """
-        LayerChecking needs to specify output connection types.
-        """
         raise NotImplementedError
 
-    def connect_invalid(self, layer: LayerTransmorph):
+    def run(self, datasets):
         """
         TODO
         """
-        self.check_connection(layer)
-        # TODO
-
-    def connect_valid(self, layer: LayerTransmorph):
-        """
-        TODO
-        """
-        self.check_connection(layer)
-        # TODO
-
-    def run(self, datasets: List[AnnData]):
-        """
-        TODO
-        """
-        if self.computed:
-            return
-        assert self.input_layers[0].output_data is not None
-        input_data = self.input_layers[0].output_data.copy()
-        self.valid = self.checking.check(input_data)
-        while not self.valid:
-            self.output_layers[0].set_computed(False)
-            self.output_layers[0].input_layers[0].output_data = input_data
-            pass
-        self.output_data = self.input_layers[0].output_data
-        self.set_computed(True)
-
-
-class LayerOutput(LayerTransmorph):
-    """
-    Simple layer to manage network outputs. There can be several output layers.
-
-    Possible inputs: 1
-    ------------------
-    - LayerMerging
-    - LayerPreprocessing
-    - LayerChecking
-
-    Possible outputs: 0
-    -------------------
-    """
-
-    output_id = 0
-
-    def __init__(self) -> None:
-        super().__init__("output", [], 0)
-        self.id = LayerOutput.output_id
-        LayerOutput.output_id += 1
-
-    def run(self, datasets: List[AnnData]):
-        """
-        Runs the upstream pipeline and stores results in AnnData objects.
-        """
-        self.output_data = self.input_layers[0].output_data.copy()
-        offset = 0
-        X_int = self.output_data
-        for adata in datasets:
-            n_obs = adata.n_obs
-            adata.obsm[f"X_transmorph_{self.id}"] = X_int[offset : offset + n_obs]
+        raise NotImplementedError
 
 
 class TransmorphPipeline:
@@ -373,10 +394,19 @@ class TransmorphPipeline:
     -> np.ndarray(shape=(n,d))
     """
 
-    def __init__(self) -> None:
+    def __init__(self, verbose: bool = False) -> None:
         self.input_layer = None
         self.output_layers = []
         self.layers = []
+        self.verbose = verbose
+
+    def _log(self, msg: str):
+        if not self.verbose:
+            return
+        print(f"{self} >", msg)
+
+    def __str__(self):
+        return "(TransmorphPipeline)"
 
     def initialize(self, input_layer: LayerInput):
         """
@@ -388,22 +418,27 @@ class TransmorphPipeline:
             Entry point of the pipeline. Must have been conneced to the other layers
             beforehand.
         """
-        assert type(input_layer) is LayerInput, "LayerInput expected."
+        assert input_layer.type == LayerType.INPUT, "LayerInput expected."
+        self._log("Fetching pipeline...")
         self.input_layer = input_layer
         layers_to_visit: List[LayerTransmorph] = [self.input_layer]
+        self.layers = [layers_to_visit]
         while len(layers_to_visit) > 0:
             current_layer = layers_to_visit.pop(0)
-            self.layers.append(current_layer)
-            for output_layer in current_layer.iter_outputs():
+            for output_layer in current_layer.output_layers:
                 if output_layer in self.layers:
                     continue
-                if type(output_layer) is LayerOutput:
+                if output_layer.type == LayerType.OUTPUT:
                     self.output_layers.append(output_layer)
                 layers_to_visit.append(output_layer)
                 self.layers.append(output_layer)
         assert len(self.output_layers) > 0, "No output layer reachable from input."
+        self._log(
+            f"Terminated -- {len(self.layers)} layers, "
+            f"{len(self.output_layers)} output found."
+        )
 
-    def run(self, datasets: List[AnnData]):
+    def fit(self, datasets: List[AnnData], reference: AnnData = None):
         """
         Runs the pipeline given a list of AnnDatas, writes integration results in
         each AnnData object under the entry .obsm['X_transmorph_$i'] where $i is
@@ -421,6 +456,14 @@ class TransmorphPipeline:
         -> np.ndarray(shape=(n,d))
         """
         assert self.input_layer is not None, "Pipeline must be initialized first."
-        self.input_layer.set_computed(False)
-        for output_layer in self.output_layers:
-            output_layer.run(datasets)
+        if reference is not None:
+            for adata in datasets:
+                if adata is not reference:
+                    set_attribute(adata, "is_reference", False)
+                else:
+                    set_attribute(adata, "is_reference", True)
+        self.input_layer.fit(None, datasets)
+        output_kw = self.output_layers[
+            0
+        ].get_representation()  # TODO several output layers
+        return [get_matrix(adata, output_kw) for adata in datasets]

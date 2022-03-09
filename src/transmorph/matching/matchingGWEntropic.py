@@ -4,11 +4,10 @@ from ot.gromov import entropic_gromov_wasserstein
 from typing import Union, Callable
 
 import numpy as np
-import scanpy as sc
-from .matchingABC import MatchingABC
+from anndata import AnnData
 from scipy.spatial.distance import cdist
-from scipy.sparse.csgraph import dijkstra
-from ..utils import nearest_neighbors, pca
+from .matchingABC import MatchingABC
+from ..utils.anndata_interface import isset_attribute, set_attribute, get_attribute
 
 
 class MatchingGWEntropic(MatchingABC):
@@ -60,67 +59,67 @@ class MatchingGWEntropic(MatchingABC):
 
     def __init__(
         self,
-        geodesic: bool = True,
         metric: Union[str, Callable] = "sqeuclidean",
         metric_kwargs: dict = {},
         epsilon: float = 1e-2,
         loss: str = "square_loss",
         max_iter: int = int(1e6),
-        use_sparse: bool = True,
-        low_cut: float = 1e-3,
+        low_cut: bool = True,
+        low_cut_thr: float = 1e-3,
     ):
-        MatchingABC.__init__(self, use_sparse=use_sparse)
-        self.geodesic = geodesic
+        super().__init__(metadata_keys=["metric", "metric_kwargs"])
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.epsilon = epsilon
         self.loss = loss
         self.max_iter = int(max_iter)
         self.low_cut = low_cut
+        self.low_cut_thr = low_cut_thr
 
-    def _check_input(self, adata: sc.AnnData):
-        if "metric_kwargs" not in adata.uns["_transmorph"]["matching"]:
-            adata.uns["_transmorph"]["matching"]["metric_kwargs"] = {}
-        if not MatchingABC._check_input(self, adata):
-            return False
-        if self.n_pcs >= 0 and adata.X.shape[1] < self.n_pcs:
-            print("n_pcs >= X.shape[1]")
-            return False
-        return True
+    def _check_input(self, adata: AnnData, dataset_key: str = ""):
+        """
+        Adds some default metric information if needed.
+        """
+        if not isset_attribute(adata, "metric"):
+            set_attribute(adata, "metric", self.metric)
+        if not isset_attribute(adata, "metric_kwargs"):
+            set_attribute(adata, "metric_kwargs", self.metric_kwargs)
+        return super()._check_input(adata, dataset_key)
 
-    def _preprocess(self, adata1: sc.AnnData, adata2: sc.AnnData):
-        for adata in (adata1, adata2):
-            if "GW_distance" in adata.uns["_transmorph"]:
-                continue
-            X = adata.X
-            if self.n_pcs >= 0:
-                X = pca(X, n_components=self.n_pcs)
-            D = cdist(
-                X,
-                X,
-                metric=adata.uns["_transmorph"]["matching"]["metric"],
-                **adata.uns["_transmorph"]["matching"]["metric_kwargs"]
-            )
-            if self.geodesic:
-                A = nearest_neighbors(
-                    X, n_neighbors=self.n_neighbors, use_nndescent=True
-                )
-                D = dijkstra(A.multiply(D))
-                M = D[D != float("inf")].max()  # removing inf values
-                D[D == float("inf")] = M
-            D /= D.max()
-            adata.uns["_transmorph"]["GW_distance"] = D
-        return adata1, adata2
+    def _match2(self, adata1: AnnData, adata2: AnnData):
+        """
+        Compute approximate optimal transport plan for the GW problem.
 
-    def _match2(self, adata1: sc.AnnData, adata2: sc.AnnData):
+        Parameters
+        ----------
+        adata1: AnnData
+            A dataset.
+        adata2: AnnData
+            A dataset
+
+        Returns
+        -------
+        T = (xi.shape[0], xj.shape[0]) sparse array, where Tkl is the
+        matching strength between xik and xjl.
+        """
         n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M1 = adata1.uns["_transmorph"]["GW_distance"].copy()
-        M2 = adata2.uns["_transmorph"]["GW_distance"].copy()
+        X1 = self.to_match(adata1)
+        X2 = self.to_match(adata2)
+
+        metric_1 = get_attribute(adata1, "metric")
+        metric_1_kwargs = get_attribute(adata1, "metric_kwargs")
+        C1 = cdist(X1, X1, metric_1, **metric_1_kwargs)
+        C1 /= C1.max()
+
+        metric_2 = get_attribute(adata2, "metric")
+        metric_2_kwargs = get_attribute(adata2, "metric_kwargs")
+        C2 = cdist(X2, X2, metric_2, **metric_2_kwargs)
+        C2 /= C2.max()
+
         T = entropic_gromov_wasserstein(
-            M1, M2, w1, w2, self.loss, self.epsilon, max_iter=self.max_iter
+            C1, C2, w1, w2, self.loss, self.epsilon, max_iter=self.max_iter
         )
-        if self.use_sparse:
-            low_cut = self.low_cut / n1
-            T = T * (T > low_cut)
+        low_cut = self.low_cut / n1
+        T = T * (T > low_cut)
         return T

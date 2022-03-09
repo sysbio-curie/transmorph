@@ -1,8 +1,6 @@
--/examples
 -/build
--/dist
+-/img
+-/.git
+-/.pytest_cache
 -/*.egg-info
 -/*/*.egg-info
--/img
--/src/transmorph/datasets/data
--/.archive

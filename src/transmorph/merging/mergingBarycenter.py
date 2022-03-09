@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
-import warnings
 import numpy as np
-
-from scipy.sparse import csr_matrix
 
 from .mergingABC import MergingABC
 
 from ..matching.matchingABC import MatchingABC
+from ..utils.anndata_interface import get_matrix
+
+from anndata import AnnData
+from typing import List
 
 
 class MergingBarycenter(MergingABC):
@@ -29,47 +30,34 @@ class MergingBarycenter(MergingABC):
         Fitted, referenced matching between datasets.
     """
 
-    def __init__(self, matching: MatchingABC):
-        MergingABC.__init__(self, matching)
+    def __init__(self):
+        MergingABC.__init__(self, use_reference=True)
 
     def _check_input(self) -> None:
         """
         Raises an additional warning if some source samples are unmatched.
+        TODO
         """
         super()._check_input()
-        matching = self.matching
-        assert matching.use_reference and matching.reference is not None, (
-            "Error: Matching must be fit with reference=X_target for "
-            "barycentric merging."
-        )
-        for k in range(matching.n_datasets):
-            T = matching.get_matching(k, normalize=True)
-            if any(T.sum(axis=1) == 0.0):
-                warnings.warn(
-                    "Warning: Some samples are unmatched and will result on origin. "
-                    "You may want to try another matching (e.g. MatchingEMD or"
-                    "MatchingGW) or merging (e.g. MergingLinearCorrection) strategy."
-                )
+        pass
 
-    def transform(self) -> np.ndarray:
-        matching = self.matching
-        reference = matching.get_reference()
-        assert reference is not None
-        output = np.zeros(
-            (
-                reference.X.shape[0]
-                + sum(dataset.X.shape[0] for dataset in matching.datasets),
-                reference.X.shape[1],
-            )
-        )
-        output[: reference.X.shape[0]] = reference.X
-        offset = reference.X.shape[0]
-        for k, dataset in enumerate(matching.datasets):
-            n = dataset.X.shape[0]
-            T = matching.get_matching(k, normalize=True)
-            if type(T) is csr_matrix:
-                T = T.toarray()
-            projection = T @ reference.X
-            output[offset : offset + n] = projection
-            offset += n
+    def fit(
+        self,
+        datasets: List[AnnData],
+        matching: MatchingABC,
+        X_kw: str,
+        reference_idx: int = -1,
+    ) -> List[np.ndarray]:
+        assert reference_idx >= 0, "Missing reference dataset."
+        representations = [get_matrix(adata, X_kw) for adata in datasets]
+        adata_ref = datasets[reference_idx]
+        X_ref = representations[reference_idx]
+        output = []
+        for k, adata in enumerate(datasets):
+            if k == reference_idx:
+                output.append(X_ref)
+                continue
+            T = matching.get_matching(adata, adata_ref).toarray()
+            projection = T @ X_ref
+            output.append(projection)
         return output

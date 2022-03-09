@@ -217,7 +217,7 @@ class MatchingABC(ABC):
         if matching is None:
             matching = self.matchings.get((i2, i1), None)
             if matching is None:
-                raise ValueError("No matching between the AnnDatas.")
+                raise ValueError("No matching found between the AnnDatas.")
             matching = csr_matrix(matching.T)
         return matching
 
@@ -245,10 +245,10 @@ class MatchingABC(ABC):
             between one another.
         """
         # Checking all datasets are correct
-        for dataset in self.datasets:
+        for dataset in datasets:
             self._check_input(dataset, dataset_key)
 
-        self.n_datasets = len(self.datasets)
+        self.n_datasets = len(datasets)
 
         # Identifying the reference dataset, then storing it
         ref_idx = -1
@@ -267,10 +267,10 @@ class MatchingABC(ABC):
         # Computing the pairwise matchings
         self.fitted = False
         ref_datasets = [reference] if reference is not None else datasets
-        ref_idx = [ref_idx] if reference is not None else np.arange(self.n_datasets)
+        ref_indices = [ref_idx] if reference is not None else np.arange(self.n_datasets)
         self.matchings = {}
         for i, src in enumerate(datasets):
-            for j, ref in zip(ref_idx, ref_datasets):
+            for j, ref in zip(ref_indices, ref_datasets):
                 if i == j or (j, i) in self.matchings:
                     continue
                 Xi, Xj = self._preprocess(src, ref, dataset_key)
