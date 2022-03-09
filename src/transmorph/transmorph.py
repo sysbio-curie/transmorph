@@ -177,6 +177,9 @@ class LayerOutput(LayerTransmorph):
         self.datasets = datasets
         self.representation_kw = caller.get_representation()
 
+    def get_representation(self) -> str:
+        return self.representation_kw
+
 
 class LayerMatching(LayerTransmorph):
     """
