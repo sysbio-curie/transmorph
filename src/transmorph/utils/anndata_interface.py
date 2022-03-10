@@ -3,6 +3,7 @@
 from anndata import AnnData
 
 import numpy as np
+import warnings
 
 
 def set_matrix(adata: AnnData, dataset_key: str, X: np.ndarray) -> None:
@@ -20,7 +21,6 @@ def set_matrix(adata: AnnData, dataset_key: str, X: np.ndarray) -> None:
     X: np.ndarray
         Matrix to write
     """
-    assert not isset_matrix(adata, dataset_key)
     if "transmorph" not in adata.uns:
         adata.uns["transmorph"] = {}
     if "matrices" not in adata.uns["transmorph"]:
@@ -62,7 +62,9 @@ def delete_matrix(adata: AnnData, dataset_key: str) -> None:
     dataset_key: str
         Target matrix identifier
     """
-    assert isset_matrix(adata, dataset_key)
+    if not isset_matrix(adata, dataset_key):
+        warnings.warn(f"{dataset_key} to delete not found.")
+        return
     del adata.uns["transmorph"]["matrices"][dataset_key]
 
 
@@ -102,7 +104,6 @@ def set_attribute(adata: AnnData, dataset_key: str, X) -> None:
     X: python object
         Object to write
     """
-    assert not isset_attribute(adata, dataset_key)
     if "transmorph" not in adata.uns:
         adata.uns["transmorph"] = {}
     if "attributes" not in adata.uns["transmorph"]:
@@ -142,7 +143,9 @@ def delete_attribute(adata: AnnData, dataset_key: str) -> None:
     dataset_key: str
         Target attribute identifier
     """
-    assert isset_attribute(adata, dataset_key)
+    if not isset_attribute(adata, dataset_key):
+        warnings.warn(f"{dataset_key} to delete not found.")
+        return
     del adata.uns["transmorph"]["attributes"][dataset_key]
 
 

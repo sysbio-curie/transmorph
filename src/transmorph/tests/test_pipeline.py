@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
+from transmorph.checking.checkingTest import CheckingTest
 from transmorph.datasets import load_spirals
 from transmorph.matching import MatchingMNN
 from transmorph.merging import MergingBarycenter
 from transmorph import (
+    LayerChecking,
     LayerInput,
     LayerMatching,
     LayerMerging,
@@ -17,14 +19,13 @@ verbose = True
 layer_input = LayerInput(verbose)
 layer_match = LayerMatching(MatchingMNN(), verbose)
 layer_merge = LayerMerging(MergingBarycenter(), verbose)
-layer_match_2 = LayerMatching(MatchingMNN(), verbose)
-layer_merge_2 = LayerMerging(MergingBarycenter(), verbose)
+layer_check = LayerChecking(CheckingTest(), n_checks_max=3, verbose=verbose)
 layer_out = LayerOutput(verbose)
 layer_input.connect(layer_match)
 layer_match.connect(layer_merge)
-layer_merge.connect(layer_match_2)
-layer_match_2.connect(layer_merge_2)
-layer_merge_2.connect(layer_out)
+layer_merge.connect(layer_check)
+layer_check.connect_no(layer_match)
+layer_check.connect_yes(layer_out)
 
 pipeline = TransmorphPipeline(verbose)
 pipeline.initialize(layer_input)

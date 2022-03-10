@@ -2,10 +2,11 @@
 
 from abc import abstractmethod
 from enum import Enum, auto
-from typing import List
+from typing import List, Union
 
 from scipy.sparse.csr import csr_matrix
 
+from .checking.checkingABC import CheckingABC
 from .matching.matchingABC import MatchingABC
 from .merging.mergingABC import MergingABC
 
@@ -176,7 +177,7 @@ class LayerOutput(LayerTransmorph):
     def __init__(self, verbose: bool = False) -> None:
         super().__init__(
             layer_type=LayerType.OUTPUT,
-            compatible_inputs=[LayerType.INPUT, LayerType.MERGE],
+            compatible_inputs=[LayerType.CHECK, LayerType.INPUT, LayerType.MERGE],
             verbose=verbose,
         )
         self.representation_kw = ""
@@ -205,7 +206,12 @@ class LayerMatching(LayerTransmorph):
     def __init__(self, matching: MatchingABC, verbose: bool = False) -> None:
         super().__init__(
             layer_type=LayerType.MATCH,
-            compatible_inputs=[LayerType.INPUT, LayerType.MERGE, LayerType.CHECK],
+            compatible_inputs=[
+                LayerType.CHECK,
+                LayerType.INPUT,
+                LayerType.MERGE,
+                LayerType.CHECK,
+            ],
             verbose=verbose,
         )
         self.matching = matching
@@ -256,7 +262,7 @@ class LayerMerging(LayerTransmorph):
         """
         super().__init__(
             layer_type=LayerType.MERGE,
-            compatible_inputs=[LayerType.MATCH],
+            compatible_inputs=[LayerType.CHECK, LayerType.MATCH],  # TODO test check
             verbose=verbose,
         )
         self.merging = merging
@@ -304,82 +310,103 @@ class LayerMerging(LayerTransmorph):
         return self.mtx_id
 
 
-# class LayerChecking(LayerTransmorph):
-#     """
-#     TODO
-#     """
-
-#     def __init__(self, checking) -> None:
-#         super().__init__(
-#             type_="checking",
-#             compatible_types=["matching", "output"],
-#             maximum_inputs=1,
-#         )
-#         self.valid = False
-#         self.checking = checking
-
-#     def connect(self, layer: LayerTransmorph):
-#         """
-#         LayerChecking needs to specify output connection types.
-#         """
-#         raise NotImplementedError
-
-#     def connect_invalid(self, layer: LayerTransmorph):
-#         """
-#         TODO
-#         """
-#         self.check_connection(layer)
-#         # TODO
-
-#     def connect_valid(self, layer: LayerTransmorph):
-#         """
-#         TODO
-#         """
-#         self.check_connection(layer)
-#         # TODO
-
-#     def run(self, datasets: List[AnnData]):
-#         """
-#         TODO
-#         """
-#         if self.computed:
-#             return
-#         assert self.input_layers[0].output_data is not None
-#         input_data = self.input_layers[0].output_data.copy()
-#         self.valid = self.checking.check(input_data)
-#         while not self.valid:
-#             self.output_layers[0].set_computed(False)
-#             self.output_layers[0].input_layers[0].output_data = input_data
-#             pass
-#         self.output_data = self.input_layers[0].output_data
-#         self.set_computed(True)
-
-
-class LayerCombineMatching(LayerTransmorph):
+class LayerChecking(LayerTransmorph):
     """
     TODO
     """
 
-    def __init__(self, mode: str) -> None:
-        raise NotImplementedError
+    def __init__(
+        self, checking: CheckingABC, n_checks_max: int = 10, verbose: bool = False
+    ) -> None:
+        super().__init__(
+            layer_type=LayerType.CHECK,
+            compatible_inputs=[LayerType.CHECK, LayerType.MERGE],  # Test CHECK
+            verbose=verbose,
+        )
+        self.checking = checking
+        self.n_checks = 0
+        self.n_checks_max = n_checks_max
+        self.layer_yes: Union[None, LayerTransmorph] = None
+        self.layer_no: Union[None, LayerTransmorph] = None
+        self.mtx_id = f"checking_{self.LayerID}"
+        self.cleaned = False  # TODO improve this to prevent critical bugs
 
-    def get_datasets(self):
+    def connect(self, layer: LayerTransmorph):
+        raise NotImplementedError(
+            "Please use instead connect_yes and connect_no for LayerChecking."
+        )
+
+    def connect_yes(self, layer: LayerTransmorph):
+        assert self.layer_yes is None, "Error: Only one layer 'YES' is allowed."
+        super().connect(layer)
+        self.layer_yes = layer
+
+    def connect_no(self, layer: LayerTransmorph):
+        assert self.layer_no is None, "Error: Only one layer 'NO' is allowed."
+        super().connect(layer)
+        self.layer_no = layer
+
+    def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
         """
         TODO
         """
-        raise NotImplementedError
+        assert self.layer_yes is not None, "Error: No layer found for 'YES' path."
+        assert self.layer_no is not None, "Error: No layer found for 'NO' path."
+        self._log("Requesting keyword.")
+        representation_kw = caller.get_representation()
+        self._log(f"Found '{representation_kw}'. Checking validity.")
+        for adata in datasets:
+            set_matrix(adata, self.mtx_id, get_matrix(adata, representation_kw))
+        valid = self.checking.check(datasets, self.mtx_id)
+        self.n_checks += 1
+        if valid or self.n_checks >= self.n_checks_max:
+            if not valid:
+                self._log("Warning, number of checks exceeded, validating by default.")
+            self._log("Checking loop ended, pursuing.")
+            self.layer_yes.fit(self, datasets)
+        else:
+            self._log("Check fail, retrying.")
+            self.layer_no.fit(self, datasets)
 
-    def normalize(self, T_matching):
-        """
-        TODO
-        """
-        raise NotImplementedError
+    def clean(self, datasets: List[AnnData]):
+        if self.cleaned:
+            return
+        self.cleaned = True
+        self._log("Cleaning.")
+        for adata in datasets:
+            delete_matrix(adata, self.mtx_id)
+        for output in self.output_layers:
+            output.clean(datasets)
 
-    def run(self, datasets):
-        """
-        TODO
-        """
-        raise NotImplementedError
+    def get_representation(self) -> str:
+        return self.mtx_id
+
+
+# class LayerCombineMatching(LayerTransmorph):
+#     """
+#     TODO
+#     """
+
+#     def __init__(self, mode: str) -> None:
+#         raise NotImplementedError
+
+#     def get_datasets(self):
+#         """
+#         TODO
+#         """
+#         raise NotImplementedError
+
+#     def normalize(self, T_matching):
+#         """
+#         TODO
+#         """
+#         raise NotImplementedError
+
+#     def run(self, datasets):
+#         """
+#         TODO
+#         """
+#         raise NotImplementedError
 
 
 class TransmorphPipeline:
