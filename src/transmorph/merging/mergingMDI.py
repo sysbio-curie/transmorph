@@ -4,19 +4,18 @@ from typing import List
 import numpy as np
 import pymde
 
+from anndata import AnnData
 from pymde.preprocess import Graph
 from scipy.sparse import csr_matrix, coo_matrix
-
-from transmorph.utils.dimred import pca
 
 from .mergingABC import MergingABC
 from ..matching.matchingABC import MatchingABC
 from ..utils import nearest_neighbors
+from ..utils.anndata_interface import get_matrix
 
 
 def combine_matchings(
-    matching: MatchingABC,
-    knn_graphs: List[csr_matrix],
+    matching: MatchingABC, knn_graphs: List[csr_matrix], datasets: List[AnnData]
 ) -> csr_matrix:
     """
     Concatenates any number of matchings Mij and knn-graph
@@ -33,7 +32,7 @@ def combine_matchings(
     """
     rows, cols, data, N = [], [], [], 0
     offset_i = 0
-    for i in range(matching.n_datasets):
+    for i, adata_i in enumerate(datasets):
         # Initial relations
         knn_graph = knn_graphs[i].tocoo()
         rows += list(knn_graph.row + offset_i)
@@ -42,18 +41,13 @@ def combine_matchings(
         # Matchings
         offset_j = 0
         ni = matching.datasets[i].X.shape[0]
-        for j in range(matching.n_datasets):
+        for j, adata_j in enumerate(datasets):
             nj = matching.datasets[j].X.shape[0]
             if i >= j:
                 offset_j += nj
                 continue
-            matching_ij = matching.get_matching(i, j, normalize=True)
-            if type(matching_ij) is np.ndarray:
-                matching_ij = coo_matrix(matching_ij)
-            elif type(matching_ij) is csr_matrix:
-                matching_ij = matching_ij.tocoo()
-            else:
-                raise NotImplementedError
+            matching_ij = matching.get_matching(adata_i, adata_j)
+            matching_ij = matching_ij.tocoo()
             rows_k, cols_k = matching_ij.row, matching_ij.col
             rows_k += offset_i
             cols_k += offset_j
@@ -124,11 +118,9 @@ class MergingMDI(MergingABC):
 
     def __init__(
         self,
-        matching: MatchingABC,
         embedding_dimension: int = 2,
         initialization: str = "quadratic",
         n_neighbors: int = 10,
-        n_pcs: int = -1,
         knn_metric: str = "sqeuclidean",
         knn_metric_kwargs: dict = {},
         repulsive_fraction: float = 1.0,
@@ -136,11 +128,10 @@ class MergingMDI(MergingABC):
         device: str = "cpu",
         verbose: bool = False,
     ):
-        MergingABC.__init__(self, matching)
+        super().__init__(use_reference=False)
         self.embedding_dimension = embedding_dimension
         self.initialization = initialization
         self.n_neighbors = n_neighbors
-        self.n_pcs = n_pcs
         self.knn_metric = knn_metric
         self.knn_metric_kwargs = knn_metric_kwargs
         self.repulsive_fraction = repulsive_fraction
@@ -154,13 +145,16 @@ class MergingMDI(MergingABC):
         """
         super()._check_input()
 
-    def transform(self) -> np.ndarray:
+    def fit(
+        self,
+        datasets: List[AnnData],
+        matching: MatchingABC,
+        X_kw: str,
+        reference_idx: int = -1,
+    ) -> List[np.ndarray]:
         inner_graphs = []
-        for dataset in self.matching.datasets:
-            X = dataset.X
-            if self.n_pcs >= 0:
-                assert self.n_pcs <= X.shape[1]
-                X = pca(X, n_components=self.n_pcs)
+        for dataset in datasets:
+            X = get_matrix(dataset, X_kw)
             inner_graphs.append(
                 nearest_neighbors(
                     X,
@@ -171,7 +165,7 @@ class MergingMDI(MergingABC):
                     use_nndescent=True,
                 )
             )
-        edges = combine_matchings(self.matching, inner_graphs)
+        edges = combine_matchings(matching, inner_graphs, datasets)
         edges.data = np.clip(edges.data, 0.0, 1.0)
         edges = edges + edges.T - edges.multiply(edges.T)  # symmetrize
         edges.data[edges.data == 0] = 1e-9
@@ -189,4 +183,11 @@ class MergingMDI(MergingABC):
             device=self.device,
             verbose=self.verbose,
         )
-        return mde.embed(verbose=self.verbose)
+        X_tot = mde.embed(verbose=self.verbose)
+        result = []
+        offset = 0
+        for adata in datasets:
+            n_obs = adata.n_obs
+            result.append(X_tot[offset : offset + n_obs])
+            offset += n_obs
+        return result

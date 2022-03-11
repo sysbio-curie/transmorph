@@ -3,7 +3,7 @@
 from transmorph.checking.checkingTest import CheckingTest
 from transmorph.datasets import load_spirals
 from transmorph.matching import MatchingMNN
-from transmorph.merging import MergingBarycenter
+from transmorph.merging import MergingMDI
 from transmorph import (
     LayerChecking,
     LayerInput,
@@ -18,7 +18,7 @@ verbose = True
 
 layer_input = LayerInput(verbose)
 layer_match = LayerMatching(MatchingMNN(), verbose)
-layer_merge = LayerMerging(MergingBarycenter(), verbose)
+layer_merge = LayerMerging(MergingMDI(), verbose)
 layer_check = LayerChecking(CheckingTest(), n_checks_max=3, verbose=verbose)
 layer_out = LayerOutput(verbose)
 layer_input.connect(layer_match)

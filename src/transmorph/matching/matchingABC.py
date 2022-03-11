@@ -206,6 +206,8 @@ class MatchingABC(ABC):
         adata2: AnnData
             Reference dataset
 
+        TODO: restore normalization?
+
         Returns
         -------
         T = (adata1.n_obs, adata2.n_obs) sparse array, where Tkl is the

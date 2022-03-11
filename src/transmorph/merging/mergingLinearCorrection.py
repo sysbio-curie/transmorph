@@ -4,6 +4,10 @@ import numpy as np
 
 from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix
+from anndata import AnnData
+from typing import List
+
+from transmorph.utils.anndata_interface import get_matrix
 
 from .mergingABC import MergingABC
 from ..matching.matchingABC import MatchingABC
@@ -60,7 +64,7 @@ class MergingLinearCorrection(MergingABC):
 
     def __init__(
         self,
-        matching: MatchingABC,
+        learning_rate: float = 1.0,
         n_neighbors: int = 5,
         metric: str = "sqeuclidean",
         metric_kwargs: dict = {},
@@ -68,7 +72,11 @@ class MergingLinearCorrection(MergingABC):
         low_memory: bool = False,
         n_jobs: int = -1,
     ):
-        MergingABC.__init__(self, matching)
+        super().__init__(use_reference=True)
+        assert (
+            learning_rate > 0.0 and learning_rate <= 1.0
+        ), f"Learning rate {learning_rate} out of bounds (0.0, 1.0]."
+        self.lr = learning_rate
         self.n_neighbors = n_neighbors
         self.metric = metric
         self.metric_kwargs = metric_kwargs
@@ -77,22 +85,12 @@ class MergingLinearCorrection(MergingABC):
         self.n_jobs = n_jobs
 
     def _check_input(self) -> None:
-        super()._check_input()
-        matching = self.matching
-        reference = matching.get_reference()
-        assert matching.use_reference and reference is not None, (
-            "Error: Matching must be fit with reference=X_target for "
-            "barycentric merging."
-        )
-        assert all(
-            dataset.X.shape[1] == reference.X.shape[1] for dataset in matching.datasets
-        ), (
-            "Error: Cannot use"
-            " LinearCorrection to merge datasets from different"
-            " spaces. Try Barycenter or MDI instead."
-        )
+        pass  # TODO
 
     def _project(self, X, Y, T):
+        """
+        Returns the projected view of X onto Y given the matching T
+        """
         ref_locations = np.asarray(T @ Y)
         corr_vectors = ref_locations - X
         n_neighbors = self.n_neighbors
@@ -131,27 +129,26 @@ class MergingLinearCorrection(MergingABC):
             dists = cdist(unmatched, matched, metric=self.metric, **self.metric_kwargs)
             idx_ref = np.arange(n)[connected][np.argmin(dists, axis=1)]
             corr_vectors_smooth[unconnected] = corr_vectors_smooth[idx_ref]
-        return X + corr_vectors_smooth
+        return X + corr_vectors_smooth * self.lr
 
-    def transform(self) -> np.ndarray:
-        matching = self.matching
-        reference = matching.get_reference()
+    def fit(
+        self,
+        datasets: List[AnnData],
+        matching: MatchingABC,
+        X_kw: str,
+        reference_idx: int = -1,
+    ) -> List[np.ndarray]:
+        reference = datasets[reference_idx]
+        list_mtx = [get_matrix(adata, X_kw) for adata in datasets]
         assert reference is not None
-        output = np.zeros(
-            (
-                reference.X.shape[0]
-                + sum(dataset.X.shape[0] for dataset in matching.datasets),
-                reference.X.shape[1],
-            )
-        )
-        output[: reference.X.shape[0]] = reference.X
-        offset = reference.X.shape[0]
+        result = []
         for k, dataset in enumerate(matching.datasets):
-            n = dataset.X.shape[0]
-            T = matching.get_matching(k, normalize=True)
+            if k == reference_idx:
+                result.append(list_mtx[k])
+                continue
+            T = matching.get_matching(dataset, reference)
             if type(T) is csr_matrix:
                 T = T.toarray()
-            projection = self._project(dataset.X, reference.X, T)
-            output[offset : offset + n] = projection
-            offset += n
-        return output
+            projection = self._project(list_mtx[k], list_mtx[reference_idx], T)
+            result.append(projection)
+        return result
