@@ -55,9 +55,8 @@ class MatchingPartialOT(MatchingABC):
         metric: Union[str, Callable] = "sqeuclidean",
         metric_kwargs: dict = {},
         max_iter: int = int(1e6),
-        use_sparse: bool = True,
     ):
-        MatchingABC.__init__(self, use_sparse=use_sparse)
+        super().__init__(metadata_keys=[])
         self.transport_mass = transport_mass
         self.n_dummies = n_dummies
         self.metric = metric
@@ -65,9 +64,11 @@ class MatchingPartialOT(MatchingABC):
         self.max_iter = int(max_iter)
 
     def _match2(self, adata1: sc.AnnData, adata2: sc.AnnData):
-        n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
+        X1 = self.to_match(adata1)
+        X2 = self.to_match(adata2)
+        n1, n2 = X1.shape[0], X2.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M = cdist(adata1.X, adata2.X, metric=self.metric, **self.metric_kwargs)
+        M = cdist(X1, X2, metric=self.metric, **self.metric_kwargs)
         M /= M.max()
         transport_mass = min(self.transport_mass, min(w1.sum(), w2.sum()))
         return partial_wasserstein(

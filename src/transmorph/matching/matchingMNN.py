@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import Tuple, Union, Callable
-
-import copy
-import numpy as np
+from typing import Union, Callable
 
 from anndata import AnnData
 
@@ -47,15 +44,12 @@ class MatchingMNN(MatchingABC):
         metric: Union[str, Callable] = "sqeuclidean",
         metric_kwargs: dict = {},
         n_neighbors: int = 10,
-        use_common_features: bool = False,
-        use_vertex_cover: bool = False,
         verbose: bool = False,
     ):
         super().__init__(metadata_keys=[])
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.n_neighbors = n_neighbors
-        self.use_common_features = use_common_features
         self.verbose = verbose
 
     def _check_input(self, adata: AnnData, dataset_key: str = "") -> None:
@@ -64,30 +58,11 @@ class MatchingMNN(MatchingABC):
         """
         pass
 
-    def _preprocess(
-        self, adata1: AnnData, adata2: AnnData, dataset_key: str
-    ) -> Tuple[AnnData, AnnData]:
-        if self.verbose:
-            print(f"Preprocessing {adata1} and {adata2}).")
-        adata1_new, adata2_new = copy.deepcopy(adata1), copy.deepcopy(adata2)
-        if self.use_common_features:
-            f1 = adata1.var_names
-            f2 = adata2.var_names
-            fcommon = np.intersect1d(f1, f2)
-            f1idx = np.argsort(f1)
-            f2idx = np.argsort(f2)
-            sel1 = np.isin(f1[f1idx], fcommon)
-            sel2 = np.isin(f2[f2idx], fcommon)
-            adata1_new = adata1[:, sel1]
-            adata2_new = adata2[:, sel2]
-            if self.verbose:
-                print(f"Selected {len(fcommon)} common features.")
-        return adata1_new, adata2_new
-
     def _match2(self, adata1: AnnData, adata2: AnnData):
         if self.verbose:
             print(f"Matching {adata1} against {adata2}.")
-        X, Y = adata1.X, adata2.X
+        X = self.to_match(adata1)
+        Y = self.to_match(adata2)
         T = nearest_neighbors(
             X,
             Y=Y,

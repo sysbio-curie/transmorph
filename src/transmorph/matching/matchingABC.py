@@ -193,7 +193,9 @@ class MatchingABC(ABC):
         """
         pass
 
-    def get_matching(self, adata1: AnnData, adata2: AnnData) -> csr_matrix:
+    def get_matching(
+        self, adata1: AnnData, adata2: AnnData, row_normalize: bool = False
+    ) -> csr_matrix:
         """
         Return the matching between two datasets. Throws an error
         if matching is not fitted, or if the required matching does not exist.
@@ -221,6 +223,10 @@ class MatchingABC(ABC):
             if matching is None:
                 raise ValueError("No matching found between the AnnDatas.")
             matching = csr_matrix(matching.T)
+        if row_normalize:
+            coefs = np.array(matching.sum(axis=1))
+            coefs[coefs == 0.0] = 1.0
+            matching = csr_matrix(matching / coefs)
         return matching
 
     def fit(

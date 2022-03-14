@@ -57,7 +57,7 @@ class MergingBarycenter(MergingABC):
             if k == reference_idx:
                 output.append(X_ref)
                 continue
-            T = matching.get_matching(adata, adata_ref).toarray()
+            T = matching.get_matching(adata, adata_ref, row_normalize=True).toarray()
             projection = T @ X_ref
             output.append(projection)
         return output

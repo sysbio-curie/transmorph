@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import anndata as ad
 import numpy as np
 from os.path import dirname
 
@@ -13,7 +14,7 @@ def load_dataset(module_path, filename):
 def load_spirals():
     xs = load_dataset(dirname(__file__), "spiralA.csv")
     yt = load_dataset(dirname(__file__), "spiralB.csv")
-    return xs, yt
+    return ad.AnnData(xs), ad.AnnData(yt)
 
 
 def load_spirals_labels():

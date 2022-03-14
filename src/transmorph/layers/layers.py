@@ -6,12 +6,12 @@ from typing import List, Union
 
 from scipy.sparse.csr import csr_matrix
 
-from .checking.checkingABC import CheckingABC
-from .matching.matchingABC import MatchingABC
-from .merging.mergingABC import MergingABC
+from ..checking.checkingABC import CheckingABC
+from ..matching.matchingABC import MatchingABC
+from ..merging.mergingABC import MergingABC
 
 from anndata import AnnData
-from .utils.anndata_interface import (
+from ..utils.anndata_interface import (
     delete_attribute,
     delete_matrix,
     get_attribute,

@@ -18,17 +18,18 @@ class MatchingSinkhorn(MatchingABC):
         metric_kwargs={},
         epsilon=1e-2,
         max_iter=5e2,
-        use_sparse=True,
     ):
-        MatchingABC.__init__(self, use_sparse=use_sparse)
+        super().__init__(metadata_keys=[])
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.epsilon = epsilon
         self.max_iter = int(max_iter)
 
     def _match2(self, adata1: sc.AnnData, adata2: sc.AnnData):
-        n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
+        X1 = self.to_match(adata1)
+        X2 = self.to_match(adata2)
+        n1, n2 = X1.shape[0], X2.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M = cdist(adata1.X, adata2.X, metric=self.metric, **self.metric_kwargs)
+        M = cdist(X1, X2, metric=self.metric, **self.metric_kwargs)
         M /= M.max()
         return sinkhorn_stabilized(w1, w2, M, self.epsilon, numItermax=self.max_iter)
