@@ -14,6 +14,10 @@ from sklearn.neighbors import NearestNeighbors
 from typing import Tuple, Union, Callable
 
 
+def fsymmetrize(A: csr_matrix):
+    return A + A.T - A.multiply(A.T)
+
+
 def distance_to_knn(D, k, axis):
     """
     Returns the distance of each point along the specified axis to its kth
@@ -140,9 +144,7 @@ def nearest_neighbors(
             connectivity = nn.kneighbors_graph(n_neighbors=n_neighbors)
 
     if symmetrize:
-        connectivity = (
-            connectivity + connectivity.T - connectivity.multiply(connectivity.T)
-        )
+        connectivity = fsymmetrize(connectivity)
     return connectivity
 
 

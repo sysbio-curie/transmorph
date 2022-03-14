@@ -146,7 +146,7 @@ class MergingLinearCorrection(MergingABC):
             if k == reference_idx:
                 result.append(list_mtx[k])
                 continue
-            T = matching.get_matching(dataset, reference)
+            T = matching.get_matching(dataset, reference, row_normalize=True)
             if type(T) is csr_matrix:
                 T = T.toarray()
             projection = self._project(list_mtx[k], list_mtx[reference_idx], T)

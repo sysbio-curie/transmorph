@@ -150,7 +150,7 @@ class MatchingABC(ABC):
             return adata1.X, adata2.X
         return (
             ad.get_matrix(adata1, dataset_key),
-            ad.get_matrix(adata1, dataset_key),
+            ad.get_matrix(adata2, dataset_key),
         )
 
     def _clean(self, adata1: AnnData, adata2: AnnData) -> None:

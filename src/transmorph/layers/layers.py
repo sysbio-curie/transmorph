@@ -358,6 +358,7 @@ class LayerChecking(LayerTransmorph):
         for adata in datasets:
             set_matrix(adata, self.mtx_id, get_matrix(adata, representation_kw))
         valid = self.checking.check(datasets, self.mtx_id)
+        self._log(f"Thr: {self.checking.threshold}, Val: {self.checking.last_value}")
         self.n_checks += 1
         if valid or self.n_checks >= self.n_checks_max:
             if not valid:
