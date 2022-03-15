@@ -120,10 +120,10 @@ class MatchingABC(ABC):
         if type(adata) is not AnnData:
             raise TypeError(f"Error: AnnData expected, found {type(adata)}.")
         if dataset_key != "":  # If "" then use adata.X
-            if dataset_key not in adata.uns["transmorph"]:
+            if not ad.isset_matrix(adata, dataset_key):
                 raise KeyError(f"Error: missing dataset key {dataset_key}")
         for key in self.metadata_keys:
-            if key not in adata.uns["transmorph"]:
+            if not ad.isset_attribute(adata, key):
                 raise KeyError(f"Error: missing metadata {key}.")
 
     def _preprocess(

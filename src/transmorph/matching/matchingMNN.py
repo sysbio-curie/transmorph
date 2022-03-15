@@ -52,12 +52,6 @@ class MatchingMNN(MatchingABC):
         self.n_neighbors = n_neighbors
         self.verbose = verbose
 
-    def _check_input(self, adata: AnnData, dataset_key: str = "") -> None:
-        """
-        TODO
-        """
-        pass
-
     def _match2(self, adata1: AnnData, adata2: AnnData):
         if self.verbose:
             print(f"Matching {adata1} against {adata2}.")
