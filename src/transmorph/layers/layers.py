@@ -4,8 +4,6 @@ from abc import abstractmethod
 from enum import Enum, auto
 from typing import List, Union
 
-from scipy.sparse.csr import csr_matrix
-
 from ..checking.checkingABC import CheckingABC
 from ..matching.matchingABC import MatchingABC
 from ..merging.mergingABC import MergingABC
@@ -23,7 +21,7 @@ from ..utils.anndata_interface import (
 
 class LayerType(Enum):
     """
-    Specifies layer types for easy type checking.
+    Specifies layer types for easy pseudo-polymorphism.
     """
 
     BASE = auto()
@@ -48,15 +46,21 @@ class LayerTransmorph:
     compatible_types: List[LayerType]
         List of type identifiers of compatible input layers
 
-    maximum_inputs: int = -1
-        Maximal number of inputs, set it to -1 if there is no maximum
+    verbose: bool, default = False
+        Displays debugging information
 
     Attributes
     ----------
     output_layers: List[LayerTransmorph]
-        List of outgoing target layers.
+        Set of next layers in the pipeline.
 
+    layer_id: int
+        Unique integer id indentifying the layer.
+
+    Todo
+    ----
     TODO: cacheing
+    TODO: toggle cleaning
     """
 
     LayerID = 0
@@ -71,7 +75,7 @@ class LayerTransmorph:
         self.compatible_inputs = compatible_inputs
         self.output_layers: List["LayerTransmorph"] = []
         self.verbose = verbose
-        self.LayerID = LayerTransmorph.LayerID
+        self.layer_id = LayerTransmorph.LayerID
         LayerTransmorph.LayerID += 1
         self._log("Initialized.")
 
@@ -81,7 +85,7 @@ class LayerTransmorph:
         print(f"{self} >", msg)
 
     def __str__(self):
-        return f"({self.type} {self.LayerID})"
+        return f"({self.type} {self.layer_id})"
 
     def connect(self, layer: "LayerTransmorph") -> None:
         """
@@ -119,33 +123,31 @@ class LayerTransmorph:
 
     def clean(self, datasets: List[AnnData]):
         """
-        TODO
+        Deletes information written in AnnDatas, then delegate the
+        rest to next layers.
         """
         raise NotImplementedError
 
     def get_representation(self) -> str:
         """
-        TODO
-        """
-        raise NotImplementedError
-
-    def get_matching(self, adata_src: AnnData, adata_ref: AnnData) -> csr_matrix:
-        """
-        TODO
+        Provides a keyword to the latest matrix representation of
+        datasets.
         """
         raise NotImplementedError
 
 
 class LayerInput(LayerTransmorph):
     """
-    Every pipeline must contain exactly one input layer. Every pipeline
-    is initialized using this layer.
+    Every pipeline must contain exactly one input layer, followed by an
+    arbitrary network structure. Every pipeline is initialized using this
+    input layer.
     """
 
     def __init__(self, verbose: bool = False) -> None:
         super().__init__(
             layer_type=LayerType.INPUT, compatible_inputs=[], verbose=verbose
         )
+        self.use_rep = ""
 
     def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
         """
@@ -165,13 +167,13 @@ class LayerInput(LayerTransmorph):
         """
         Returns a matrix representation of AnnData.
         """
-        return ""
+        return self.use_rep
 
 
 class LayerOutput(LayerTransmorph):
     """
     Simple layer to manage network outputs. There can be several output layers.
-    TODO
+    (actually not for now)
     """
 
     def __init__(self, verbose: bool = False) -> None:
@@ -210,7 +212,6 @@ class LayerMatching(LayerTransmorph):
                 LayerType.CHECK,
                 LayerType.INPUT,
                 LayerType.MERGE,
-                LayerType.CHECK,
             ],
             verbose=verbose,
         )
@@ -219,9 +220,6 @@ class LayerMatching(LayerTransmorph):
         self.representation_kw = ""
 
     def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
-        """
-        TODO
-        """
         self._log("Requesting keyword.")
         self.representation_kw = caller.get_representation()
         self._log(f"Found '{self.representation_kw}'. Calling matching.")
@@ -237,23 +235,14 @@ class LayerMatching(LayerTransmorph):
             output.clean(datasets)
 
     def get_representation(self) -> str:
-        """
-        TODO
-        """
         assert self.fitted, "{self} must be fitted to access its representation."
         return self.representation_kw
-
-    def get_matching(self, adata_src: AnnData, adata_ref: AnnData) -> csr_matrix:
-        """
-        TODO
-        """
-        assert self.fitted, "{self} must be fitted to access its matching."
-        return self.matching.get_matching(adata_src, adata_ref)
 
 
 class LayerMerging(LayerTransmorph):
     """
-    TODO
+    This layer performs a merging between two or more datasets and their matchings.
+    It wraps an object derived from MergingABC.
     """
 
     def __init__(self, merging: MergingABC, verbose: bool = False) -> None:
@@ -268,12 +257,9 @@ class LayerMerging(LayerTransmorph):
         self.merging = merging
         self.use_reference = merging.use_reference
         self.fitted = False
-        self.mtx_id = f"merging_{self.LayerID}"
+        self.mtx_id = f"merging_{self.layer_id}"  # To write results
 
     def fit(self, caller: LayerMatching, datasets: List[AnnData]):
-        """
-        TODO
-        """
         self._log("Requesting keyword.")
         representation_kw = caller.get_representation()
         self._log(f"Found '{representation_kw}'. Calling merging.")
@@ -312,7 +298,12 @@ class LayerMerging(LayerTransmorph):
 
 class LayerChecking(LayerTransmorph):
     """
-    TODO
+    Conditional layers with exactly two outputs. Performs a statistical test
+    on its input data (typically the result of a merging), then
+    > if accepted, calls layer_yes
+    > if rejected, calls layer_no (possibly upstream)
+    Useful to create "until convergence" loops.
+    Encapsulates a CheckingABC module.
     """
 
     def __init__(
@@ -328,7 +319,7 @@ class LayerChecking(LayerTransmorph):
         self.n_checks_max = n_checks_max
         self.layer_yes: Union[None, LayerTransmorph] = None
         self.layer_no: Union[None, LayerTransmorph] = None
-        self.mtx_id = f"checking_{self.LayerID}"
+        self.mtx_id = f"checking_{self.layer_id}"
         self.cleaned = False  # TODO improve this to prevent critical bugs
 
     def connect(self, layer: LayerTransmorph):
@@ -347,9 +338,6 @@ class LayerChecking(LayerTransmorph):
         self.layer_no = layer
 
     def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
-        """
-        TODO
-        """
         assert self.layer_yes is not None, "Error: No layer found for 'YES' path."
         assert self.layer_no is not None, "Error: No layer found for 'NO' path."
         self._log("Requesting keyword.")
@@ -381,33 +369,6 @@ class LayerChecking(LayerTransmorph):
 
     def get_representation(self) -> str:
         return self.mtx_id
-
-
-# class LayerCombineMatching(LayerTransmorph):
-#     """
-#     TODO
-#     """
-
-#     def __init__(self, mode: str) -> None:
-#         raise NotImplementedError
-
-#     def get_datasets(self):
-#         """
-#         TODO
-#         """
-#         raise NotImplementedError
-
-#     def normalize(self, T_matching):
-#         """
-#         TODO
-#         """
-#         raise NotImplementedError
-
-#     def run(self, datasets):
-#         """
-#         TODO
-#         """
-#         raise NotImplementedError
 
 
 class TransmorphPipeline:
@@ -491,12 +452,19 @@ class TransmorphPipeline:
                 layers_to_visit.append(output_layer)
                 self.layers.append(output_layer)
         assert len(self.output_layers) > 0, "No output layer reachable from input."
+        if len(self.output_layers) > 1:  # Temp
+            raise NotImplementedError("No more than one output allowed.")
         self._log(
             f"Terminated -- {len(self.layers)} layers, "
             f"{len(self.output_layers)} output found."
         )
 
-    def fit(self, datasets: List[AnnData], reference: AnnData = None):
+    def fit(
+        self,
+        datasets: List[AnnData],
+        reference: Union[None, AnnData] = None,
+        use_rep: Union[None, str] = None,
+    ):
         """
         Runs the pipeline given a list of AnnDatas, writes integration results in
         each AnnData object under the entry .obsm['X_transmorph_$i'] where $i is
@@ -507,12 +475,22 @@ class TransmorphPipeline:
         datasets: List[AnnData]
             Datasets to integrate.
 
+        reference: AnnData
+            Reference AnnData to use in mergings that need one. If the pipeline
+            is reference-less, leave it None.
+
+        use_representation: str
+            Matrix representation to use during the pipeline, useful to provide
+            a low-dimensional representation of data.
+            If None, use AnnData.X. Otherwise, use AnnData.obsm[use_rep].
+
         Usage
         -----
         >>> tp.run([adata1, adata2, adata3])
         >>> adata1.obsm['X_transmorph_0']
         -> np.ndarray(shape=(n,d))
         """
+        # Initializing
         assert self.input_layer is not None, "Pipeline must be initialized first."
         if reference is not None:
             for adata in datasets:
@@ -520,13 +498,23 @@ class TransmorphPipeline:
                     set_attribute(adata, "is_reference", False)
                 else:
                     set_attribute(adata, "is_reference", True)
+        if use_rep is not None:
+            self.input_layer.use_rep = use_rep
+            for adata in datasets:
+                set_matrix(adata, use_rep, adata.obsm[use_rep])
+
+        # Running
         self.input_layer.fit(None, datasets)
-        output_kw = self.output_layers[
-            0
-        ].get_representation()  # TODO several output layers
+        # TODO several output layers
+        output_kw = self.output_layers[0].get_representation()
         for adata in datasets:
             adata.obsm["transmorph"] = get_matrix(adata, output_kw)
+
+        # Cleaning
         self.input_layer.clean(datasets)
         if reference is not None:
             for adata in datasets:
                 delete_attribute(adata, "is_reference")
+        if use_rep is not None:
+            for adata in datasets:
+                delete_matrix(adata, use_rep)

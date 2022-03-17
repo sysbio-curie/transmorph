@@ -3,7 +3,6 @@
 from anndata import AnnData
 
 import numpy as np
-import warnings
 
 
 def set_matrix(adata: AnnData, dataset_key: str, X: np.ndarray) -> None:
@@ -63,7 +62,6 @@ def delete_matrix(adata: AnnData, dataset_key: str) -> None:
         Target matrix identifier
     """
     if not isset_matrix(adata, dataset_key):
-        warnings.warn(f"{dataset_key} to delete not found.")
         return
     del adata.uns["transmorph"]["matrices"][dataset_key]
 
@@ -144,7 +142,6 @@ def delete_attribute(adata: AnnData, dataset_key: str) -> None:
         Target attribute identifier
     """
     if not isset_attribute(adata, dataset_key):
-        warnings.warn(f"{dataset_key} to delete not found.")
         return
     del adata.uns["transmorph"]["attributes"][dataset_key]
 

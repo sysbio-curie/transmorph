@@ -1,0 +1,25 @@
+#+TITLE: Todo
+
+* [0%] Programming
+- [ ] MatchingMNN + vertex cover?
+
+* [50%] Revising
+- [X] TData
+- [X] MatchingABC
+- [ ] We would like non-referenced matchings to be compatible
+  with referenced mergings
+- [ ] MatchingMNN
+
+
+* [50%] Testing
+- [X] TData
+- [ ] MatchingABC
+
+
+* [100%] Documenting
+- [X] TData
+- [X] MatchingABC
+
+* [50%] Examples
+- [X] TData
+- [ ] MatchingABC > Documentation?
