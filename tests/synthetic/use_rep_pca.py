@@ -34,7 +34,8 @@ pipeline.initialize(linput)
 
 # Running the pipeline
 
-adata1, adata2 = load_spirals()
+spirals_data = load_spirals()
+adata1, adata2 = spirals_data["src"], spirals_data["ref"]
 sc.pp.pca(adata1, n_comps=2)
 sc.pp.pca(adata2, n_comps=2)
 pipeline.fit([adata1, adata2], reference=adata2, use_rep="X_pca")

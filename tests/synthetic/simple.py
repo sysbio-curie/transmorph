@@ -34,7 +34,8 @@ pipeline.initialize(linput)
 
 # Running the pipeline
 
-adata1, adata2 = load_spirals()
+spirals_data = load_spirals()
+adata1, adata2 = spirals_data["src"], spirals_data["ref"]
 pipeline.fit([adata1, adata2], reference=adata2)
 
 # Retrieving and displaying results in a PC plot
