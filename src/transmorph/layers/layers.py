@@ -7,6 +7,7 @@ from typing import List, Union
 from ..checking.checkingABC import CheckingABC
 from ..matching.matchingABC import MatchingABC
 from ..merging.mergingABC import MergingABC
+from ..preprocessing.preprocessingABC import PreprocessingABC
 
 from anndata import AnnData
 from ..utils.anndata_interface import (
@@ -30,6 +31,7 @@ class LayerType(Enum):
     MATCH = auto()
     MERGE = auto()
     CHECK = auto()
+    PREPROCESS = auto()
 
 
 class LayerTransmorph:
@@ -179,7 +181,12 @@ class LayerOutput(LayerTransmorph):
     def __init__(self, verbose: bool = False) -> None:
         super().__init__(
             layer_type=LayerType.OUTPUT,
-            compatible_inputs=[LayerType.CHECK, LayerType.INPUT, LayerType.MERGE],
+            compatible_inputs=[
+                LayerType.CHECK,
+                LayerType.INPUT,
+                LayerType.MERGE,
+                LayerType.PREPROCESS,
+            ],
             verbose=verbose,
         )
         self.representation_kw = ""
@@ -212,6 +219,7 @@ class LayerMatching(LayerTransmorph):
                 LayerType.CHECK,
                 LayerType.INPUT,
                 LayerType.MERGE,
+                LayerType.PREPROCESS,
             ],
             verbose=verbose,
         )
@@ -311,7 +319,11 @@ class LayerChecking(LayerTransmorph):
     ) -> None:
         super().__init__(
             layer_type=LayerType.CHECK,
-            compatible_inputs=[LayerType.CHECK, LayerType.MERGE],  # Test CHECK
+            compatible_inputs=[
+                LayerType.CHECK,
+                LayerType.MERGE,
+                LayerType.PREPROCESS,
+            ],  # Test CHECK
             verbose=verbose,
         )
         self.checking = checking
@@ -368,6 +380,45 @@ class LayerChecking(LayerTransmorph):
             output.clean(datasets)
 
     def get_representation(self) -> str:
+        return self.mtx_id
+
+
+class LayerPreprocessing(LayerTransmorph):
+    def __init__(
+        self,
+        preprocessing: PreprocessingABC,
+        verbose: bool = False,
+    ) -> None:
+        super().__init__(
+            LayerType.PREPROCESS,
+            [LayerType.INPUT, LayerType.PREPROCESS, LayerType.MERGE, LayerType.CHECK],
+            verbose,
+        )
+        self.preprocessing = preprocessing
+        self.mtx_id = f"preprocessing_{self.layer_id}"
+        self.fitted = False
+
+    def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
+        self._log("Requesting keyword.")
+        self.representation_kw = caller.get_representation()
+        self._log(f"Found '{self.representation_kw}'. Preprocessing.")
+        Xs = self.preprocessing.transform(datasets, self.representation_kw)
+        self.fitted = True
+        for adata, X in zip(datasets, Xs):
+            set_matrix(adata, self.mtx_id, X)
+        self._log("Fitted.")
+        for layer in self.output_layers:
+            layer.fit(self, datasets)
+
+    def clean(self, datasets: List[AnnData]):
+        self._log("Cleaning.")
+        for adata in datasets:
+            delete_matrix(adata, self.mtx_id)
+        for output in self.output_layers:
+            output.clean(datasets)
+
+    def get_representation(self) -> str:
+        assert self.fitted, "{self} must be fitted to access its representation."
         return self.mtx_id
 
 

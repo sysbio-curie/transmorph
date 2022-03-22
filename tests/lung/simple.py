@@ -7,10 +7,12 @@ from transmorph.layers import (
     LayerMatching,
     LayerMerging,
     LayerOutput,
+    LayerPreprocessing,
     TransmorphPipeline,
 )
 from transmorph.matching import MatchingMNN
 from transmorph.merging import MergingBarycenter
+from transmorph.preprocessing import PPStandardize, PPPCA
 
 # Building a simple pipeline
 # Input -> MatchMNN -> MergeBarycenter -> Output
@@ -18,11 +20,15 @@ from transmorph.merging import MergingBarycenter
 VERBOSE = True
 
 linput = LayerInput(verbose=VERBOSE)
+lppstd = LayerPreprocessing(preprocessing=PPStandardize(True, True), verbose=VERBOSE)
+lpppca = LayerPreprocessing(preprocessing=PPPCA(n_components=30), verbose=VERBOSE)
 lmatch = LayerMatching(matching=MatchingMNN(), verbose=VERBOSE)
 lmerge = LayerMerging(merging=MergingBarycenter(), verbose=VERBOSE)
 lout = LayerOutput(verbose=VERBOSE)
 
-linput.connect(lmatch)
+linput.connect(lppstd)
+lppstd.connect(lpppca)
+lpppca.connect(lmatch)
 lmatch.connect(lmerge)
 lmerge.connect(lout)
 

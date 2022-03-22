@@ -5,6 +5,7 @@ from .layers import LayerInput
 from .layers import LayerOutput
 from .layers import LayerMatching
 from .layers import LayerMerging
+from .layers import LayerPreprocessing
 from .layers import TransmorphPipeline
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "LayerOutput",
     "LayerMatching",
     "LayerMerging",
+    "LayerPreprocessing",
     "TransmorphPipeline",
 ]
