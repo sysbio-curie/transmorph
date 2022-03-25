@@ -3,6 +3,8 @@
 from typing import Union, Callable
 
 from anndata import AnnData
+from ..subsampling import SubsamplingKeepAll
+from ..subsampling.subsamplingABC import SubsamplingABC
 
 from .matchingABC import MatchingABC
 from ..utils import nearest_neighbors
@@ -44,9 +46,10 @@ class MatchingMNN(MatchingABC):
         metric: Union[str, Callable] = "sqeuclidean",
         metric_kwargs: dict = {},
         n_neighbors: int = 10,
+        subsampling: SubsamplingABC = SubsamplingKeepAll(),
         verbose: bool = False,
     ):
-        super().__init__(metadata_keys=[])
+        super().__init__(metadata_keys=[], subsampling=subsampling)
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.n_neighbors = n_neighbors

@@ -5,7 +5,9 @@ from ot.gromov import fused_gromov_wasserstein
 
 import numpy as np
 
-from transmorph.utils.anndata_interface import (
+from ..subsampling.subsamplingABC import SubsamplingABC
+from ..subsampling import SubsamplingKeepAll
+from ..utils.anndata_interface import (
     get_attribute,
     isset_attribute,
     set_attribute,
@@ -49,8 +51,11 @@ class MatchingFusedGW(MatchingABC):
         OT_metric_kwargs: Dict = {},
         alpha: float = 0.5,
         GW_loss: str = "square_loss",
+        subsampling: SubsamplingABC = SubsamplingKeepAll(),
     ):
-        super().__init__(metadata_keys=["metric", "metric_kwargs"])
+        super().__init__(
+            metadata_keys=["metric", "metric_kwargs"], subsampling=subsampling
+        )
         self.OT_metric = OT_metric
         self.OT_metric_kwargs = OT_metric_kwargs
         self.alpha = alpha

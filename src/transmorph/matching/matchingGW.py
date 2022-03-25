@@ -7,6 +7,9 @@ import numpy as np
 
 from .matchingABC import MatchingABC
 from scipy.spatial.distance import cdist
+
+from ..subsampling.subsamplingABC import SubsamplingABC
+from ..subsampling import SubsamplingKeepAll
 from ..utils.anndata_interface import isset_attribute, set_attribute, get_attribute
 from anndata import AnnData
 
@@ -56,9 +59,12 @@ class MatchingGW(MatchingABC):
         metric: Union[str, Callable] = "sqeuclidean",
         metric_kwargs: Dict = {},
         max_iter: int = int(1e6),
+        subsampling: SubsamplingABC = SubsamplingKeepAll(),
     ):
 
-        super().__init__(metadata_keys=["metric", "metric_kwargs"])
+        super().__init__(
+            metadata_keys=["metric", "metric_kwargs"], subsampling=subsampling
+        )
         self.loss = loss
         self.metric = metric
         self.metric_kwargs = metric_kwargs

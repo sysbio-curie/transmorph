@@ -6,6 +6,8 @@ from scipy.spatial.distance import cdist
 import numpy as np
 
 from .matchingABC import MatchingABC
+from ..subsampling.subsamplingABC import SubsamplingABC
+from ..subsampling import SubsamplingKeepAll
 import scanpy as sc
 
 
@@ -18,8 +20,9 @@ class MatchingSinkhorn(MatchingABC):
         metric_kwargs={},
         epsilon=1e-2,
         max_iter=5e2,
+        subsampling: SubsamplingABC = SubsamplingKeepAll(),
     ):
-        super().__init__(metadata_keys=[])
+        super().__init__(metadata_keys=[], subsampling=subsampling)
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.epsilon = epsilon

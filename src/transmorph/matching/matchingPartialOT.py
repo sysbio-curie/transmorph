@@ -4,6 +4,8 @@ from ot.partial import partial_wasserstein
 from scipy.spatial.distance import cdist
 
 from .matchingABC import MatchingABC
+from ..subsampling.subsamplingABC import SubsamplingABC
+from ..subsampling import SubsamplingKeepAll
 from typing import Callable, Union
 
 import numpy as np
@@ -55,8 +57,9 @@ class MatchingPartialOT(MatchingABC):
         metric: Union[str, Callable] = "sqeuclidean",
         metric_kwargs: dict = {},
         max_iter: int = int(1e6),
+        subsampling: SubsamplingABC = SubsamplingKeepAll(),
     ):
-        super().__init__(metadata_keys=[])
+        super().__init__(metadata_keys=[], subsampling=subsampling)
         self.transport_mass = transport_mass
         self.n_dummies = n_dummies
         self.metric = metric

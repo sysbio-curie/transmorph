@@ -11,19 +11,24 @@ from transmorph.layers import (
     TransmorphPipeline,
 )
 from transmorph.matching import MatchingMNN
-from transmorph.merging import MergingBarycenter
+from transmorph.merging import MergingMDI
 from transmorph.preprocessing import PPStandardize, PPPCA
+from transmorph.subsampling import SubsamplingVertexCover
+
+import matplotlib.pyplot as plt
 
 # Building a simple pipeline
 # Input -> PP -> -MatchMNN -> MergeBarycenter -> Output
 
 VERBOSE = True
 
+subsampling = SubsamplingVertexCover(n_neighbors=10)
+
 linput = LayerInput(verbose=VERBOSE)
 lppstd = LayerPreprocessing(preprocessing=PPStandardize(True, True), verbose=VERBOSE)
 lpppca = LayerPreprocessing(preprocessing=PPPCA(n_components=30), verbose=VERBOSE)
-lmatch = LayerMatching(matching=MatchingMNN(), verbose=VERBOSE)
-lmerge = LayerMerging(merging=MergingBarycenter(), verbose=VERBOSE)
+lmatch = LayerMatching(matching=MatchingMNN(subsampling=subsampling), verbose=VERBOSE)
+lmerge = LayerMerging(merging=MergingMDI(), verbose=VERBOSE)
 lout = LayerOutput(verbose=VERBOSE)
 
 linput.connect(lppstd)
@@ -44,3 +49,10 @@ adata1, adata2, adata3 = (
     datasets["patient_3"],
 )
 pipeline.fit([adata1, adata2, adata3], reference=adata2)
+
+ctypes = set(adata1.obs["cell_type"])
+
+for ctype in ctypes:
+    for adata in [adata1, adata2, adata3]:
+        plt.scatter(*adata.obsm["transmorph"][adata.obs["cell_type"] == ctype].T)
+plt.show()

@@ -7,6 +7,8 @@ import numpy as np
 from typing import Dict, List, Tuple, Union
 from anndata import AnnData
 
+from ..subsampling.subsamplingABC import SubsamplingABC
+from ..subsampling import SubsamplingKeepAll
 from ..utils import anndata_interface as ad
 
 
@@ -56,8 +58,13 @@ class MatchingABC(ABC):
         If matching is referenced, contains a link to the reference TData.
     """
 
-    def __init__(self, metadata_keys: List[str]):
+    def __init__(
+        self,
+        metadata_keys: List[str],
+        subsampling: SubsamplingABC = SubsamplingKeepAll(),
+    ):
         self.metadata_keys: List[str] = metadata_keys
+        self.subsampling = subsampling
         self.matchings: Dict[Tuple[int, int], csr_matrix] = {}
         self.n_matchings: int = 0
         self.datasets: List[AnnData] = []  # pointer to AnnDatas
@@ -272,6 +279,9 @@ class MatchingABC(ABC):
             self.datasets = datasets
         self.reference_idx = ref_idx
 
+        # Computing subsampling if necessary
+        self.subsampling.subsample(datasets, X_kw=dataset_key)
+
         # Computing the pairwise matchings
         self.fitted = False
         ref_datasets = [reference] if reference is not None else datasets
@@ -282,13 +292,30 @@ class MatchingABC(ABC):
                 if i == j or (j, i) in self.matchings:
                     continue
                 Xi, Xj = self._preprocess(src, ref, dataset_key)
+                anci, ancj = (
+                    self.subsampling.get_anchors(src),
+                    self.subsampling.get_anchors(ref),
+                )
+                Xi = Xi[anci]  # Points to match
+                Xj = Xj[ancj]
                 ad.set_matrix(src, "_to_match", Xi)
                 ad.set_matrix(ref, "_to_match", Xj)
                 T = self._match2(src, ref)
                 if type(T) is np.ndarray:
                     T = csr_matrix(T)
                 assert type(T) is csr_matrix
-                self.matchings[i, j] = T
+                # TODO: Extrapolate matching to non-anchor points
+                # For now, just ignore unmatched points
+                ni, nj = src.n_obs, ref.n_obs
+                rows, cols, data = [], [], []
+                T = T.tocoo()
+                anc_to_ind_i = np.arange(ni)[anci]
+                anc_to_ind_j = np.arange(nj)[ancj]
+                for k, l, v in zip(T.row, T.col, T.data):
+                    rows.append(anc_to_ind_i[k])
+                    cols.append(anc_to_ind_j[l])
+                    data.append(v)
+                self.matchings[i, j] = csr_matrix((data, (rows, cols)), shape=(ni, nj))
                 ad.delete_matrix(src, "_to_match")
                 ad.delete_matrix(ref, "_to_match")
                 self._clean(src, ref)

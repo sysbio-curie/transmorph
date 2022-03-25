@@ -6,7 +6,7 @@ from scipy.sparse import load_npz
 from os.path import dirname
 
 DPATH = f"{dirname(__file__)}/data/%s"
-DPATH_LOCAL = "/home/risitop/Documents/PHD/%s"
+DPATH_LOCAL = "/home/risitop/Documents/PHD/coding/%s"  # TODO: this is dirty
 
 
 def load_dataset(dpath, filename, is_sparse=False):

@@ -4,6 +4,8 @@ from ot import emd
 from scipy.spatial.distance import cdist
 
 from .matchingABC import MatchingABC
+from ..subsampling.subsamplingABC import SubsamplingABC
+from ..subsampling import SubsamplingKeepAll
 from typing import Callable, Union
 
 import numpy as np
@@ -37,9 +39,10 @@ class MatchingEMD(MatchingABC):
         self,
         metric: Union[str, Callable] = "sqeuclidean",
         metric_kwargs: dict = {},
+        subsampling: SubsamplingABC = SubsamplingKeepAll(),
         max_iter: int = int(1e6),
     ):
-        super().__init__(metadata_keys=[])
+        super().__init__(metadata_keys=[], subsampling=subsampling)
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.max_iter = int(max_iter)
