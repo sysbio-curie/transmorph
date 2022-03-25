@@ -15,7 +15,7 @@ from transmorph.merging import MergingBarycenter
 from transmorph.preprocessing import PPStandardize, PPPCA
 
 # Building a simple pipeline
-# Input -> MatchMNN -> MergeBarycenter -> Output
+# Input -> PP -> -MatchMNN -> MergeBarycenter -> Output
 
 VERBOSE = True
 

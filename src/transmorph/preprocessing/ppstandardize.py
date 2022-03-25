@@ -11,7 +11,15 @@ from ..utils.anndata_interface import get_matrix
 
 class PPStandardize(PreprocessingABC):
     """
-    TODO
+    Centers (substracts mean) and scales (divides by STD) datasets.
+
+    Parameters
+    ----------
+    center: bool, default = True
+        Applies the centering.
+
+    scale: bool, default = True
+        Applies the scaling.
     """
 
     def __init__(self, center: bool = True, scale: bool = True):
