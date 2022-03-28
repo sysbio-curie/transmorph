@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from abc import abstractmethod
+from anndata import AnnData
 from enum import Enum, auto
 from typing import List, Union
 
@@ -8,8 +9,6 @@ from ..checking.checkingABC import CheckingABC
 from ..matching.matchingABC import MatchingABC
 from ..merging.mergingABC import MergingABC
 from ..preprocessing.preprocessingABC import PreprocessingABC
-
-from anndata import AnnData
 from ..utils.anndata_interface import (
     delete_attribute,
     delete_matrix,
@@ -18,6 +17,22 @@ from ..utils.anndata_interface import (
     set_attribute,
     set_matrix,
 )
+
+from .profiler import Profiler
+
+
+# Profiling decorator for class methods
+def profile_method(method):
+    def wrapper(*args):
+        self = args[0]
+        assert self is not None
+        profiler: Profiler = self.profiler
+        tid = profiler.task_start(str(self))
+        result = method(*args)
+        profiler.task_end(tid)
+        return result
+
+    return wrapper
 
 
 class LayerType(Enum):
@@ -77,6 +92,7 @@ class LayerTransmorph:
         self.compatible_inputs = compatible_inputs
         self.output_layers: List["LayerTransmorph"] = []
         self.verbose = verbose
+        self.profiler = None
         self.layer_id = LayerTransmorph.LayerID
         LayerTransmorph.LayerID += 1
         self._log("Initialized.")
@@ -106,7 +122,9 @@ class LayerTransmorph:
         self._log(f"Connected to layer {layer}.")
 
     @abstractmethod
-    def fit(self, caller: "LayerTransmorph", datasets: List[AnnData]):
+    def fit(
+        self, caller: "LayerTransmorph", datasets: List[AnnData]
+    ) -> List["LayerTransmorph"]:
         """
         This is the computational method, running an internal module.
         It then should write its output in the AnnDatas, and callback
@@ -137,6 +155,10 @@ class LayerTransmorph:
         """
         raise NotImplementedError
 
+    def set_profiler(self, profiler: Profiler):
+        self._log("Connecting to profiler.")
+        self.profiler = profiler
+
 
 class LayerInput(LayerTransmorph):
     """
@@ -151,14 +173,16 @@ class LayerInput(LayerTransmorph):
         )
         self.use_rep = ""
 
-    def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
+    @profile_method
+    def fit(
+        self, caller: LayerTransmorph, datasets: List[AnnData]
+    ) -> List[LayerTransmorph]:
         """
         Simply calls the downstream layers.
         """
         assert caller is None, f"{caller} called {self}."
         self._log("Calling next layers.")
-        for output in self.output_layers:
-            output.fit(self, datasets)
+        return self.output_layers
 
     def clean(self, datasets: List[AnnData]):
         self._log("Cleaning.")
@@ -191,13 +215,17 @@ class LayerOutput(LayerTransmorph):
         )
         self.representation_kw = ""
 
-    def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
+    @profile_method
+    def fit(
+        self, caller: LayerTransmorph, datasets: List[AnnData]
+    ) -> List[LayerTransmorph]:
         """
         Runs the upstream pipeline and stores results in AnnData objects.
         """
         self._log("Retrieving keyword.")
         self.representation_kw = caller.get_representation()
         self._log(f"Found '{self.representation_kw}'. Terminating the branch.")
+        return []
 
     def clean(self, datasets: List[AnnData]):
         self._log("Cleaning ended for this branch.")
@@ -227,15 +255,17 @@ class LayerMatching(LayerTransmorph):
         self.fitted = False
         self.representation_kw = ""
 
-    def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
+    @profile_method
+    def fit(
+        self, caller: LayerTransmorph, datasets: List[AnnData]
+    ) -> List[LayerTransmorph]:
         self._log("Requesting keyword.")
         self.representation_kw = caller.get_representation()
         self._log(f"Found '{self.representation_kw}'. Calling matching.")
         self.matching.fit(datasets, self.representation_kw)
         self.fitted = True
         self._log("Fitted.")
-        for layer in self.output_layers:
-            layer.fit(self, datasets)
+        return self.output_layers
 
     def clean(self, datasets: List[AnnData]):
         self._log("Cleaning.")
@@ -267,7 +297,10 @@ class LayerMerging(LayerTransmorph):
         self.fitted = False
         self.mtx_id = f"merging_{self.layer_id}"  # To write results
 
-    def fit(self, caller: LayerMatching, datasets: List[AnnData]):
+    @profile_method
+    def fit(
+        self, caller: LayerMatching, datasets: List[AnnData]
+    ) -> List[LayerTransmorph]:
         self._log("Requesting keyword.")
         representation_kw = caller.get_representation()
         self._log(f"Found '{representation_kw}'. Calling merging.")
@@ -290,8 +323,7 @@ class LayerMerging(LayerTransmorph):
             set_matrix(adata, self.mtx_id, X_after)
         self.fitted = True
         self._log("Fitted.")
-        for layer in self.output_layers:
-            layer.fit(self, datasets)
+        return self.output_layers
 
     def clean(self, datasets: List[AnnData]):
         self._log("Cleaning.")
@@ -349,7 +381,10 @@ class LayerChecking(LayerTransmorph):
         super().connect(layer)
         self.layer_no = layer
 
-    def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
+    @profile_method
+    def fit(
+        self, caller: LayerTransmorph, datasets: List[AnnData]
+    ) -> List[LayerTransmorph]:
         assert self.layer_yes is not None, "Error: No layer found for 'YES' path."
         assert self.layer_no is not None, "Error: No layer found for 'NO' path."
         self._log("Requesting keyword.")
@@ -364,10 +399,10 @@ class LayerChecking(LayerTransmorph):
             if not valid:
                 self._log("Warning, number of checks exceeded, validating by default.")
             self._log("Checking loop ended, pursuing.")
-            self.layer_yes.fit(self, datasets)
+            return [self.layer_yes]
         else:
             self._log("Check fail, retrying.")
-            self.layer_no.fit(self, datasets)
+            return [self.layer_no]
 
     def clean(self, datasets: List[AnnData]):
         if self.cleaned:
@@ -398,7 +433,10 @@ class LayerPreprocessing(LayerTransmorph):
         self.mtx_id = f"preprocessing_{self.layer_id}"
         self.fitted = False
 
-    def fit(self, caller: LayerTransmorph, datasets: List[AnnData]):
+    @profile_method
+    def fit(
+        self, caller: LayerTransmorph, datasets: List[AnnData]
+    ) -> List[LayerTransmorph]:
         self._log("Requesting keyword.")
         self.representation_kw = caller.get_representation()
         self._log(f"Found '{self.representation_kw}'. Preprocessing.")
@@ -407,8 +445,7 @@ class LayerPreprocessing(LayerTransmorph):
         for adata, X in zip(datasets, Xs):
             set_matrix(adata, self.mtx_id, X)
         self._log("Fitted.")
-        for layer in self.output_layers:
-            layer.fit(self, datasets)
+        return self.output_layers
 
     def clean(self, datasets: List[AnnData]):
         self._log("Cleaning.")
@@ -469,6 +506,7 @@ class TransmorphPipeline:
         self.output_layers = []
         self.layers = []
         self.verbose = verbose
+        self.profiler = Profiler()
 
     def _log(self, msg: str):
         if not self.verbose:
@@ -495,6 +533,7 @@ class TransmorphPipeline:
         self.layers = [layers_to_visit]
         while len(layers_to_visit) > 0:
             current_layer = layers_to_visit.pop(0)
+            current_layer.profiler = self.profiler
             for output_layer in current_layer.output_layers:
                 if output_layer in self.layers:
                     continue
@@ -555,7 +594,12 @@ class TransmorphPipeline:
                 set_matrix(adata, use_rep, adata.obsm[use_rep])
 
         # Running
-        self.input_layer.fit(None, datasets)
+        layers_to_run = [(None, self.input_layer)]
+        while len(layers_to_run) > 0:
+            caller, called = layers_to_run.pop(0)
+            output_layers = called.fit(caller, datasets)
+            layers_to_run += [(called, out) for out in output_layers]
+
         # TODO several output layers
         output_kw = self.output_layers[0].get_representation()
         for adata in datasets:
@@ -569,3 +613,11 @@ class TransmorphPipeline:
         if use_rep is not None:
             for adata in datasets:
                 delete_matrix(adata, use_rep)
+
+        self._log(
+            "### REPORT_START ###\n"
+            + self.profiler.log_stats()
+            + "\n"
+            + self.profiler.log_tasks()
+        )
+        self._log("### REPORT_END ###")
