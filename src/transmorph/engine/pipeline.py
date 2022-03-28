@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import warnings
+import numpy as np
+
 from anndata import AnnData
 from typing import List, Union
 
@@ -59,7 +62,7 @@ class TransmorphPipeline:
     def __init__(self, verbose: bool = False) -> None:
         self.input_layer = None
         self.output_layers = []
-        self.layers = []
+        self.layers: List[LayerTransmorph] = []
         self.verbose = verbose
         self.profiler = Profiler()
 
@@ -85,7 +88,7 @@ class TransmorphPipeline:
         self._log("Fetching pipeline...")
         self.input_layer = input_layer
         layers_to_visit: List[LayerTransmorph] = [self.input_layer]
-        self.layers = [layers_to_visit]
+        self.layers = [self.input_layer]
         while len(layers_to_visit) > 0:
             current_layer = layers_to_visit.pop(0)
             current_layer.profiler = self.profiler
@@ -103,6 +106,50 @@ class TransmorphPipeline:
             f"Terminated -- {len(self.layers)} layers, "
             f"{len(self.output_layers)} output found."
         )
+
+    def _check_input(
+        self,
+        datasets: List[AnnData],
+        reference: Union[None, AnnData] = None,
+        use_rep: Union[None, str] = None,
+    ):
+        self._log("Checking input...")
+
+        # Check datasets are of the right type, casting them if necessary
+        for i, adata in enumerate(datasets):
+            if type(adata) is not AnnData:
+                assert type(adata) is np.ndarray, (
+                    f"Unrecognized dataset type: {type(adata)}. Please provide your "
+                    "data as AnnData objects. Numpy arrays are tolerated if no "
+                    "metadata is required."
+                )
+                warnings.warn(
+                    "AnnData expected as input, np.ndarray found. Casting to AnnData."
+                )
+                datasets[i] = AnnData(adata)
+
+        # Ensure representation is available
+        if use_rep is not None:
+            for adata in datasets:
+                assert use_rep in adata.obsm, f"KeyError: {use_rep}"
+
+        # Check reference is provided is needed
+        need_reference = False
+        for layer in self.layers:
+            if layer.type != LayerType.MERGE:
+                continue
+            if not layer.use_reference:
+                continue
+            need_reference = True
+            break
+        if need_reference:
+            assert reference is not None, (
+                "Some layers need a reference AnnData to be provided to "
+                "TransmorphPipeline.fit(..., reference=...). Please reconsider "
+                "using these layers, or provide a valid reference dataset."
+            )
+        elif reference is not None:
+            warnings.warn("Reference provided but no layer uses a reference.")
 
     def fit(
         self,
@@ -137,6 +184,7 @@ class TransmorphPipeline:
         """
         # Initializing
         assert self.input_layer is not None, "Pipeline must be initialized first."
+        self._check_input(datasets, reference, use_rep)
         if reference is not None:
             for adata in datasets:
                 if adata is not reference:
