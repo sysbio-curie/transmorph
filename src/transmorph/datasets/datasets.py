@@ -52,7 +52,8 @@ def load_test_datasets_small():
     )
     a2 = ad.AnnData(x2)
     a2.obs["class"] = [0, 0, 0, 0, 1, 1, 1, 1, 1]
-    return {"src": a1, "ref": a2}
+    errors = np.array(a1.obs["class"])[:, None] != np.array(a2.obs["class"])
+    return {"src": a1, "ref": a2, "error": errors}
 
 
 def load_spirals():
