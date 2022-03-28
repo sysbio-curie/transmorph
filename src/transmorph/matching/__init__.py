@@ -1,5 +1,4 @@
 from .matchingEMD import MatchingEMD
-from .matchingCombined import MatchingCombined
 from .matchingMNN import MatchingMNN
 from .matchingGW import MatchingGW
 from .matchingGWEntropic import MatchingGWEntropic
@@ -9,7 +8,6 @@ from .matchingFusedGW import MatchingFusedGW
 
 __all__ = [
     "MatchingEMD",
-    "MatchingCombined",
     "MatchingMNN",
     "MatchingGW",
     "MatchingGWEntropic",
