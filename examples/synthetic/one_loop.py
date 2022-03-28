@@ -5,7 +5,7 @@ import os
 from sklearn.decomposition import PCA
 
 from transmorph.datasets import load_spirals
-from transmorph.layers import (
+from transmorph.engine import (
     LayerChecking,
     LayerInput,
     LayerMatching,

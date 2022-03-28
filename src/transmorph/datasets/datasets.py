@@ -15,6 +15,46 @@ def load_dataset(dpath, filename, is_sparse=False):
     return load_npz(dpath % filename).toarray()
 
 
+def load_test_datasets_small():
+    x1 = np.array(
+        [
+            # Upper cluster
+            [1, 6],
+            [2, 5],
+            [3, 4],
+            [3, 6],
+            [4, 5],
+            [2, 4],
+            # Lower cluster
+            [2, 0],
+            [1, 2],
+            [2, 2],
+            [3, 0],
+        ]
+    )
+    a1 = ad.AnnData(x1)
+    a1.obs["class"] = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1]
+
+    x2 = np.array(
+        [
+            # Upper cluster
+            [6, 5],
+            [7, 5],
+            [9, 6],
+            [7, 6],
+            # Lower cluster
+            [8, 1],
+            [6, 2],
+            [7, 2],
+            [7, 2],
+            [7, 1],
+        ]
+    )
+    a2 = ad.AnnData(x2)
+    a2.obs["class"] = [0, 0, 0, 0, 1, 1, 1, 1, 1]
+    return {"src": a1, "ref": a2}
+
+
 def load_spirals():
     xl = load_dataset(DPATH, "spiralA_labels.csv")
     yl = load_dataset(DPATH, "spiralB_labels.csv")

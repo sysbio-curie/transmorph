@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from transmorph.datasets import load_travaglini_10x
-from transmorph.layers import (
+from transmorph.engine import (
     LayerInput,
     LayerMatching,
     LayerMerging,
@@ -10,7 +10,7 @@ from transmorph.layers import (
     TransmorphPipeline,
 )
 from transmorph.matching import MatchingMNN
-from transmorph.merging import MergingLinearCorrection, MergingMDI
+from transmorph.merging import MergingMDI
 from transmorph.preprocessing import PPStandardize, PPPCA
 from transmorph.subsampling import SubsamplingVertexCover
 
@@ -27,19 +27,15 @@ subsampling = SubsamplingVertexCover(n_neighbors=10)
 linput = LayerInput(verbose=VERBOSE)
 lppstd = LayerPreprocessing(preprocessing=PPStandardize(True, True), verbose=VERBOSE)
 lpppca = LayerPreprocessing(preprocessing=PPPCA(n_components=30), verbose=VERBOSE)
-lmatch1 = LayerMatching(matching=MatchingMNN(subsampling=subsampling), verbose=VERBOSE)
-lmerge1 = LayerMerging(merging=MergingLinearCorrection(n_neighbors=10), verbose=VERBOSE)
-lmatch2 = LayerMatching(matching=MatchingMNN(subsampling=subsampling), verbose=VERBOSE)
-lmerge2 = LayerMerging(merging=MergingMDI(), verbose=VERBOSE)
+lmatch = LayerMatching(matching=MatchingMNN(subsampling=subsampling), verbose=VERBOSE)
+lmerge = LayerMerging(merging=MergingMDI(), verbose=VERBOSE)
 lout = LayerOutput(verbose=VERBOSE)
 
 linput.connect(lppstd)
 lppstd.connect(lpppca)
-lpppca.connect(lmatch1)
-lmatch1.connect(lmerge1)
-lmerge1.connect(lmatch2)
-lmatch2.connect(lmerge2)
-lmerge2.connect(lout)
+lpppca.connect(lmatch)
+lmatch.connect(lmerge)
+lmerge.connect(lout)
 
 pipeline = TransmorphPipeline(verbose=VERBOSE)
 pipeline.initialize(linput)
@@ -82,7 +78,7 @@ plt.xticks([])
 plt.yticks([])
 plt.xlabel("MDI1")
 plt.ylabel("MDI2")
-plt.savefig(f"{os.getcwd()}/transmorph/tests/lung/figures/complex_pertype.png")
+plt.savefig(f"{os.getcwd()}/transmorph/tests/lung/figures/simple_pertype.png")
 plt.show()
 
 plt.figure()
@@ -99,5 +95,5 @@ plt.xticks([])
 plt.yticks([])
 plt.xlabel("MDI1")
 plt.ylabel("MDI2")
-plt.savefig(f"{os.getcwd()}/transmorph/tests/lung/figures/complex_perpatient.png")
+plt.savefig(f"{os.getcwd()}/transmorph/tests/lung/figures/simple_perpatient.png")
 plt.show()

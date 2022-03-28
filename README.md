@@ -53,6 +53,7 @@ pip install transmorph
 ## Contributors
 
 + Aziz Fouché, (Institut Curie Paris, ENS Paris-Saclay)
++ Loïc Chadoutaud, (Institut Curie Paris)
 + Andrei Zinovyev, (Institut Curie Paris, INSERM, Mines ParisTech)
 + Special thanks to Nicolas Captier (Institut Curie Paris) and Maxime Roméas (LIX, École polytechnique, INRIA, Institut Polytechnique de Paris) for the insightful discussions and proofreading.
 
