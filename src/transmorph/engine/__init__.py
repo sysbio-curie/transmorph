@@ -6,7 +6,7 @@ from .layers import LayerOutput
 from .layers import LayerMatching
 from .layers import LayerMerging
 from .layers import LayerPreprocessing
-from .layers import TransmorphPipeline
+from .pipeline import TransmorphPipeline
 
 __all__ = [
     "LayerChecking",
