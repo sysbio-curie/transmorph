@@ -8,7 +8,7 @@ from transmorph.matching import MatchingGW
 
 
 def test_matching_gw_accuracy():
-    # Tests matching quality of MNN on small controlled dataset
+    # Tests matching quality of GW on small controlled dataset
     datasets = load_test_datasets_small()
     src, ref = datasets["src"], datasets["ref"]
     err_matchs = datasets["error"]
@@ -17,7 +17,7 @@ def test_matching_gw_accuracy():
     T = mt.get_matching(src, ref)
     errors = (T.toarray() * err_matchs).sum()
     accuracy = 1 - errors / T.toarray().sum()
-    assert accuracy > 0.04
+    assert accuracy >= 0.04
 
     plt.figure()
     plt.scatter(*src.X.T, label="src", s=60, ec="k")
@@ -38,6 +38,7 @@ def test_matching_gw_accuracy():
     plt.ylabel("Feature 2")
     plt.title(f"Gromov-Wasserstein matching [acc={'{:.2f}'.format(accuracy)}]")
     plt.savefig(f"{os.getcwd()}/transmorph/tests/matching/figures/small_gw.png")
+    plt.close()
 
 
 if __name__ == "__main__":

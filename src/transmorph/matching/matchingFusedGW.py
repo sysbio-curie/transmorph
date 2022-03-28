@@ -93,7 +93,7 @@ class MatchingFusedGW(MatchingABC):
         X2 = self.to_match(adata2)
 
         M = cdist(X1, X2, metric=self.OT_metric, *self.OT_metric_kwargs)
-        M /= M.maw()
+        M /= M.max()
 
         metric_1 = get_attribute(adata1, "metric")
         metric_1_kwargs = get_attribute(adata1, "metric_kwargs")

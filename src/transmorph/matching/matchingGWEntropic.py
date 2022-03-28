@@ -120,6 +120,7 @@ class MatchingGWEntropic(MatchingABC):
         T = entropic_gromov_wasserstein(
             C1, C2, w1, w2, self.loss, self.epsilon, max_iter=self.max_iter
         )
-        low_cut = self.low_cut / n1
+        low_cut = 1.0 / (T.shape[0] * T.shape[1]) * self.low_cut_thr
         T = T * (T > low_cut)
+        T = T / T.sum(axis=1, keepdims=True) / T.shape[1]
         return T

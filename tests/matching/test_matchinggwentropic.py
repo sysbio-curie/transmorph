@@ -4,17 +4,17 @@ import matplotlib.pyplot as plt
 import os
 
 from transmorph.datasets import load_test_datasets_small
-from transmorph.matching import MatchingMNN
+from transmorph.matching import MatchingGWEntropic
 
 
-def test_matching_mnn_accuracy():
-    # Tests matching quality of MNN on small controlled dataset
+def test_matching_gwentropic_accuracy():
+    # Tests matching quality of entropic GW on small controlled dataset
     datasets = load_test_datasets_small()
     src, ref = datasets["src"], datasets["ref"]
     err_matchs = datasets["error"]
-    thrs = [0.85, 0.90, 0.80, 0.75, 0.70]
-    for nnb, thr in enumerate(thrs, 1):
-        mt = MatchingMNN(n_neighbors=nnb)
+    thrs = [0.025, 0.04, 0.04, 0.045]
+    for epsilon, thr in zip([1e-3, 5e-3, 1e-2, 5e-2], thrs):
+        mt = MatchingGWEntropic(epsilon=epsilon)
         mt.fit([src, ref])
         T = mt.get_matching(src, ref)
         errors = (T.toarray() * err_matchs).sum()
@@ -26,10 +26,11 @@ def test_matching_mnn_accuracy():
         plt.scatter(*ref.X.T, label="ref", s=60, ec="k")
 
         Tcoo = T.tocoo()
-        for i, j, _ in zip(Tcoo.row, Tcoo.col, Tcoo.data):
+        for i, j, v in zip(Tcoo.row, Tcoo.col, Tcoo.data):
             plt.plot(
                 [src.X[i][0], ref.X[j][0]],
                 [src.X[i][1], ref.X[j][1]],
+                alpha=v * ref.n_obs,
                 c="k",
             )
         plt.legend()
@@ -37,12 +38,16 @@ def test_matching_mnn_accuracy():
         plt.yticks([])
         plt.xlabel("Feature 1")
         plt.ylabel("Feature 2")
-        plt.title(f"{nnb}-MNN matching [acc={'{:.2f}'.format(accuracy)}]")
+        plt.title(
+            f"Entropic Gromov-Wasserstein (eps={'{:.3f}'.format(epsilon)}) "
+            f"[acc={'{:.2f}'.format(accuracy)}]"
+        )
         plt.savefig(
-            f"{os.getcwd()}/transmorph/tests/matching/figures/small_{nnb}mnn.png"
+            f"{os.getcwd()}/transmorph/tests/matching/figures/small_gwentropic"
+            f"_{'{:.3f}'.format(epsilon)}.png"
         )
         plt.close()
 
 
 if __name__ == "__main__":
-    test_matching_mnn_accuracy()
+    test_matching_gwentropic_accuracy()
