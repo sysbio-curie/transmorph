@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
-from typing import List
+from typing import List, Union
 import numpy as np
 import pymde
 
 from anndata import AnnData
 from pymde.preprocess import Graph
-from scipy.sparse import csr_matrix, coo_matrix
+from scipy.sparse import csr_matrix, coo_matrix, csc_matrix
 
 from .mergingABC import MergingABC
 from ..matching.matchingABC import MatchingABC
@@ -15,7 +15,10 @@ from ..utils.anndata_interface import get_matrix
 
 
 def combine_matchings(
-    matching: MatchingABC, knn_graphs: List[csr_matrix], datasets: List[AnnData]
+    datasets: List[AnnData],
+    knn_graphs: List[csr_matrix],
+    matching: Union[MatchingABC, None] = None,
+    matching_mtx: Union[csr_matrix, np.ndarray, None] = None,
 ) -> csr_matrix:
     """
     Concatenates any number of matchings Mij and knn-graph
@@ -40,14 +43,25 @@ def combine_matchings(
         data += list(knn_graph.data)
         # Matchings
         offset_j = 0
-        ni = matching.datasets[i].X.shape[0]
+        ni = datasets[i].X.shape[0]
         for j, adata_j in enumerate(datasets):
-            nj = matching.datasets[j].X.shape[0]
+            nj = datasets[j].X.shape[0]
             if i >= j:
                 offset_j += nj
                 continue
-            matching_ij = matching.get_matching(adata_i, adata_j)
-            matching_ij = matching_ij.tocoo()
+            if matching is not None:
+                T = matching.get_matching(adata_i, adata_j)
+            elif matching_mtx is not None:  # Works as an elif
+                T = matching_mtx
+                if T.shape[0] == adata_j.n_obs:
+                    T = T.T
+                if type(T) is csc_matrix or type(T) is csr_matrix:
+                    T = T.toarray()
+                assert type(T) is np.ndarray, f"Unrecognized type: {type(T)}"
+                T = csr_matrix(T / T.sum(axis=1, keepdims=True))
+            else:
+                raise AssertionError("matching or matching_mtx must be set.")
+            matching_ij = T.tocoo()
             rows_k, cols_k = matching_ij.row, matching_ij.col
             rows_k += offset_i
             cols_k += offset_j
@@ -139,19 +153,15 @@ class MergingMDI(MergingABC):
         self.device = device
         self.verbose = verbose
 
-    def _check_input(self) -> None:
-        """
-        Raises an additional warning if some source samples are unmatched.
-        """
-        super()._check_input()
-
     def fit(
         self,
         datasets: List[AnnData],
-        matching: MatchingABC,
-        X_kw: str,
+        matching: Union[MatchingABC, None] = None,
+        matching_mtx: Union[csr_matrix, np.ndarray, None] = None,
+        X_kw: str = "",
         reference_idx: int = -1,
     ) -> List[np.ndarray]:
+        self._check_input(datasets, matching, matching_mtx, X_kw, reference_idx)
         inner_graphs = []
         for dataset in datasets:
             X = get_matrix(dataset, X_kw)
@@ -165,7 +175,7 @@ class MergingMDI(MergingABC):
                     use_nndescent=True,
                 )
             )
-        edges = combine_matchings(matching, inner_graphs, datasets)
+        edges = combine_matchings(datasets, inner_graphs, matching, matching_mtx)
         edges.data = np.clip(edges.data, 0.0, 1.0)
         edges = edges + edges.T - edges.multiply(edges.T)  # symmetrize
         edges.data[edges.data == 0] = 1e-9

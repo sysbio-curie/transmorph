@@ -3,9 +3,9 @@
 import numpy as np
 
 from scipy.spatial.distance import cdist
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, csc_matrix
 from anndata import AnnData
-from typing import List
+from typing import List, Union
 
 from transmorph.utils.anndata_interface import get_matrix
 
@@ -84,9 +84,6 @@ class MergingLinearCorrection(MergingABC):
         self.low_memory = low_memory
         self.n_jobs = n_jobs
 
-    def _check_input(self) -> None:
-        pass  # TODO
-
     def _project(self, X, Y, T):
         """
         Returns the projected view of X onto Y given the matching T
@@ -134,19 +131,33 @@ class MergingLinearCorrection(MergingABC):
     def fit(
         self,
         datasets: List[AnnData],
-        matching: MatchingABC,
-        X_kw: str,
+        matching: Union[MatchingABC, None] = None,
+        matching_mtx: Union[np.ndarray, csr_matrix, None] = None,
+        X_kw: str = "",
         reference_idx: int = -1,
     ) -> List[np.ndarray]:
-        reference = datasets[reference_idx]
+        self._check_input(datasets, matching, matching_mtx, X_kw, reference_idx)
+        adata_ref = datasets[reference_idx]
         list_mtx = [get_matrix(adata, X_kw) for adata in datasets]
-        assert reference is not None
+        assert adata_ref is not None
         result = []
-        for k, dataset in enumerate(matching.datasets):
+        for k, adata in enumerate(datasets):
             if k == reference_idx:
                 result.append(list_mtx[k])
                 continue
-            T = matching.get_matching(dataset, reference, row_normalize=True)
+            if matching is not None:
+                T = matching.get_matching(adata, adata_ref, row_normalize=True)
+            elif matching_mtx is not None:  # Works as an elif
+                T = matching_mtx
+                if T.shape[0] == adata_ref.n_obs:
+                    T = T.T
+                if type(T) is csc_matrix or type(T) is csr_matrix:
+                    T = T.toarray()
+                assert type(T) is np.ndarray, f"Unrecognized type: {type(T)}"
+                T = csr_matrix(T / T.sum(axis=1, keepdims=True))
+            else:
+                raise AssertionError("matching or matching_mtx must be set.")
+            assert type(T) is csr_matrix, f"Unrecognized type: {type(T)}"
             if type(T) is csr_matrix:
                 T = T.toarray()
             projection = self._project(list_mtx[k], list_mtx[reference_idx], T)

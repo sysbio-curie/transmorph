@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import warnings
 import numpy as np
 
 from .mergingABC import MergingABC
@@ -8,7 +9,8 @@ from ..matching.matchingABC import MatchingABC
 from ..utils.anndata_interface import get_matrix
 
 from anndata import AnnData
-from typing import List
+from typing import List, Union
+from scipy.sparse import csr_matrix, csc_matrix
 
 
 class MergingBarycenter(MergingABC):
@@ -33,22 +35,34 @@ class MergingBarycenter(MergingABC):
     def __init__(self):
         MergingABC.__init__(self, use_reference=True)
 
-    def _check_input(self) -> None:
-        """
-        Raises an additional warning if some source samples are unmatched.
-        TODO
-        """
-        super()._check_input()
-        pass
+    def _check_input(
+        self,
+        datasets: List[AnnData],
+        matching: Union[MatchingABC, None],
+        matching_mtx: Union[csr_matrix, np.ndarray, None],
+        X_kw: str = "",
+        reference_idx: int = -1,
+    ) -> None:
+        super()._check_input(datasets, matching, matching_mtx, X_kw, reference_idx)
+        if matching is not None:
+            if type(matching) is not csr_matrix and type(matching) is not np.ndarray:
+                raise TypeError(f"Unrecognized matching type {type(matching)}")
+            if any(matching.sum(axis=1) == 0):
+                warnings.warn(
+                    "Unmatched samples detected. You may want to switch to another "
+                    "merging such as MergingLinearCorrection to avoid degenerate"
+                    "solutions."
+                )
 
     def fit(
         self,
         datasets: List[AnnData],
-        matching: MatchingABC,
-        X_kw: str,
+        matching: Union[MatchingABC, None] = None,
+        matching_mtx: Union[csr_matrix, np.ndarray, None] = None,
+        X_kw: str = "",
         reference_idx: int = -1,
     ) -> List[np.ndarray]:
-        assert reference_idx >= 0, "Missing reference dataset."
+        self._check_input(datasets, matching, matching_mtx, X_kw, reference_idx)
         representations = [get_matrix(adata, X_kw) for adata in datasets]
         adata_ref = datasets[reference_idx]
         X_ref = representations[reference_idx]
@@ -57,7 +71,19 @@ class MergingBarycenter(MergingABC):
             if k == reference_idx:
                 output.append(X_ref)
                 continue
-            T = matching.get_matching(adata, adata_ref, row_normalize=True).toarray()
+            if matching is not None:
+                T = matching.get_matching(adata, adata_ref, row_normalize=True)
+            elif matching_mtx is not None:  # Works as an elif
+                T = matching_mtx
+                if T.shape[0] == adata_ref.n_obs:
+                    T = T.T
+                if type(T) is csc_matrix or type(T) is csr_matrix:
+                    T = T.toarray()
+                assert type(T) is np.ndarray, f"Unrecognized type: {type(T)}"
+                T = csr_matrix(T / T.sum(axis=1, keepdims=True))
+            else:
+                raise AssertionError("matching or matching_mtx must be set.")
+            assert type(T) is csr_matrix, f"Unrecognized type: {type(T)}"
             projection = T @ X_ref
             output.append(projection)
         return output

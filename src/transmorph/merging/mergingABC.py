@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-#
+
+import warnings
+import numpy as np
+
 from abc import ABC, abstractmethod
+from anndata import AnnData
+from scipy.sparse import csr_matrix
+from typing import List, Union
+
+from transmorph.utils.anndata_interface import isset_matrix
 
 from ..matching.matchingABC import MatchingABC
-
-import numpy as np
-from typing import List
-from anndata import AnnData
 
 
 class MergingABC(ABC):
@@ -25,20 +29,41 @@ class MergingABC(ABC):
     def __init__(self, use_reference: bool = False):
         self.use_reference = use_reference
 
-    def _check_input(self) -> None:
+    def _check_input(
+        self,
+        datasets: List[AnnData],
+        matching: Union[MatchingABC, None],
+        matching_mtx: Union[csr_matrix, np.ndarray, None],
+        X_kw: str = "",
+        reference_idx: int = -1,
+    ) -> None:
         """
         Checking if number of matchings and datasets coincides with reference strategy.
         This method is automatically called at the beginning MergingABC._check_input().
         Any class inheriting from MergingABC can add rules to this method.
         """
-        pass
+        if self.use_reference:
+            assert reference_idx >= 0, "Missing reference dataset."
+        else:
+            if reference_idx >= 0:
+                warnings.warn("Ignoring reference provided to a ref-less merging.")
+        if matching_mtx is not None:
+            assert (
+                len(datasets) == 2
+            ), "Directly passing a matching only available with two datasets."
+            assert (
+                matching is None
+            ), "Ambiguous use of both a Matching and a matching matrix."
+        for adata in datasets:
+            assert isset_matrix(adata, X_kw), f"KeyError: {X_kw}"
 
     @abstractmethod
     def fit(
         self,
         datasets: List[AnnData],
-        matching: MatchingABC,
-        X_kw: str,
+        matching: Union[MatchingABC, None] = None,
+        matching_mtx: Union[csr_matrix, np.ndarray, None] = None,
+        X_kw: str = "",
         reference_idx: int = -1,
     ) -> List[np.ndarray]:
         pass
