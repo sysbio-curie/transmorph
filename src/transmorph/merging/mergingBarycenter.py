@@ -44,10 +44,13 @@ class MergingBarycenter(MergingABC):
         reference_idx: int = -1,
     ) -> None:
         super()._check_input(datasets, matching, matching_mtx, X_kw, reference_idx)
-        if matching is not None:
-            if type(matching) is not csr_matrix and type(matching) is not np.ndarray:
-                raise TypeError(f"Unrecognized matching type {type(matching)}")
-            if any(matching.sum(axis=1) == 0):
+        if matching_mtx is not None:
+            if (
+                type(matching_mtx) is not csr_matrix
+                and type(matching_mtx) is not np.ndarray
+            ):
+                raise TypeError(f"Unrecognized matching type {type(matching_mtx)}")
+            if any(matching_mtx.sum(axis=1) == 0):
                 warnings.warn(
                     "Unmatched samples detected. You may want to switch to another "
                     "merging such as MergingLinearCorrection to avoid degenerate"

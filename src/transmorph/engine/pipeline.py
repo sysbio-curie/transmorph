@@ -69,7 +69,7 @@ class TransmorphPipeline:
     def _log(self, msg: str):
         if not self.verbose:
             return
-        print(f"{self} >", msg)
+        print("TRPIP >", msg)
 
     def __str__(self):
         return "(TransmorphPipeline)"

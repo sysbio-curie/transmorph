@@ -63,7 +63,7 @@ class Profiler:
         return self.tend - self.tstart
 
     def log_tasks(self) -> str:
-        return "ID\tLABEL\tELAPSED (s)\tSTATE\n" + "\n".join(
+        return "TID\tNAME\tELAPSED(s)\tSTATE\n" + "\n".join(
             [str(t) for t in self.tasks]
         )
 

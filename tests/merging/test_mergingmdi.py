@@ -18,7 +18,7 @@ def test_merging_mdi():
     mg = MergingMDI(n_neighbors=3)
     X_src, X_ref = mg.fit([src, ref], matching_mtx=match)
     score = matching_divergence(X_src, X_ref, match)
-    assert score < 2
+    assert score < 2.5
 
     plt.figure()
     plt.scatter(*X_src.T, label="src (after)", s=60, ec="k")

@@ -2,7 +2,8 @@
 
 from abc import abstractmethod
 from anndata import AnnData
-from enum import Enum, auto
+from enum import IntEnum
+
 from typing import List, Union
 
 from ..checking.checkingABC import CheckingABC
@@ -33,18 +34,18 @@ def profile_method(method):
     return wrapper
 
 
-class LayerType(Enum):
+class LayerType(IntEnum):
     """
     Specifies layer types for easy pseudo-polymorphism.
     """
 
-    BASE = auto()
-    INPUT = auto()
-    OUTPUT = auto()
-    MATCH = auto()
-    MERGE = auto()
-    CHECK = auto()
-    PREPROCESS = auto()
+    BASE = -1
+    INPUT = 0
+    OUTPUT = 1
+    PREPROCESS = 2
+    MATCH = 3
+    MERGE = 4
+    CHECK = 5
 
 
 class LayerTransmorph:
@@ -87,6 +88,7 @@ class LayerTransmorph:
         verbose: bool = False,
     ) -> None:
         self.type = layer_type
+        self.str_rep = ""
         self.compatible_inputs = compatible_inputs
         self.output_layers: List["LayerTransmorph"] = []
         self.verbose = verbose
@@ -101,7 +103,22 @@ class LayerTransmorph:
         print(f"{self} >", msg)
 
     def __str__(self):
-        return f"({self.type} {self.layer_id})"
+        if self.str_rep == "":
+            typestr = "ABS"  # Abstract
+            if self.type == LayerType.CHECK:
+                typestr = "CHK"
+            elif self.type == LayerType.INPUT:
+                typestr = "INP"
+            elif self.type == LayerType.OUTPUT:
+                typestr = "OUT"
+            elif self.type == LayerType.MATCH:
+                typestr = "MTC"
+            elif self.type == LayerType.MERGE:
+                typestr = "MRG"
+            elif self.type == LayerType.PREPROCESS:
+                typestr = "PRP"
+            self.str_rep = f"{typestr}#{self.layer_id}"
+        return self.str_rep
 
     def connect(self, layer: "LayerTransmorph") -> None:
         """
@@ -156,6 +173,9 @@ class LayerTransmorph:
     def set_profiler(self, profiler: Profiler):
         self._log("Connecting to profiler.")
         self.profiler = profiler
+
+    def get_compatible_inputs(self) -> List[LayerType]:
+        return self.compatible_inputs.copy()
 
 
 class LayerInput(LayerTransmorph):
@@ -350,6 +370,7 @@ class LayerChecking(LayerTransmorph):
         super().__init__(
             layer_type=LayerType.CHECK,
             compatible_inputs=[
+                LayerType.INPUT,
                 LayerType.CHECK,
                 LayerType.MERGE,
                 LayerType.PREPROCESS,
