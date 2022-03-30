@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
-import matplotlib.pyplot as plt
-import os
-
 from scipy.sparse import csr_matrix
 
 from transmorph.datasets import load_test_datasets_small
 from transmorph.merging import MergingMDI
 from transmorph.utils import matching_divergence
+
+from transmorph.utils.plotting import plot_result
 
 
 def test_merging_mdi():
@@ -16,22 +15,23 @@ def test_merging_mdi():
     src, ref = datasets["src"], datasets["ref"]
     match = csr_matrix(1.0 - datasets["error"])
     mg = MergingMDI(n_neighbors=3)
-    X_src, X_ref = mg.fit([src, ref], matching_mtx=match)
-    score = matching_divergence(X_src, X_ref, match)
+    src.obsm["transmorph"], ref.obsm["transmorph"] = mg.fit(
+        [src, ref], matching_mtx=match
+    )
+    score = matching_divergence(src.obsm["transmorph"], ref.obsm["transmorph"], match)
     assert score < 2.5
 
-    plt.figure()
-    plt.scatter(*X_src.T, label="src (after)", s=60, ec="k")
-    plt.scatter(*X_ref.T, label="ref", s=60, ec="k", marker="s")
-
-    plt.legend()
-    plt.xticks([])
-    plt.yticks([])
-    plt.xlabel("MDI1")
-    plt.ylabel("MDI2")
-    plt.title(f"Merging MDI (MD={'{:.2f}'.format(score)})")
-    plt.savefig(f"{os.getcwd()}/transmorph/tests/merging/figures/small_mdi.png")
-    plt.close()
+    plot_result(
+        datasets=[src, ref],
+        color_by="class",
+        title=f"Merging MDI (MD={'{:.2f}'.format(score)})",
+        xlabel="Feature 1",
+        ylabel="Feature 2",
+        show=False,
+        save=True,
+        caller_path=f"{__file__}",
+        suffix="",
+    )
 
 
 if __name__ == "__main__":

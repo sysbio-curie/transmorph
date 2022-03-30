@@ -14,8 +14,8 @@ from transmorph.merging import MergingLinearCorrection, MergingMDI
 from transmorph.preprocessing import PPStandardize, PPPCA
 from transmorph.subsampling import SubsamplingVertexCover
 
-import matplotlib.pyplot as plt
-import os
+from transmorph.utils.plotting import plot_result
+
 
 # Building a subsampling pipeline
 # Input -> PP -> MatchMNN + VertexCover -> MergeBarycenter -> Output
@@ -54,50 +54,25 @@ adata1, adata2, adata3 = (
 )
 pipeline.fit([adata1, adata2, adata3], reference=adata2)
 
-plt.figure()
-ctypes = set(adata1.obs["cell_type"])
-colors = ["orange", "royalblue", "darkgreen", "purple"]
-label_names = ["Endothelial", "Stromal", "Epithelial", "Immune"]
-plt_kwargs = {"ec": "k", "s": 40}
+# Plotting
 
-for ctype, c, l in zip(ctypes, colors, label_names):
-    legend = True
-    for adata in [adata1, adata2, adata3]:
-        if legend:
-            plt.scatter(
-                *adata.obsm["transmorph"][adata.obs["cell_type"] == ctype].T,
-                label=l,
-                c=c,
-                **plt_kwargs,
-            )
-            legend = False
-        else:
-            plt.scatter(
-                *adata.obsm["transmorph"][adata.obs["cell_type"] == ctype].T,
-                c=c,
-                **plt_kwargs,
-            )
-plt.legend()
-plt.xticks([])
-plt.yticks([])
-plt.xlabel("MDI1")
-plt.ylabel("MDI2")
-plt.savefig(f"{os.getcwd()}/transmorph/examples/lung/figures/complex_pertype.png")
-plt.show()
+plot_result(
+    datasets=[adata1, adata2, adata3],
+    title="I > ST > PC > MNN > LC >MNN > MDI > O",
+    xlabel="MDI1",
+    ylabel="MDI2",
+    show=False,
+    save=True,
+    caller_path=f"{__file__}",
+)
 
-plt.figure()
-plt_kwargs = {"ec": "k", "s": 40}
-
-for i, adata in enumerate([adata1, adata2, adata3]):
-    plt.scatter(
-        *adata.obsm["transmorph"].T,
-        label=f"Patient {i}",
-        **plt_kwargs,
-    )
-plt.legend()
-plt.xticks([])
-plt.yticks([])
-plt.xlabel("MDI1")
-plt.ylabel("MDI2")
-plt.savefig(f"{os.getcwd()}/transmorph/examples/lung/figures/complex_perpatient.png")
-plt.show()
+plot_result(
+    datasets=[adata1, adata2, adata3],
+    color_by="cell_type",
+    title="I > ST > PC > MNN > LC >MNN > MDI > O",
+    xlabel="MDI1",
+    ylabel="MDI2",
+    show=False,
+    save=True,
+    caller_path=f"{__file__}",
+)

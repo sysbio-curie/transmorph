@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-import matplotlib.pyplot as plt
-import os
-from sklearn.decomposition import PCA
-
 from transmorph.datasets import load_spirals
 from transmorph.engine import (
     LayerInput,
@@ -15,6 +11,8 @@ from transmorph.engine import (
 from transmorph.matching import MatchingMNN
 from transmorph.merging import MergingLinearCorrection
 from transmorph.subsampling import SubsamplingVertexCover
+
+from transmorph.utils.plotting import plot_result
 
 # Building a simple pipeline
 # Input -> MatchMNN -> MergeBarycenter -> Output
@@ -43,22 +41,12 @@ pipeline.fit([adata1, adata2], reference=adata2)
 
 # Retrieving and displaying results in a PC plot
 
-pca = PCA(n_components=2)
-X2 = pca.fit_transform(adata2.obsm["transmorph"])
-X1 = pca.transform(adata1.X)
-X1_int = pca.transform(adata1.obsm["transmorph"])
-
-plt.figure(figsize=(6, 6))
-plt.scatter(*X2.T, label="Reference dataset", c=adata2.obs["label"], ec="k")
-plt.scatter(*X1.T, label="Source dataset", c="silver")
-plt.scatter(
-    *X1_int.T, label="Integrated dataset", c=adata1.obs["label"], ec="k", marker="s"
+plot_result(
+    datasets=[adata1, adata2],
+    reducer="pca",
+    color_by="label",
+    title="I > MNN (+VC) > Bary > O",
+    show=False,
+    save=True,
+    caller_path=f"{__file__}",
 )
-plt.legend()
-plt.xticks([])
-plt.yticks([])
-plt.xlabel("PC1")
-plt.ylabel("PC2")
-plt.title("I > MNN > Bary > O")
-plt.savefig(f"{os.getcwd()}/transmorph/examples/synthetic/figures/simple.png")
-plt.show()

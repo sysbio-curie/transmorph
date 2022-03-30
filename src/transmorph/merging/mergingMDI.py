@@ -198,6 +198,6 @@ class MergingMDI(MergingABC):
         offset = 0
         for adata in datasets:
             n_obs = adata.n_obs
-            result.append(X_tot[offset : offset + n_obs])
+            result.append(X_tot[offset : offset + n_obs].numpy())
             offset += n_obs
         return result

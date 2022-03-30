@@ -81,7 +81,11 @@ def load_travaglini_10x():
         cell_types = load_dataset(
             dataset_root,
             f"P{patient_id}_labels.csv",
-        )
+        ).astype(str)
+        cell_types[cell_types == "0.0"] = "Endothelial"
+        cell_types[cell_types == "1.0"] = "Stromal"
+        cell_types[cell_types == "2.0"] = "Epithelial"
+        cell_types[cell_types == "3.0"] = "Immune"
         adata = ad.AnnData(counts)
         adata.obs["cell_type"] = cell_types
         data[f"patient_{patient_id}"] = adata
