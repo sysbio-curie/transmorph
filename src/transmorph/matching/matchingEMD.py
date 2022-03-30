@@ -51,13 +51,9 @@ class MatchingEMD(MatchingABC):
         """
         Simply gathers datasets and compute exact optimal transport.
         """
-        n1, n2 = adata1.n_obs, adata2.n_obs
+        X1, X2 = self.to_match(adata1), self.to_match(adata2)
+        n1, n2 = X1.shape[0], X2.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        M = cdist(
-            self.to_match(adata1),
-            self.to_match(adata2),
-            metric=self.metric,
-            **self.metric_kwargs
-        )
+        M = cdist(X1, X2, metric=self.metric, **self.metric_kwargs)
         M /= M.max()
         return emd(w1, w2, M, numItermax=self.max_iter)

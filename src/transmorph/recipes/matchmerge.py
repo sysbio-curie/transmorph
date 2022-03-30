@@ -3,9 +3,7 @@
 from anndata import AnnData
 from typing import List
 
-from transmorph.layers.layers import LayerTransmorph
-
-from ..layers import (
+from ..engine import (
     LayerInput,
     LayerMatching,
     LayerMerging,
@@ -13,6 +11,8 @@ from ..layers import (
     LayerPreprocessing,
     TransmorphPipeline,
 )
+
+from ..engine.layers import LayerTransmorph
 from ..matching.matchingABC import MatchingABC
 from ..merging.mergingABC import MergingABC
 from ..preprocessing.preprocessingABC import PreprocessingABC
