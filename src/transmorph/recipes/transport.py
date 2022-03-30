@@ -3,6 +3,7 @@
 from anndata import AnnData
 from typing import List
 
+
 from ..engine import (
     LayerInput,
     LayerMatching,
@@ -13,6 +14,8 @@ from ..engine import (
 )
 
 from ..engine.layers import LayerTransmorph
+from ..subsampling.subsamplingABC import SubsamplingABC
+
 from ..matching import MatchingEMD, MatchingGW, MatchingSinkhorn
 from ..merging import MergingBarycenter
 from ..preprocessing.preprocessingABC import PreprocessingABC
@@ -29,8 +32,8 @@ class Transport:
 
     def __init__(
         self,
-        flavor="emd",
-        subsampling=SubsamplingKeepAll(),
+        flavor: str = "emd",
+        subsampling: SubsamplingABC = SubsamplingKeepAll(),
         preprocessing: List[PreprocessingABC] = [],
         verbose: bool = False,
     ):
