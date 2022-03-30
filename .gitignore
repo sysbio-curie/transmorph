@@ -12,6 +12,7 @@ docs/tutorial/.ipynb_checkpoints/
 examples/*.png
 docs/_build/
 dist/
+data/
 transmorph.egg-info/
 .archive/
 **/__pycache__/**

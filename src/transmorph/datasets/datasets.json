@@ -1,0 +1,40 @@
+[
+    {
+        "name": "travaglini_10x",
+        "reference": "https://www.nature.com/articles/s41586-020-2922-4",
+        "type": "single-cell",
+        "n_files": 6,
+        "files": [
+            {
+                "name": "P1_counts.npz",
+                "type": "scipy.sparse",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheI0kqpP91xQM8n_oQ?e=Yfcoqq"
+            },
+            {
+                "name": "P2_counts.npz",
+                "type": "scipy.sparse",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheIziTAdsMOb78byQA?e=bbfTsA"
+            },
+            {
+                "name": "P3_counts.npz",
+                "type": "scipy.sparse",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheIyT-ZD-7cRr7EJlQ?e=BH2AJe"
+            },
+            {
+                "name": "P1_labels.csv",
+                "type": "np.ndarray",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheIxdqd5MO_Q9x2_MA?e=zhMTHG" 
+            },
+            {
+                "name": "P2_labels.csv",
+                "type": "np.ndarray",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheIwJEsaTjSiekifkw?e=afoTa6" 
+            },
+            {
+                "name": "P3_labels.csv",
+                "type": "np.ndarray",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheIvrPrMKslY0R0Qwg?e=BRcOTE" 
+            }
+        ]
+    } 
+]
