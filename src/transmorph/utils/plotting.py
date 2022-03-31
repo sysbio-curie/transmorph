@@ -11,7 +11,7 @@ from numbers import Number
 from os.path import exists
 from scipy.sparse import csr_matrix
 from sklearn.decomposition import PCA
-from typing import List, Union
+from typing import List, Optional
 
 from ..utils.anndata_interface import get_matrix, set_matrix, isset_matrix
 
@@ -20,7 +20,7 @@ MARKERS = "osv^<>pP*hHXDd"
 
 def plot_result(
     datasets: List[AnnData],
-    matching_mtx: Union[csr_matrix, None] = None,
+    matching_mtx: Optional[csr_matrix] = None,
     reducer: str = "umap",
     use_cache: bool = False,
     color_by: str = "__dataset__",

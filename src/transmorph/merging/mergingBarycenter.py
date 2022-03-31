@@ -9,7 +9,7 @@ from ..matching.matchingABC import MatchingABC
 from ..utils.anndata_interface import get_matrix
 
 from anndata import AnnData
-from typing import List, Union
+from typing import List, Optional, Union
 from scipy.sparse import csr_matrix, csc_matrix
 
 
@@ -38,8 +38,8 @@ class MergingBarycenter(MergingABC):
     def _check_input(
         self,
         datasets: List[AnnData],
-        matching: Union[MatchingABC, None],
-        matching_mtx: Union[csr_matrix, np.ndarray, None],
+        matching: Optional[MatchingABC] = None,
+        matching_mtx: Optional[Union[csr_matrix, np.ndarray]] = None,
         X_kw: str = "",
         reference_idx: int = -1,
     ) -> None:
@@ -60,8 +60,8 @@ class MergingBarycenter(MergingABC):
     def fit(
         self,
         datasets: List[AnnData],
-        matching: Union[MatchingABC, None] = None,
-        matching_mtx: Union[csr_matrix, np.ndarray, None] = None,
+        matching: Optional[MatchingABC] = None,
+        matching_mtx: Optional[Union[csr_matrix, np.ndarray]] = None,
         X_kw: str = "",
         reference_idx: int = -1,
     ) -> List[np.ndarray]:

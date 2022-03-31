@@ -6,7 +6,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from anndata import AnnData
 from scipy.sparse import csr_matrix
-from typing import List, Union
+from typing import List, Optional, Union
 
 from transmorph.utils.anndata_interface import isset_matrix
 
@@ -28,12 +28,13 @@ class MergingABC(ABC):
 
     def __init__(self, use_reference: bool = False):
         self.use_reference = use_reference
+        self.input_checked = False
 
     def _check_input(
         self,
         datasets: List[AnnData],
-        matching: Union[MatchingABC, None],
-        matching_mtx: Union[csr_matrix, np.ndarray, None],
+        matching: Optional[MatchingABC] = None,
+        matching_mtx: Optional[Union[csr_matrix, np.ndarray]] = None,
         X_kw: str = "",
         reference_idx: int = -1,
     ) -> None:
@@ -42,6 +43,8 @@ class MergingABC(ABC):
         This method is automatically called at the beginning MergingABC._check_input().
         Any class inheriting from MergingABC can add rules to this method.
         """
+        if matching is None and matching_mtx is None:
+            raise ValueError("No matching provided.")
         if self.use_reference:
             assert reference_idx >= 0, "Missing reference dataset."
         else:
@@ -56,13 +59,14 @@ class MergingABC(ABC):
             ), "Ambiguous use of both a Matching and a matching matrix."
         for adata in datasets:
             assert isset_matrix(adata, X_kw), f"KeyError: {X_kw}"
+        self.input_checked = True
 
     @abstractmethod
     def fit(
         self,
         datasets: List[AnnData],
-        matching: Union[MatchingABC, None] = None,
-        matching_mtx: Union[csr_matrix, np.ndarray, None] = None,
+        matching: Optional[MatchingABC] = None,
+        matching_mtx: Optional[Union[csr_matrix, np.ndarray]] = None,
         X_kw: str = "",
         reference_idx: int = -1,
     ) -> List[np.ndarray]:

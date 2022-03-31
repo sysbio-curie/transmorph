@@ -6,7 +6,6 @@ from scipy.spatial.distance import cdist
 from .matchingABC import MatchingABC
 from ..subsampling.subsamplingABC import SubsamplingABC
 from ..subsampling import SubsamplingKeepAll
-from typing import Callable, Union
 
 import numpy as np
 
@@ -54,7 +53,7 @@ class MatchingPartialOT(MatchingABC):
         self,
         transport_mass: float = 1.0,
         n_dummies: int = 1,
-        metric: Union[str, Callable] = "sqeuclidean",
+        metric: str = "sqeuclidean",
         metric_kwargs: dict = {},
         max_iter: int = int(1e6),
         subsampling: SubsamplingABC = SubsamplingKeepAll(),

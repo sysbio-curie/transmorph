@@ -4,7 +4,7 @@ import warnings
 import numpy as np
 
 from anndata import AnnData
-from typing import List, Union
+from typing import List, Optional
 
 from .layers import (
     LayerInput,
@@ -115,8 +115,8 @@ class TransmorphPipeline:
     def _check_input(
         self,
         datasets: List[AnnData],
-        reference: Union[None, AnnData] = None,
-        use_rep: Union[None, str] = None,
+        reference: Optional[AnnData] = None,
+        use_rep: Optional[str] = None,
     ):
         self._log("Checking input...")
 
@@ -157,8 +157,8 @@ class TransmorphPipeline:
     def fit(
         self,
         datasets: List[AnnData],
-        reference: Union[None, AnnData] = None,
-        use_rep: Union[None, str] = None,
+        reference: Optional[AnnData] = None,
+        use_rep: Optional[str] = None,
     ):
         """
         Runs the pipeline given a list of AnnDatas, writes integration results in

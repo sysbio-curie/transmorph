@@ -2,8 +2,7 @@
 
 from transmorph.datasets import load_test_datasets_small
 from transmorph.matching import MatchingMNN
-
-from transmorph.utils.plotting import plot_result
+from transmorph.utils import plot_result
 
 
 def test_matching_mnn_accuracy():
@@ -36,4 +35,4 @@ def test_matching_mnn_accuracy():
 
 
 if __name__ == "__main__":
-    test_matching_mnn_accuracy()
+    pass

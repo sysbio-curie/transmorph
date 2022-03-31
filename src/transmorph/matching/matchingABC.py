@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from scipy.sparse import csr_matrix
 
 import numpy as np
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 from anndata import AnnData
 
 from ..subsampling.subsamplingABC import SubsamplingABC
@@ -61,9 +61,11 @@ class MatchingABC(ABC):
     def __init__(
         self,
         metadata_keys: List[str],
-        subsampling: SubsamplingABC = SubsamplingKeepAll(),
+        subsampling: Optional[SubsamplingABC] = None,
     ):
         self.metadata_keys: List[str] = metadata_keys
+        if subsampling is None:
+            subsampling = SubsamplingKeepAll()
         self.subsampling = subsampling
         self.matchings: Dict[Tuple[int, int], csr_matrix] = {}
         self.n_matchings: int = 0

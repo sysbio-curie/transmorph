@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import List, Union
+from typing import List, Optional, Union
 import numpy as np
 import pymde
 
@@ -17,8 +17,8 @@ from ..utils.anndata_interface import get_matrix
 def combine_matchings(
     datasets: List[AnnData],
     knn_graphs: List[csr_matrix],
-    matching: Union[MatchingABC, None] = None,
-    matching_mtx: Union[csr_matrix, np.ndarray, None] = None,
+    matching: Optional[MatchingABC] = None,
+    matching_mtx: Optional[Union[csr_matrix, np.ndarray]] = None,
 ) -> csr_matrix:
     """
     Concatenates any number of matchings Mij and knn-graph
@@ -156,8 +156,8 @@ class MergingMDI(MergingABC):
     def fit(
         self,
         datasets: List[AnnData],
-        matching: Union[MatchingABC, None] = None,
-        matching_mtx: Union[csr_matrix, np.ndarray, None] = None,
+        matching: Optional[MatchingABC] = None,
+        matching_mtx: Optional[Union[csr_matrix, np.ndarray]] = None,
         X_kw: str = "",
         reference_idx: int = -1,
     ) -> List[np.ndarray]:

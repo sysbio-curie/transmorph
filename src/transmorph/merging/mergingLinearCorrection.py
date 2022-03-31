@@ -6,7 +6,7 @@ import warnings
 from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix, csc_matrix
 from anndata import AnnData
-from typing import List, Union
+from typing import List, Optional, Union
 
 from transmorph.utils.anndata_interface import get_matrix
 
@@ -69,7 +69,7 @@ class MergingLinearCorrection(MergingABC):
         n_neighbors: int = 5,
         metric: str = "sqeuclidean",
         metric_kwargs: dict = {},
-        jitter: Union[float, None] = None,
+        jitter: Optional[float] = None,
         low_memory: bool = False,
         n_jobs: int = -1,
     ):
@@ -139,8 +139,8 @@ class MergingLinearCorrection(MergingABC):
     def fit(
         self,
         datasets: List[AnnData],
-        matching: Union[MatchingABC, None] = None,
-        matching_mtx: Union[np.ndarray, csr_matrix, None] = None,
+        matching: Optional[MatchingABC] = None,
+        matching_mtx: Optional[Union[csr_matrix, np.ndarray]] = None,
         X_kw: str = "",
         reference_idx: int = -1,
     ) -> List[np.ndarray]:

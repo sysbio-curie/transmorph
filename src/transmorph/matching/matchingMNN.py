@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 
-from typing import Union, Callable
-
 from anndata import AnnData
 from ..subsampling import SubsamplingKeepAll
 from ..subsampling.subsamplingABC import SubsamplingABC
 
 from .matchingABC import MatchingABC
-from ..utils import nearest_neighbors
+from ..utils import mutual_nearest_neighbors
 
 
 class MatchingMNN(MatchingABC):
@@ -43,9 +41,10 @@ class MatchingMNN(MatchingABC):
 
     def __init__(
         self,
-        metric: Union[str, Callable] = "sqeuclidean",
+        metric: str = "sqeuclidean",
         metric_kwargs: dict = {},
         n_neighbors: int = 10,
+        algorithm="auto",
         subsampling: SubsamplingABC = SubsamplingKeepAll(),
         verbose: bool = False,
     ):
@@ -53,6 +52,7 @@ class MatchingMNN(MatchingABC):
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.n_neighbors = n_neighbors
+        self.algorithm = algorithm
         self.verbose = verbose
 
     def _match2(self, adata1: AnnData, adata2: AnnData):
@@ -60,11 +60,12 @@ class MatchingMNN(MatchingABC):
             print(f"Matching {adata1} against {adata2}.")
         X = self.to_match(adata1)
         Y = self.to_match(adata2)
-        T = nearest_neighbors(
+        T = mutual_nearest_neighbors(
             X,
-            Y=Y,
+            Y,
             metric=self.metric,
             metric_kwargs=self.metric_kwargs,
             n_neighbors=self.n_neighbors,
+            algorithm=self.algorithm,
         )
         return T

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from ot.gromov import entropic_gromov_wasserstein
-from typing import Union, Callable
 
 import numpy as np
 from anndata import AnnData
@@ -59,7 +58,7 @@ class MatchingGWEntropic(MatchingABC):
 
     def __init__(
         self,
-        metric: Union[str, Callable] = "sqeuclidean",
+        metric: str = "sqeuclidean",
         metric_kwargs: dict = {},
         epsilon: float = 1e-2,
         loss: str = "square_loss",

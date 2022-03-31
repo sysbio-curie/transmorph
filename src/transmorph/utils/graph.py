@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
-import warnings
+import igraph as ig
+import louvain as lv
 import numpy as np
+import warnings
 
 from numba import njit
 from numpy.random import RandomState
@@ -11,7 +13,7 @@ from scipy.sparse import csr_matrix, coo_matrix
 from sklearn.neighbors import NearestNeighbors
 
 
-from typing import Tuple, Union, Callable
+from typing import Tuple, Optional
 
 
 def fsymmetrize(A: csr_matrix) -> csr_matrix:
@@ -32,10 +34,109 @@ def distance_to_knn(D: np.ndarray, k: int, axis: int):
     return D_sorted[:, k]
 
 
+def clustering(A: csr_matrix, resolution: float = 1.0) -> np.ndarray:
+    """
+    A: adjacency matrix
+    """
+    sources, targets = A.nonzero()
+    A_ig = ig.Graph(directed=True)
+    A_ig.add_vertices(A.shape[0])
+    A_ig.add_edges(list(zip(sources, targets)))
+    partition = lv.find_partition(
+        A_ig, lv.RBConfigurationVertexPartition, resolution_parameter=resolution
+    )
+    return np.array(partition.membership)
+
+
+def mutual_nearest_neighbors(
+    X: np.ndarray,
+    Y: np.ndarray,
+    metric: str = "sqeuclidean",
+    metric_kwargs: dict = {},
+    n_neighbors: int = 10,
+    algorithm: str = "auto",
+    low_memory: bool = False,
+    n_jobs: int = -1,
+) -> csr_matrix:
+    """
+    TODO
+    """
+    nx, ny = X.shape[0], Y.shape[0]
+    npoints = nx + ny
+    if algorithm == "auto":
+        algorithm = "louvain" if npoints > 4096 else "exact"
+    if algorithm == "louvain" and npoints < 500:
+        algorithm = "exact"
+    if algorithm == "exact":
+        if min(nx, ny) < n_neighbors:
+            warnings.warn(
+                "Y.shape[0] < n_neighbors. " "Setting n_neighbors to Y.shape[0]."
+            )
+            n_neighbors = min(nx, ny)
+        D = cdist(X, Y, metric=metric, **metric_kwargs)
+        dx = distance_to_knn(D, n_neighbors, 1)
+        dy = distance_to_knn(D, n_neighbors, 0)
+        Dxy = np.minimum.outer(dx, dy)
+        return csr_matrix((D <= Dxy), shape=D.shape)
+    if algorithm == "louvain":
+        Ax = nearest_neighbors(
+            X,
+            metric=metric,
+            metric_kwargs=metric_kwargs,
+            n_neighbors=n_neighbors,
+            algorithm="nndescent",
+            low_memory=low_memory,
+            n_jobs=n_jobs,
+        )
+        Ay = nearest_neighbors(
+            Y,
+            metric=metric,
+            metric_kwargs=metric_kwargs,
+            n_neighbors=n_neighbors,
+            algorithm="nndescent",
+            low_memory=low_memory,
+            n_jobs=n_jobs,
+        )
+        px, py = clustering(Ax), clustering(Ay)
+        ncx, ncy = len(set(px)), len(set(py))
+        npart = max(ncx, ncy)
+        centroidx = np.array([np.mean(X[px == k], axis=0) for k in range(ncx)])
+        centroidy = np.array([np.mean(Y[py == k], axis=0) for k in range(ncy)])
+        part_matching = mutual_nearest_neighbors(
+            centroidx,
+            centroidy,
+            metric=metric,
+            metric_kwargs=metric_kwargs,
+            n_neighbors=npart // 3,  # Guess
+            algorithm="exact",
+        ).toarray()
+        rows, cols = [], []
+        for i in range(ncx):
+            indices_i = np.arange(nx)[px == i]
+            for j in range(ncy):
+                indices_j = np.arange(ny)[py == j]
+                if part_matching[i, j]:
+                    Tij = mutual_nearest_neighbors(
+                        X[px == i],
+                        Y[py == j],
+                        metric=metric,
+                        metric_kwargs=metric_kwargs,
+                        n_neighbors=n_neighbors,  # Guess :D
+                        algorithm="auto",
+                        low_memory=low_memory,
+                        n_jobs=n_jobs,
+                    ).tocoo()
+                    rows += list(indices_i[Tij.row])
+                    cols += list(indices_j[Tij.col])
+        data = [1] * len(rows)
+        return coo_matrix((data, (rows, cols)), shape=(nx, ny)).tocsr()
+
+    raise ValueError(f"Unknown algorithm: {algorithm}")
+
+
 def nearest_neighbors(
     X: np.ndarray,
-    Y: Union[np.ndarray, None] = None,
-    metric: Union[str, Callable] = "sqeuclidean",
+    metric: str = "sqeuclidean",
     metric_kwargs: dict = {},
     n_neighbors: int = 10,
     include_self_loops: bool = False,
@@ -47,7 +148,7 @@ def nearest_neighbors(
     max_candidates: int = 60,
     low_memory: bool = False,
     n_jobs: int = -1,
-    use_nndescent: Union[None, bool] = None,
+    use_nndescent: Optional[bool] = None,
 ) -> csr_matrix:
     """
     Encapsulates both Nearest neighbors and Mutual nearest neighbors computations.
@@ -85,8 +186,6 @@ def nearest_neighbors(
             "use_nndescent is deprecated and will be removed in the future. "
             "Please use 'algorithm' instead."
         )
-    elif Y is not None:
-        use_nndescent = False
     elif algorithm == "nndescent":
         use_nndescent = True
     elif algorithm == "sklearn":
@@ -102,20 +201,6 @@ def nearest_neighbors(
     if nx < n_neighbors:
         warnings.warn("X.shape[0] < n_neighbors. " "Setting n_neighbors to X.shape[0].")
         n_neighbors = nx
-
-    if Y is not None:  # Mutual nearest neighbors
-        assert use_nndescent is False, "NNDescent is incompatible with MNN."
-        ny = Y.shape[0]
-        if ny < n_neighbors:
-            warnings.warn(
-                "Y.shape[0] < n_neighbors. " "Setting n_neighbors to Y.shape[0]."
-            )
-            n_neighbors = nx
-        D = cdist(X, Y, metric=metric, **metric_kwargs)
-        dx = distance_to_knn(D, n_neighbors, 1)
-        dy = distance_to_knn(D, n_neighbors, 0)
-        Dxy = np.minimum.outer(dx, dy)
-        return csr_matrix((D <= Dxy), shape=D.shape)
 
     # Nearest neighbors
     connectivity = None
@@ -150,10 +235,8 @@ def nearest_neighbors(
                 cols.append(j)
                 data.append(1.0)
         connectivity = coo_matrix((data, (rows, cols)), shape=(nx, nx)).tocsr()
-
     else:
-
-        # Classical exact kNN
+        # Standard exact kNN using sklearn implementation
         nn = NearestNeighbors(
             n_neighbors=n_neighbors,
             metric=metric,

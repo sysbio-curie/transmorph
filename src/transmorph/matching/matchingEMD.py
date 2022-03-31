@@ -6,7 +6,6 @@ from scipy.spatial.distance import cdist
 from .matchingABC import MatchingABC
 from ..subsampling.subsamplingABC import SubsamplingABC
 from ..subsampling import SubsamplingKeepAll
-from typing import Callable, Union
 
 import numpy as np
 import scanpy as sc
@@ -37,7 +36,7 @@ class MatchingEMD(MatchingABC):
 
     def __init__(
         self,
-        metric: Union[str, Callable] = "sqeuclidean",
+        metric: str = "sqeuclidean",
         metric_kwargs: dict = {},
         subsampling: SubsamplingABC = SubsamplingKeepAll(),
         max_iter: int = int(1e6),
