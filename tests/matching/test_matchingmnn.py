@@ -10,7 +10,7 @@ def test_matching_mnn_accuracy():
     datasets = load_test_datasets_small()
     src, ref = datasets["src"], datasets["ref"]
     err_matchs = datasets["error"]
-    thrs = [0.85, 0.90, 0.80, 0.75, 0.70]
+    thrs = [1.0, 0.85, 0.90, 0.80, 0.75]
     for nnb, thr in enumerate(thrs, 1):
         mt = MatchingMNN(n_neighbors=nnb)
         mt.fit([src, ref])
@@ -35,4 +35,4 @@ def test_matching_mnn_accuracy():
 
 
 if __name__ == "__main__":
-    pass
+    test_matching_mnn_accuracy()

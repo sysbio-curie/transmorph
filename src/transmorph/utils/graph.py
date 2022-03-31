@@ -31,7 +31,7 @@ def distance_to_knn(D: np.ndarray, k: int, axis: int):
     D_sorted = np.sort(D, axis=axis)
     if axis == 0:
         D_sorted = D_sorted.T
-    return D_sorted[:, k]
+    return D_sorted[:, k - 1]
 
 
 def clustering(A: csr_matrix, resolution: float = 1.0) -> np.ndarray:
