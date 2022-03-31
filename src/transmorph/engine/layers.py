@@ -2,9 +2,8 @@
 
 from abc import abstractmethod
 from anndata import AnnData
-from enum import IntEnum
 
-from typing import List, Union
+from typing import List, Type, Union
 
 from ..checking.checkingABC import CheckingABC
 from ..matching.matchingABC import MatchingABC
@@ -21,6 +20,7 @@ from .profiler import Profiler
 
 
 # Profiling decorator for class methods
+# allows to measure time elapsed in a layer
 def profile_method(method):
     def wrapper(*args):
         self = args[0]
@@ -34,20 +34,6 @@ def profile_method(method):
     return wrapper
 
 
-class LayerType(IntEnum):
-    """
-    Specifies layer types for "easy" pseudo-polymorphism.
-    """
-
-    BASE = -1
-    INPUT = 0
-    OUTPUT = 1
-    PREPROCESS = 2
-    MATCH = 3
-    MERGE = 4
-    CHECK = 5
-
-
 class LayerTransmorph:
     """
     A LayerTransmorph wraps an integration module, and manage its connections
@@ -55,10 +41,6 @@ class LayerTransmorph:
 
     Parameters
     ----------
-    type: LayerType, default = LayerType.BASE
-        String identifier describing module type. Can be used for compatibility
-        purpose.
-
     compatible_types: List[LayerType]
         List of type identifiers of compatible input layers
 
@@ -83,11 +65,9 @@ class LayerTransmorph:
 
     def __init__(
         self,
-        layer_type: LayerType = LayerType.BASE,
-        compatible_inputs: List[LayerType] = [],
+        compatible_inputs: List[Type] = [],
         verbose: bool = False,
     ) -> None:
-        self.type = layer_type
         self.str_rep = ""
         self.compatible_inputs = compatible_inputs
         self.output_layers: List["LayerTransmorph"] = []
@@ -106,18 +86,20 @@ class LayerTransmorph:
     def __str__(self):
         if self.str_rep == "":
             typestr = "ABS"  # Abstract
-            if self.type == LayerType.CHECK:
+            if type(self) is LayerChecking:
                 typestr = "CHK"
-            elif self.type == LayerType.INPUT:
+            elif type(self) is LayerInput:
                 typestr = "INP"
-            elif self.type == LayerType.OUTPUT:
+            elif type(self) is LayerOutput:
                 typestr = "OUT"
-            elif self.type == LayerType.MATCH:
+            elif type(self) is LayerMatching:
                 typestr = "MTC"
-            elif self.type == LayerType.MERGE:
+            elif type(self) is LayerMerging:
                 typestr = "MRG"
-            elif self.type == LayerType.PREPROCESS:
+            elif type(self) is LayerPreprocessing:
                 typestr = "PRP"
+            else:
+                raise NotImplementedError  # wth am I?
             self.str_rep = f"{typestr}#{self.layer_id}"
         return self.str_rep
 
@@ -131,7 +113,7 @@ class LayerTransmorph:
             Output layer of compatible type.
         """
         assert (
-            self.type in layer.compatible_inputs
+            type(self) in layer.compatible_inputs
         ), f"Incompatible connection: {self} -> {layer}"
         assert layer not in self.output_layers, "{self} already connected to {layer}."
         self.output_layers.append(layer)
@@ -175,11 +157,7 @@ class LayerTransmorph:
         self._log("Connecting to profiler.")
         self.profiler = profiler
 
-    def get_compatible_inputs(self) -> List[LayerType]:
-        return self.compatible_inputs.copy()
-
     def set_embedding_reference(self, layer):
-        # TODO: check if valid
         self.embedding_layer = layer
 
 
@@ -191,9 +169,7 @@ class LayerInput(LayerTransmorph):
     """
 
     def __init__(self, verbose: bool = False) -> None:
-        super().__init__(
-            layer_type=LayerType.INPUT, compatible_inputs=[], verbose=verbose
-        )
+        super().__init__(compatible_inputs=[], verbose=verbose)
         self.use_rep = ""
 
     @profile_method
@@ -227,12 +203,11 @@ class LayerOutput(LayerTransmorph):
 
     def __init__(self, verbose: bool = False) -> None:
         super().__init__(
-            layer_type=LayerType.OUTPUT,
             compatible_inputs=[
-                LayerType.CHECK,
-                LayerType.INPUT,
-                LayerType.MERGE,
-                LayerType.PREPROCESS,
+                LayerChecking,
+                LayerInput,
+                LayerMerging,
+                LayerPreprocessing,
             ],
             verbose=verbose,
         )
@@ -268,17 +243,15 @@ class LayerMatching(LayerTransmorph):
 
     def __init__(self, matching: MatchingABC, verbose: bool = False) -> None:
         super().__init__(
-            layer_type=LayerType.MATCH,
             compatible_inputs=[
-                LayerType.CHECK,
-                LayerType.INPUT,
-                LayerType.MERGE,
-                LayerType.PREPROCESS,
+                LayerChecking,
+                LayerInput,
+                LayerMerging,
+                LayerPreprocessing,
             ],
             verbose=verbose,
         )
         self.matching = matching
-        self.fitted = False
         self.representation_kw = ""
 
     @profile_method
@@ -292,7 +265,6 @@ class LayerMatching(LayerTransmorph):
             self.representation_kw = self.embedding_layer.get_representation()
         self._log(f"Found '{self.representation_kw}'. Calling matching.")
         self.matching.fit(datasets, self.representation_kw)
-        self.fitted = True
         self._log("Fitted.")
         return self.output_layers
 
@@ -302,7 +274,6 @@ class LayerMatching(LayerTransmorph):
             output.clean(datasets)
 
     def get_representation(self) -> str:
-        assert self.fitted, "{self} must be fitted to access its representation."
         return self.representation_kw
 
 
@@ -317,13 +288,11 @@ class LayerMerging(LayerTransmorph):
         TODO
         """
         super().__init__(
-            layer_type=LayerType.MERGE,
-            compatible_inputs=[LayerType.CHECK, LayerType.MATCH],  # TODO test check
+            compatible_inputs=[LayerMatching],
             verbose=verbose,
         )
         self.merging = merging
         self.use_reference = merging.use_reference
-        self.fitted = False
         self.mtx_id = f"merging_{self.layer_id}"  # To write results
 
     @profile_method
@@ -353,7 +322,6 @@ class LayerMerging(LayerTransmorph):
         )
         for adata, X_after in zip(datasets, X_transform):
             set_matrix(adata, self.mtx_id, X_after)
-        self.fitted = True
         self._log("Fitted.")
         return self.output_layers
 
@@ -382,12 +350,11 @@ class LayerChecking(LayerTransmorph):
         self, checking: CheckingABC, n_checks_max: int = 10, verbose: bool = False
     ) -> None:
         super().__init__(
-            layer_type=LayerType.CHECK,
             compatible_inputs=[
-                LayerType.INPUT,
-                LayerType.CHECK,
-                LayerType.MERGE,
-                LayerType.PREPROCESS,
+                LayerInput,
+                LayerChecking,
+                LayerMerging,
+                LayerPreprocessing,
             ],  # Test CHECK
             verbose=verbose,
         )
@@ -397,7 +364,7 @@ class LayerChecking(LayerTransmorph):
         self.layer_yes: Union[None, LayerTransmorph] = None
         self.layer_no: Union[None, LayerTransmorph] = None
         self.mtx_id = f"checking_{self.layer_id}"
-        self.cleaned = False  # TODO improve this to prevent critical bugs
+        self.cleaned = False  # FIXME: investigate this to avoid looping
 
     def connect(self, layer: LayerTransmorph):
         raise NotImplementedError(
@@ -455,19 +422,27 @@ class LayerChecking(LayerTransmorph):
 
 
 class LayerPreprocessing(LayerTransmorph):
+    """
+    This layer encapsulates a preprocessing algorithm derived
+    from PreprocessingABC.
+    """
+
     def __init__(
         self,
         preprocessing: PreprocessingABC,
         verbose: bool = False,
     ) -> None:
         super().__init__(
-            LayerType.PREPROCESS,
-            [LayerType.INPUT, LayerType.PREPROCESS, LayerType.MERGE, LayerType.CHECK],
-            verbose,
+            compatible_inputs=[
+                LayerInput,
+                LayerPreprocessing,
+                LayerMerging,
+                LayerChecking,
+            ],
+            verbose=verbose,
         )
         self.preprocessing = preprocessing
         self.mtx_id = f"preprocessing_{self.layer_id}"
-        self.fitted = False
 
     @profile_method
     def fit(

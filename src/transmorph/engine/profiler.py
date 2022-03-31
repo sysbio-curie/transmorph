@@ -4,6 +4,11 @@ import time
 
 
 class Task:
+    """
+    Defines a timed task that can be started and stopped. Useful to
+    profile a layer part.
+    """
+
     def __init__(self, task_id: int, task_start_time: float, task_label: str = ""):
         self.id = task_id
         self.tstart = task_start_time

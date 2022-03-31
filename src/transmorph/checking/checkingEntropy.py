@@ -3,7 +3,8 @@
 import numpy as np
 
 from anndata import AnnData
-from math import log, e
+from math import log
+from numba import njit
 from typing import List
 
 
@@ -12,35 +13,43 @@ from ..utils.anndata_interface import get_matrix
 from ..utils.graph import nearest_neighbors
 
 
-# Shamelessly borrowed from
-# https://stackoverflow.com/questions/15450192/fastest-way-to-compute-entropy-in-python
-def entropy(labels):
-    """Computes entropy of label distribution."""
-
-    n_labels = len(labels)
-
-    if n_labels <= 1:
-        return 0
-
-    _, counts = np.unique(labels, return_counts=True)
-    probs = counts / n_labels
-    n_classes = np.count_nonzero(probs)
-
-    if n_classes <= 1:
-        return 0
-
-    ent = 0.0
-
-    # Compute entropy
-    for i in probs:
-        ent -= i * log(i, e)
-
-    return ent
+@njit(fastmath=True)
+def entropy(dataset_counts: np.ndarray, labels: np.ndarray):
+    """Computes entropy of a discrete label distribution."""
+    (npoints, k), nlabels = dataset_counts.shape, len(labels)
+    entropies = np.zeros(npoints)
+    if nlabels <= 1:
+        return entropies
+    probs = np.zeros((npoints, nlabels))
+    for i in range(npoints):
+        for lb in range(nlabels):
+            probs[i, lb] = np.sum(dataset_counts[i] == lb + 1)
+    probs /= k
+    for i in range(npoints):
+        n_classes = np.count_nonzero(probs[i])
+        if n_classes <= 1:
+            continue
+        for p in probs[i]:
+            if p == 0.0:
+                continue
+            entropies[i] -= p * log(p)
+    return entropies
 
 
 class CheckingEntropy(CheckingABC):
     """
-    TODO
+    Uses a neighborhood criterion to provide a numerical estimation
+    of neighborhood sanity after integration. It is computed as follows,
+
+    CE(X) = 1/|X| * sum_{x \\in X} stability(x)*diversity(x),
+
+    where stability(x) describes the neighborhood preservation of x
+            before and after integration, and
+          diversity(x) describes the heterogeneity of x neighbors
+            after integration in terms of dataset of origin.
+
+    stability(x) = |neighbors of x before and after|/|neighbors of x|
+    diversity(x) = H(datasets in x neighborhood) where H is Shannon entropy
     """
 
     def __init__(
@@ -93,13 +102,18 @@ class CheckingEntropy(CheckingABC):
             belongs[offset : offset + n_obs] = i
             offset += n_obs
         T_all = T_all @ np.diag(belongs)
+        # T_all: knn matrix with dataset ids as column values
 
-        # TODO: optimize this part
-        entropies = np.zeros(N)
+        # origins: n*k matrix whre o[i,j] if the dataset of origin
+        # of the j-th neighbor of xi
+        origins = np.zeros((N, self.n_neighbors))
         for i in range(N):
-            origins = T_all[i]
-            origins = origins[origins != 0]
-            entropies[i] = entropy(origins)
+            oi = T_all[i]
+            oi = oi[oi != 0]
+            origins[i] = oi
+
+        labels = list(set(origins.flatten()))
+        entropies = entropy(origins, np.array(labels).astype(int))
 
         # Combining
         return (nn_conserved @ entropies) / N

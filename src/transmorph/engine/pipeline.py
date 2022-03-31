@@ -6,7 +6,12 @@ import numpy as np
 from anndata import AnnData
 from typing import List, Union
 
-from .layers import LayerType, LayerInput, LayerTransmorph
+from .layers import (
+    LayerInput,
+    LayerMerging,
+    LayerOutput,
+    LayerTransmorph,
+)
 from .profiler import Profiler
 from ..utils.anndata_interface import (
     set_attribute,
@@ -84,7 +89,7 @@ class TransmorphPipeline:
             Entry point of the pipeline. Must have been conneced to the other layers
             beforehand.
         """
-        assert input_layer.type == LayerType.INPUT, "LayerInput expected."
+        assert type(input_layer) is LayerInput, "LayerInput expected."
         self._log("Fetching pipeline...")
         self.input_layer = input_layer
         layers_to_visit: List[LayerTransmorph] = [self.input_layer]
@@ -95,7 +100,7 @@ class TransmorphPipeline:
             for output_layer in current_layer.output_layers:
                 if output_layer in self.layers:
                     continue
-                if output_layer.type == LayerType.OUTPUT:
+                if type(output_layer) is LayerOutput:
                     self.output_layers.append(output_layer)
                 layers_to_visit.append(output_layer)
                 self.layers.append(output_layer)
@@ -136,9 +141,7 @@ class TransmorphPipeline:
         # Check reference is provided is needed
         need_reference = False
         for layer in self.layers:
-            if layer.type != LayerType.MERGE:
-                continue
-            if not layer.use_reference:
+            if type(layer) is not LayerMerging or not layer.use_reference:
                 continue
             need_reference = True
             break
