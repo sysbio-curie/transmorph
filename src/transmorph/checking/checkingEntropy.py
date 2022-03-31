@@ -54,12 +54,10 @@ class CheckingEntropy(CheckingABC):
         Xs_after = [get_matrix(adata, X_kw) for adata in datasets]
 
         # Fraction of neighborhood conserved
-        use_nndescent = any(X.shape[0] > 2048 for X in Xs_before)  # Large datasets?
         inner_nn_before = [
             nearest_neighbors(
                 X,
                 n_neighbors=self.n_neighbors,
-                use_nndescent=use_nndescent,
                 symmetrize=False,
             )
             for X in Xs_before
@@ -68,7 +66,6 @@ class CheckingEntropy(CheckingABC):
             nearest_neighbors(
                 X,
                 n_neighbors=self.n_neighbors,
-                use_nndescent=use_nndescent,
                 symmetrize=False,
             )
             for X in Xs_after
@@ -84,11 +81,9 @@ class CheckingEntropy(CheckingABC):
         # Neighborhood entropy
         X_all = np.concatenate(Xs_after, axis=0)
         N = X_all.shape[0]
-        use_nndescent = N > 2048
         T_all = nearest_neighbors(
             X_all,
             n_neighbors=self.n_neighbors,
-            use_nndescent=use_nndescent,
             symmetrize=False,
         )
         belongs = np.zeros(N)

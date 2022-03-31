@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import warnings
 
 from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix, csc_matrix
@@ -68,7 +69,7 @@ class MergingLinearCorrection(MergingABC):
         n_neighbors: int = 5,
         metric: str = "sqeuclidean",
         metric_kwargs: dict = {},
-        jitter: float = 0.01,
+        jitter: Union[float, None] = None,
         low_memory: bool = False,
         n_jobs: int = -1,
     ):
@@ -80,6 +81,10 @@ class MergingLinearCorrection(MergingABC):
         self.n_neighbors = n_neighbors
         self.metric = metric
         self.metric_kwargs = metric_kwargs
+        if jitter is None:
+            jitter = 0.0 if self.lr < 1.0 else 0.01
+        if jitter > 0 and self.lr < 1.0:
+            warnings.warn("Jitter > 0 and lr < 1.0 is discouraged.")
         self.jitter = jitter
         self.low_memory = low_memory
         self.n_jobs = n_jobs

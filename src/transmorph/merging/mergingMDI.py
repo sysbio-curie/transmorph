@@ -172,7 +172,6 @@ class MergingMDI(MergingABC):
                     metric=self.knn_metric,
                     metric_kwargs=self.knn_metric_kwargs,
                     include_self_loops=False,
-                    use_nndescent=True,
                 )
             )
         edges = combine_matchings(datasets, inner_graphs, matching, matching_mtx)
