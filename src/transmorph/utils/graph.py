@@ -14,11 +14,14 @@ from sklearn.neighbors import NearestNeighbors
 from typing import Tuple, Union, Callable
 
 
-def fsymmetrize(A: csr_matrix):
+def fsymmetrize(A: csr_matrix) -> csr_matrix:
+    # Symmetrizes a probabilistic matching matrix, given
+    # the rule P(AUB) = P(A) + P(B) - P(A)P(B), assuming
+    # A and B independent events.
     return A + A.T - A.multiply(A.T)
 
 
-def distance_to_knn(D, k, axis):
+def distance_to_knn(D: np.ndarray, k: int, axis: int):
     """
     Returns the distance of each point along the specified axis to its kth
     nearest neighbor.
@@ -31,7 +34,7 @@ def distance_to_knn(D, k, axis):
 
 def nearest_neighbors(
     X: np.ndarray,
-    Y: np.ndarray = None,
+    Y: Union[np.ndarray, None] = None,
     metric: Union[str, Callable] = "sqeuclidean",
     metric_kwargs: dict = {},
     n_neighbors: int = 10,

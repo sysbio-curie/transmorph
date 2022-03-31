@@ -13,6 +13,32 @@ def sparse_cdist(
     T: csr_matrix = None,
     metric: str = "sqeuclidean",
 ) -> csr_matrix:
+    """
+    Sparse version of scipy.spatial.distance.cdist. Computes pairwise
+    distances between points of X1 and X2 on the non-zero indices of
+    matrix T, returning the result as a sparse matrix. Greatly speedups
+    pairwise distance comparison over a subsample of X1 and X2 (for instance
+    if we are just interested in distances along graph edges).
+
+    Parameters
+    ----------
+    X1: np.ndarray
+        Embedding of the first dataset.
+
+    X2: np.ndarray = None
+        Embedding of the second dataset. If None, uses the first
+        dataset instead.
+
+    T: scipy.sparse.csr_matrix, default = None
+        If T[i, j] != 0, distance between X1[i] and X2[j] will
+        be computed. If None, equivalent to cdist.
+
+    metric: str = "sqeuclidean"
+        Metric to use in distance computation. These metrics must
+        be implemented with the @njit tag, so only a few are available
+        at this point. More will come as needs grow.
+        Valid metrics: "sqeuclidean", "euclidean"
+    """
     if X2 is None:
         X2 = X1
     if T is None:

@@ -25,12 +25,14 @@ setuptools.setup(
     install_requires=[
         "anndata",
         "numpy<1.21,>=1.17",
+        "pre-commit",
         "pot",
         "pymde",
         "pynndescent",
+        "scanpy",
         "scikit-learn",
         "scipy",
-        "pre-commit",
+        "umap-learn",
     ],
     python_requires=">=3.7",
 )

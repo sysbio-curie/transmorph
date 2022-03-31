@@ -4,8 +4,7 @@ from transmorph.datasets import load_travaglini_10x
 from transmorph.preprocessing import PPStandardize, PPPCA
 from transmorph.recipes import Transport
 from transmorph.subsampling import SubsamplingVertexCover
-
-from transmorph.utils.plotting import plot_result
+from transmorph.utils import plot_result
 
 # Building a subsampling pipeline
 # Input -> PP -> MatchMNN + VertexCover -> MergeBarycenter -> Output
@@ -17,7 +16,7 @@ pipeline = Transport(
     flavor="emd",
     subsampling=subsampling,
     preprocessing=[PPStandardize(), PPPCA(n_components=30)],
-    verbose=True,
+    verbose=VERBOSE,
 )
 
 # Running the pipeline
@@ -38,6 +37,7 @@ plot_result(
     title="Recipe: Transport",
     show=False,
     save=True,
+    use_cache=True,
     caller_path=f"{__file__}",
 )
 
@@ -47,5 +47,6 @@ plot_result(
     title="Recipe: Transport",
     show=False,
     save=True,
+    use_cache=True,
     caller_path=f"{__file__}",
 )
