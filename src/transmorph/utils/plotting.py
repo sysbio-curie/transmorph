@@ -22,7 +22,7 @@ def plot_result(
     datasets: List[AnnData],
     matching_mtx: Union[csr_matrix, None] = None,
     reducer: str = "umap",
-    use_cache: bool = True,
+    use_cache: bool = False,
     color_by: str = "__dataset__",
     palette: str = "rainbow",
     title: str = "",
@@ -30,11 +30,90 @@ def plot_result(
     ylabel: str = "",
     show: bool = True,
     save: bool = False,
+    extension: str = "png",
     caller_path: str = "",
     suffix: str = "__color_by__",
     dpi=200,
 ):
+    """
+    Advanced plotting function for transmorph results, handling parameters
+    guessing, representation cacheing, automatic dimensionality reduction,
+    continuous or linear labeling, figure saving.
+
+    IMPORTANT: If save=True, see parameter caller_path.
+
+    Parameters
+    ----------
+    datasets: List[AnnData]
+        List of datasets to display, represented as annotated data. If they
+        have been processed by transmorph, integrated embedding will be used.
+        Otherwise, AnnData.X is chosen as fallback representation (in this
+        case, all datasets must be embedded in the same space).
+
+    matching_mtx: csr_matrix, default = None
+        This option is only valid for two datasets. You can provide a boolean
+        or probabilistic matching between datasets represented as a sparse
+        matrix (CSR format), which will be displayed on the plot. Be careful,
+        for too large datasets this will slow down plotting and yield results
+        difficult to read.
+
+    reducer: str, default = "umap"
+        Algorithm to use if embedding dimensionality exceeds 2. Valid options
+        are "pca" for linear dimensionality reduction and "umap" for embedding
+        high dimensional datasets such as single-cell data.
+
+    use_cache: bool, default = True
+        If you produce several plots with different labelings of high dimensional
+        data, you want the low dimensional embedding to be the same among the
+        plots for easy comparison. In this case, use_cache=True will save in
+        AnnDatas objects their low-dimensional representation computed by the
+        method so that it is shared among all method calls.
+
+    color_by: str, default = "__dataset__"
+        Labeling colors to use in the figure. "__dataset__" will color each
+        point depending of its dataset of origin. Otherwise, all keys of
+        AnnData.obs are valid. The function will try to guess discrete- or
+        continuous-ness of the labels, and color accordingly.
+
+    palette: str, default = "rainbow"
+        Matplotlib colormap to pick colors from.
+
+    title: str, default = ""
+        Title of the plot.
+
+    xlabel: str, default = ""
+        Labeling of the x axis.
+
+    ylabel: str, default = ""
+        Labeling of the y axis.
+
+    show: bool, default = True
+        Call plt.show() at the end to display the figure in a separate
+        window.
+
+    save: bool, default = False
+        Save the plot in the same directory as the file calling the
+        functions, in a figures/ subdirectory (created if necessary).
+
+    extension: str, default = "png"
+        If save=True, valid image file extension to use.
+
+    caller_path:
+        If save=True, pass f"__file__" to indicate file location.
+
+    suffix: str = "__color_by__":
+        If save=True, suffix to append to the file name to differentiate
+        between image files of the same source. "__color_by__" will use
+        labels as suffix (e.g. "plot_cell_type.png")
+                                     ^^^^^^^^^
+
+    dpi: int, default = 200,
+        Dot per inch to use for the figure.
+    """
     # Checking parameters
+    assert all(
+        type(adata) is AnnData for adata in datasets
+    ), "All datasets must be AnnData."
     if matching_mtx is not None:
         assert len(datasets) == 2, "Drawing matching requires exactly two datasets."
         assert type(matching_mtx) is csr_matrix, "Matching must come as a csr_matrix."
@@ -131,7 +210,13 @@ def plot_result(
             plt.scatter([], [], marker=mk, s=40, c="k", label=f"Dataset {i}")
         if continuous:
             plt.scatter(
-                *X.T, c=adata.obs[color_by], alpha=alpha, marker=mk, ec="k", s=size
+                *X.T,
+                c=adata.obs[color_by],
+                alpha=alpha,
+                marker=mk,
+                ec="k",
+                s=size,
+                cmap=palette,
             )
         else:
             for k, label in enumerate(all_labels):
@@ -164,7 +249,9 @@ def plot_result(
     # Reordering legend
     handles, labels = plt.gca().get_legend_handles_labels()
     order = np.argsort(labels)
-    plt.legend([handles[idx] for idx in order], [labels[idx] for idx in order])
+    plt.legend(
+        [handles[idx] for idx in order], [labels[idx] for idx in order], fontsize=8
+    )
 
     # Adding text pieces
     plt.xlabel(xlabel)
@@ -185,7 +272,7 @@ def plot_result(
             suffix = color_by
         if suffix != "":
             suffix = "_" + suffix
-        plt.savefig(save_path + f"{fname}{suffix}.png")
+        plt.savefig(save_path + f"{fname}{suffix}.{extension}")
     if show:
         plt.show()
     plt.close()
