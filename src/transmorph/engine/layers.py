@@ -36,7 +36,7 @@ def profile_method(method):
 
 class LayerType(IntEnum):
     """
-    Specifies layer types for easy pseudo-polymorphism.
+    Specifies layer types for "easy" pseudo-polymorphism.
     """
 
     BASE = -1
@@ -94,6 +94,7 @@ class LayerTransmorph:
         self.verbose = verbose
         self.profiler = None
         self.layer_id = LayerTransmorph.LayerID
+        self.embedding_layer = None
         LayerTransmorph.LayerID += 1
         self._log("Initialized.")
 
@@ -177,6 +178,10 @@ class LayerTransmorph:
     def get_compatible_inputs(self) -> List[LayerType]:
         return self.compatible_inputs.copy()
 
+    def set_embedding_reference(self, layer):
+        # TODO: check if valid
+        self.embedding_layer = layer
+
 
 class LayerInput(LayerTransmorph):
     """
@@ -241,7 +246,10 @@ class LayerOutput(LayerTransmorph):
         Runs the upstream pipeline and stores results in AnnData objects.
         """
         self._log("Retrieving keyword.")
-        self.representation_kw = caller.get_representation()
+        if self.embedding_layer is None:
+            self.representation_kw = caller.get_representation()
+        else:
+            self.representation_kw = self.embedding_layer.get_representation()
         self._log(f"Found '{self.representation_kw}'. Terminating the branch.")
         return []
 
@@ -278,7 +286,10 @@ class LayerMatching(LayerTransmorph):
         self, caller: LayerTransmorph, datasets: List[AnnData]
     ) -> List[LayerTransmorph]:
         self._log("Requesting keyword.")
-        self.representation_kw = caller.get_representation()
+        if self.embedding_layer is None:
+            self.representation_kw = caller.get_representation()
+        else:
+            self.representation_kw = self.embedding_layer.get_representation()
         self._log(f"Found '{self.representation_kw}'. Calling matching.")
         self.matching.fit(datasets, self.representation_kw)
         self.fitted = True
@@ -320,7 +331,10 @@ class LayerMerging(LayerTransmorph):
         self, caller: LayerMatching, datasets: List[AnnData]
     ) -> List[LayerTransmorph]:
         self._log("Requesting keyword.")
-        representation_kw = caller.get_representation()
+        if self.embedding_layer is None:
+            representation_kw = caller.get_representation()
+        else:
+            representation_kw = self.embedding_layer.get_representation()
         self._log(f"Found '{representation_kw}'. Calling merging.")
         ref_id = -1
         if self.use_reference:
@@ -407,7 +421,10 @@ class LayerChecking(LayerTransmorph):
         assert self.layer_yes is not None, "Error: No layer found for 'YES' path."
         assert self.layer_no is not None, "Error: No layer found for 'NO' path."
         self._log("Requesting keyword.")
-        representation_kw = caller.get_representation()
+        if self.embedding_layer is None:
+            representation_kw = caller.get_representation()
+        else:
+            representation_kw = self.embedding_layer.get_representation()
         self._log(f"Found '{representation_kw}'. Checking validity.")
         for adata in datasets:
             set_matrix(adata, self.mtx_id, get_matrix(adata, representation_kw))
@@ -457,7 +474,10 @@ class LayerPreprocessing(LayerTransmorph):
         self, caller: LayerTransmorph, datasets: List[AnnData]
     ) -> List[LayerTransmorph]:
         self._log("Requesting keyword.")
-        self.representation_kw = caller.get_representation()
+        if self.embedding_layer is None:
+            self.representation_kw = caller.get_representation()
+        else:
+            self.representation_kw = self.embedding_layer.get_representation()
         self._log(f"Found '{self.representation_kw}'. Preprocessing.")
         Xs = self.preprocessing.transform(datasets, self.representation_kw)
         self.fitted = True

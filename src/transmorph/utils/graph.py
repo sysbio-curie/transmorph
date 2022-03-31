@@ -37,13 +37,14 @@ def nearest_neighbors(
     n_neighbors: int = 10,
     include_self_loops: bool = False,
     symmetrize: bool = False,
-    use_nndescent: bool = False,
+    algorithm: str = "auto",
     random_seed: int = 42,
     min_iters: int = 5,
     min_trees: int = 64,
     max_candidates: int = 60,
     low_memory: bool = False,
     n_jobs: int = -1,
+    use_nndescent: Union[None, bool] = None,
 ) -> csr_matrix:
     """
     Encapsulates both Nearest neighbors and Mutual nearest neighbors computations.
@@ -76,6 +77,25 @@ def nearest_neighbors(
         parameters, refer to their documentation for more info.
     """
     nx = X.shape[0]
+    if use_nndescent is not None:
+        warnings.warn(
+            "use_nndescent is deprecated and will be removed in the future. "
+            "Please use 'algorithm' instead."
+        )
+    elif Y is not None:
+        use_nndescent = False
+    elif algorithm == "nndescent":
+        use_nndescent = True
+    elif algorithm == "sklearn":
+        use_nndescent = False
+    elif algorithm == "auto":
+        use_nndescent = nx > 4096
+    else:
+        raise ValueError(
+            f"Unrecognized algorithm: {algorithm}. Valid options are 'auto',"
+            " 'nndescent', 'sklearn'."
+        )
+
     if nx < n_neighbors:
         warnings.warn("X.shape[0] < n_neighbors. " "Setting n_neighbors to X.shape[0].")
         n_neighbors = nx

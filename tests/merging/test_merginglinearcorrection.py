@@ -19,7 +19,7 @@ def test_merging_linearcorrection():
         [src, ref], matching_mtx=match, reference_idx=1
     )
     score = matching_divergence(src.obsm["transmorph"], ref.obsm["transmorph"], match)
-    assert score < 2.3
+    assert score < 2.5
 
     plot_result(
         datasets=[src, ref],

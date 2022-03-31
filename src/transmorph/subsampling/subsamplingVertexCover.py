@@ -48,11 +48,9 @@ class SubsamplingVertexCover(SubsamplingABC):
 
     def _subsample_one(self, adata: AnnData, X_kw: str = "") -> Dict[str, np.ndarray]:
         X = get_matrix(adata, X_kw)
-        use_nndescent = adata.n_obs > 2048
         Adj = nearest_neighbors(
             X,
             n_neighbors=self.n_neighbors,
-            use_nndescent=use_nndescent,
             metric=self.metric,
             metric_kwargs=self.metric_kwargs,
         )

@@ -13,6 +13,8 @@ from scipy.sparse import csr_matrix
 from sklearn.decomposition import PCA
 from typing import List, Union
 
+from ..utils.anndata_interface import get_matrix, set_matrix, isset_matrix
+
 MARKERS = "osv^<>pP*hHXDd"
 
 
@@ -20,6 +22,7 @@ def plot_result(
     datasets: List[AnnData],
     matching_mtx: Union[csr_matrix, None] = None,
     reducer: str = "umap",
+    use_cache: bool = True,
     color_by: str = "__dataset__",
     palette: str = "rainbow",
     title: str = "",
@@ -49,7 +52,11 @@ def plot_result(
         continuous = (n_labels > 20) and all(isinstance(y, Number) for y in all_labels)
 
     # Reducing dimension if necessary
-    if all("transmorph" in adata.obsm for adata in datasets):
+    if all(isset_matrix(adata, "transmorph_plotting") for adata in datasets):
+        representations = [
+            get_matrix(adata, "transmorph_plotting") for adata in datasets
+        ]
+    elif all("transmorph" in adata.obsm for adata in datasets):
         representations = [adata.obsm["transmorph"] for adata in datasets]
     else:
         representations = [adata.X for adata in datasets]
@@ -80,6 +87,8 @@ def plot_result(
         for i, adata in enumerate(datasets):
             nobs = adata.n_obs
             representations[i] = all_X[offset : offset + nobs]
+            if use_cache:
+                set_matrix(adata, "transmorph_plotting", representations[i])
             offset += nobs
 
     # Guess plotting parameters
@@ -87,10 +96,16 @@ def plot_result(
     size = 100
     if npoints > 100:
         size = 60
+    if npoints > 500:
+        size = 50
     if npoints > 1000:
         size = 40
+    if npoints > 5000:
+        size = 30
     if npoints > 10000:
         size = 20
+    if npoints > 50000:
+        size = 10
 
     ndatasets = len(datasets)
     alpha = 0.8

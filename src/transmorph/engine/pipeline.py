@@ -217,6 +217,10 @@ class TransmorphPipeline:
             for adata in datasets:
                 delete_matrix(adata, use_rep)
 
+        # Summary
+        npoints = sum(adata.n_obs for adata in datasets)
+        ndims = datasets[0].obsm["transmorph"].shape[1]
+        self._log(f"Embedding shape: {(npoints, ndims)}")
         self._log(
             "### REPORT_START ###\n"
             + self.profiler.log_stats()

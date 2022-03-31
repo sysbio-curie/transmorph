@@ -66,6 +66,5 @@ class MatchingMNN(MatchingABC):
             metric=self.metric,
             metric_kwargs=self.metric_kwargs,
             n_neighbors=self.n_neighbors,
-            use_nndescent=False,
         )
         return T

@@ -68,7 +68,7 @@ class MergingLinearCorrection(MergingABC):
         n_neighbors: int = 5,
         metric: str = "sqeuclidean",
         metric_kwargs: dict = {},
-        use_nndescent: bool = False,
+        jitter: float = 0.01,
         low_memory: bool = False,
         n_jobs: int = -1,
     ):
@@ -80,11 +80,15 @@ class MergingLinearCorrection(MergingABC):
         self.n_neighbors = n_neighbors
         self.metric = metric
         self.metric_kwargs = metric_kwargs
-        self.use_nndescent = use_nndescent
+        self.jitter = jitter
         self.low_memory = low_memory
         self.n_jobs = n_jobs
 
-    def _project(self, X, Y, T):
+    def do_jitter(self, X):
+        stdev = self.jitter * (np.max(X, axis=0) - np.min(X, axis=0))
+        return X + np.random.randn(*X.shape) * stdev
+
+    def project(self, X, Y, T):
         """
         Returns the projected view of X onto Y given the matching T
         """
@@ -102,7 +106,6 @@ class MergingLinearCorrection(MergingABC):
             metric=self.metric,
             metric_kwargs=self.metric_kwargs,
             symmetrize=True,
-            use_nndescent=self.use_nndescent,
             n_neighbors=n_neighbors,
             low_memory=self.low_memory,
             n_jobs=self.n_jobs,
@@ -160,6 +163,9 @@ class MergingLinearCorrection(MergingABC):
             assert type(T) is csr_matrix, f"Unrecognized type: {type(T)}"
             if type(T) is csr_matrix:
                 T = T.toarray()
-            projection = self._project(list_mtx[k], list_mtx[reference_idx], T)
+            projection = self.project(list_mtx[k], list_mtx[reference_idx], T)
             result.append(projection)
+
+        if self.jitter:
+            result = [self.do_jitter(X) for X in result]
         return result
