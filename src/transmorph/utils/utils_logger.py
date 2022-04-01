@@ -1,8 +1,13 @@
 import os
 import logging
 
+from typing import Optional
 
-def create_logger(fileName: str = None):
+# TODO: allow modules to use logger.
+
+
+def create_logger(fileName: Optional[str] = None):
+    # TODO: if filename is None, generate it
     # create logger
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)

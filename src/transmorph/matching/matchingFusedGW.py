@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
-
-from typing import Dict
-from ot.gromov import fused_gromov_wasserstein
-
+#
 import numpy as np
 
-from ..subsampling.subsamplingABC import SubsamplingABC
-from ..subsampling import SubsamplingKeepAll
-from ..utils.anndata_interface import (
-    get_attribute,
-    isset_attribute,
-    set_attribute,
-)
-from .matchingABC import MatchingABC
-from scipy.spatial.distance import cdist
 from anndata import AnnData
+from ot.gromov import fused_gromov_wasserstein
+from scipy.spatial.distance import cdist
+from typing import Dict, Optional
+
+from .matchingABC import MatchingABC
+from ..subsampling.subsamplingABC import SubsamplingABC
+from ..utils.anndata_interface import (
+    get_info,
+    isset_info,
+    set_info,
+)
 
 
 class MatchingFusedGW(MatchingABC):
@@ -41,8 +40,13 @@ class MatchingFusedGW(MatchingABC):
         Ratio between optimal transport and Gromov-Wasserstein terms
         in the optimization problem.
 
-    max_iter: int, default = 1e6
-        Maximum number of iterations to solve the optimization problem.
+    GW_loss: str, default = "square_loss"
+        Loss to use in the Gromov-Wasserstein problem. Valid options
+        are "square_loss", "kl_loss".
+
+    subsampling: SubsamplingABC, default = None
+        Subsampling scheme to apply before computing the matching,
+        can be very helpful when dealing with large datasets.
     """
 
     def __init__(
@@ -51,7 +55,7 @@ class MatchingFusedGW(MatchingABC):
         OT_metric_kwargs: Dict = {},
         alpha: float = 0.5,
         GW_loss: str = "square_loss",
-        subsampling: SubsamplingABC = SubsamplingKeepAll(),
+        subsampling: Optional[SubsamplingABC] = None,
     ):
         super().__init__(
             metadata_keys=["metric", "metric_kwargs"], subsampling=subsampling
@@ -65,10 +69,10 @@ class MatchingFusedGW(MatchingABC):
         """
         Adds some default metric information if needed.
         """
-        if not isset_attribute(adata, "metric"):
-            set_attribute(adata, "metric", self.OT_metric)
-        if not isset_attribute(adata, "metric_kwargs"):
-            set_attribute(adata, "metric_kwargs", self.OT_metric_kwargs)
+        if not isset_info(adata, "metric"):
+            set_info(adata, "metric", self.OT_metric)
+        if not isset_info(adata, "metric_kwargs"):
+            set_info(adata, "metric_kwargs", self.OT_metric_kwargs)
         return super()._check_input(adata, dataset_key)
 
     def _match2(self, adata1: AnnData, adata2: AnnData) -> np.ndarray:
@@ -95,13 +99,13 @@ class MatchingFusedGW(MatchingABC):
         M = cdist(X1, X2, metric=self.OT_metric, *self.OT_metric_kwargs)
         M /= M.max()
 
-        metric_1 = get_attribute(adata1, "metric")
-        metric_1_kwargs = get_attribute(adata1, "metric_kwargs")
+        metric_1 = get_info(adata1, "metric")
+        metric_1_kwargs = get_info(adata1, "metric_kwargs")
         C1 = cdist(X1, X1, metric_1, **metric_1_kwargs)
         C1 /= C1.max()
 
-        metric_2 = get_attribute(adata2, "metric")
-        metric_2_kwargs = get_attribute(adata2, "metric_kwargs")
+        metric_2 = get_info(adata2, "metric")
+        metric_2_kwargs = get_info(adata2, "metric_kwargs")
         C2 = cdist(X2, X2, metric_2, **metric_2_kwargs)
         C2 /= C2.max()
 

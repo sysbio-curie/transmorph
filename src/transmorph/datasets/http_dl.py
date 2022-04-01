@@ -1,11 +1,12 @@
 import base64
 import json
 import os
+from posixpath import dirname
 import urllib.request
 
 from os import path
 
-DATASETS_JSON = "src/transmorph/datasets/datasets.json"
+DATASETS_JSON = "datasets.json"
 
 
 # From https://towardsdatascience.com/
@@ -26,10 +27,12 @@ def download_dataset(dataset_name):
     # Downloads a dataset from onedrive
     # using data from datasets.json
     # TODO print -> log
-    package_root = "/".join(__file__.split("/")[:-4]) + "/%s"
+
+    # Detecting package structure
+    datasets_root = dirname(__file__) + "/%s"
 
     # Ensuring dataset exists
-    f = open(package_root % DATASETS_JSON, "r")
+    f = open(datasets_root % DATASETS_JSON, "r")
     all_datasets = json.load(f)
     dataset = None
     for ds in all_datasets:
@@ -43,10 +46,10 @@ def download_dataset(dataset_name):
     print(f"http_dl > Number of files: {dataset['n_files']}")
 
     # Preparing dir structure
-    if not path.exists(package_root % "data/"):
+    if not path.exists(datasets_root % "data/"):
         print("http_dl > data/ not found, creating it.")
-        os.mkdir(package_root % "data/")
-    data_path = package_root % ("data/%s" % dataset_name) + "/"
+        os.mkdir(datasets_root % "data/")
+    data_path = datasets_root % ("data/%s" % dataset_name) + "/"
     if not path.exists(data_path):
         print(f"http_dl > data/{dataset_name}/ not found, creating it.")
         os.mkdir(data_path)

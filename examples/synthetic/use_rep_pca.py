@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import scanpy as sc
-
 from transmorph.datasets import load_spirals
 from transmorph.engine import (
     LayerInput,
@@ -13,7 +11,7 @@ from transmorph.engine import (
 from transmorph.matching import MatchingMNN
 from transmorph.merging import MergingBarycenter
 
-from transmorph.utils.plotting import plot_result
+from transmorph.utils import pca_multi, plot_result
 
 # Building a simple pipeline
 # Input -> MatchMNN -> MergeBarycenter -> Output
@@ -36,8 +34,9 @@ pipeline.initialize(linput)
 
 spirals_data = load_spirals()
 adata1, adata2 = spirals_data["src"], spirals_data["ref"]
-sc.pp.pca(adata1, n_comps=2)
-sc.pp.pca(adata2, n_comps=2)
+P1, P2 = pca_multi(adata1.X, adata2.X)  # Simulating sc.pp.pca
+adata1.obsm["X_pca"] = P1
+adata2.obsm["X_pca"] = P2
 pipeline.fit([adata1, adata2], reference=adata2, use_rep="X_pca")
 
 # Retrieving and displaying results in a PC plot

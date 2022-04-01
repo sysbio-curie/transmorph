@@ -4,6 +4,14 @@ from anndata import AnnData
 
 import numpy as np
 
+# This file implements a standardized way for Transmorph modules
+# to interact with annotated data objects. Two data types can
+# be manipulated:
+#
+# - matrix, to store alternative representations of datasets
+# - info, to store scalar or str values (e.g. pipeline parameters,
+#   dataset metric...)
+
 
 def set_matrix(adata: AnnData, dataset_key: str, X: np.ndarray) -> None:
     """
@@ -87,7 +95,7 @@ def isset_matrix(adata: AnnData, dataset_key: str) -> bool:
     return dataset_key in adata.uns["transmorph"]["matrices"]
 
 
-def set_attribute(adata: AnnData, dataset_key: str, X) -> None:
+def set_info(adata: AnnData, dataset_key: str, X) -> None:
     """
     Registers an object in an AnnData object, under a unique string identifier.
 
@@ -104,14 +112,14 @@ def set_attribute(adata: AnnData, dataset_key: str, X) -> None:
     """
     if "transmorph" not in adata.uns:
         adata.uns["transmorph"] = {}
-    if "attributes" not in adata.uns["transmorph"]:
-        adata.uns["transmorph"]["attributes"] = {}
-    adata.uns["transmorph"]["attributes"][dataset_key] = X
+    if "infos" not in adata.uns["transmorph"]:
+        adata.uns["transmorph"]["infos"] = {}
+    adata.uns["transmorph"]["infos"][dataset_key] = X
 
 
-def get_attribute(adata: AnnData, dataset_key: str):
+def get_info(adata: AnnData, dataset_key: str):
     """
-    Retrieves an object stored in the AnnData object by set_attribute.
+    Retrieves an object stored in the AnnData object by set_info.
 
     Parameters
     ----------
@@ -119,19 +127,19 @@ def get_attribute(adata: AnnData, dataset_key: str):
         Target dataset
 
     dataset_key: str
-        Target attribute identifier
+        Target info identifier
 
     Returns
     -------
     The required np.ndarray.
     """
-    assert isset_attribute(adata, dataset_key)
-    return adata.uns["transmorph"]["attributes"][dataset_key]
+    assert isset_info(adata, dataset_key)
+    return adata.uns["transmorph"]["infos"][dataset_key]
 
 
-def delete_attribute(adata: AnnData, dataset_key: str) -> None:
+def delete_info(adata: AnnData, dataset_key: str) -> None:
     """
-    Deletes the attribute stored in the AnnData object by set_attribute.
+    Deletes the info stored in the AnnData object by set_info.
 
     Parameters
     ----------
@@ -139,16 +147,16 @@ def delete_attribute(adata: AnnData, dataset_key: str) -> None:
         Target dataset
 
     dataset_key: str
-        Target attribute identifier
+        Target info identifier
     """
-    if not isset_attribute(adata, dataset_key):
+    if not isset_info(adata, dataset_key):
         return
-    del adata.uns["transmorph"]["attributes"][dataset_key]
+    del adata.uns["transmorph"]["infos"][dataset_key]
 
 
-def isset_attribute(adata: AnnData, dataset_key: str) -> bool:
+def isset_info(adata: AnnData, dataset_key: str) -> bool:
     """
-    Detects if an attribute is registered under $dataset_key.
+    Detects if an info is registered under $dataset_key.
 
     Parameters
     ----------
@@ -156,10 +164,10 @@ def isset_attribute(adata: AnnData, dataset_key: str) -> bool:
         Target dataset
 
     dataset_key: str
-        Target attribute identifier
+        Target info identifier
     """
     if "transmorph" not in adata.uns:
         return False
-    if "attributes" not in adata.uns["transmorph"]:
+    if "infos" not in adata.uns["transmorph"]:
         return False
-    return dataset_key in adata.uns["transmorph"]["attributes"]
+    return dataset_key in adata.uns["transmorph"]["infos"]

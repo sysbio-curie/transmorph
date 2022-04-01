@@ -10,6 +10,8 @@ from scipy.spatial.distance import cdist
 from ..utils import sparse_cdist
 from ..utils import nearest_neighbors
 
+# TODO: move them into checking?
+
 
 def matching_divergence(
     X1: np.ndarray,

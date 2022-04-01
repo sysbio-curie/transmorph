@@ -31,10 +31,9 @@ setuptools.setup(
         "pot",
         "pymde",
         "pynndescent",
-        "scanpy",
         "scikit-learn",
         "scipy",
         "umap-learn",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.8,<3.10",
 )

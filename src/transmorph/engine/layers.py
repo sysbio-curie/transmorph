@@ -11,7 +11,7 @@ from ..merging.mergingABC import MergingABC
 from ..preprocessing.preprocessingABC import PreprocessingABC
 from ..utils.anndata_interface import (
     delete_matrix,
-    get_attribute,
+    get_info,
     get_matrix,
     set_matrix,
 )
@@ -308,7 +308,7 @@ class LayerMerging(LayerTransmorph):
         ref_id = -1
         if self.use_reference:
             for k, adata in enumerate(datasets):
-                if get_attribute(adata, "is_reference"):
+                if get_info(adata, "is_reference"):
                     ref_id = k
                     break
             assert (

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 from anndata import AnnData
-from ..subsampling import SubsamplingKeepAll
-from ..subsampling.subsamplingABC import SubsamplingABC
+from scipy.sparse import csr_matrix
+from typing import Optional
 
 from .matchingABC import MatchingABC
+from ..subsampling.subsamplingABC import SubsamplingABC
 from ..utils import mutual_nearest_neighbors
 
 
@@ -14,6 +15,19 @@ class MatchingMNN(MatchingABC):
     are matched if xi belongs to the k-nearest neighbors (kNNs) of yj
     and vice-versa. If we denote by dk(x) the distance from x to its
     kNN, then xi and yj are matched if d(xi, yj) < min{dk(xi), dk(yj)}.
+    In other terms,
+    x \\in X and y \\in Y are mutual nearest neighbors if
+    - y belongs to the $k nearest neighbors of x in Y
+    AND
+    - x belongs to the $k nearest neighbors of y in X
+
+    You can choose between two methods:
+    - The exact MNN solver, with high fiability but which can become
+      computationally prohibitive when datasets scale over tens of
+      thousands of samples.
+    - An experimental approached solver, which matches samples between
+      matched clusters, less fiable but more tractable for large problems.
+      This solver will be subject to improvements.
 
     Parameters
     ----------
@@ -24,19 +38,16 @@ class MatchingMNN(MatchingABC):
         Additional metric parameters.
 
     n_neighbors: int, default = 10
-        Number of neighbors to build the MNN graph.
-
-    n_pcs: int, default = -1
-        Number of PCs to use in the PCA representation. If -1, do
-        not use a PCA representation.
-
-    use_common_features: bool, default = False
-        Use pairwise common features subspace between all pairs of
-        datasets. Necessitates each TData.metadata to contain a
+        Number of neighbors to use between datasets.
         "features" key, a list of features names.
 
-    use_sparse: bool, default = True
-        Save matching as sparse matrices.
+    algorithm: str, default = "auto"
+        Method to use ("auto", "exact" or "louvain"). If "auto", will
+        choose "exact" for small datasets and "louvain" for large ones.
+
+    subsampling: SubsamplingABC, default = None
+        Subsampling scheme to apply before computing the matching,
+        can be very helpful when dealing with large datasets.
     """
 
     def __init__(
@@ -45,19 +56,15 @@ class MatchingMNN(MatchingABC):
         metric_kwargs: dict = {},
         n_neighbors: int = 10,
         algorithm="auto",
-        subsampling: SubsamplingABC = SubsamplingKeepAll(),
-        verbose: bool = False,
+        subsampling: Optional[SubsamplingABC] = None,
     ):
         super().__init__(metadata_keys=[], subsampling=subsampling)
         self.metric = metric
         self.metric_kwargs = metric_kwargs
         self.n_neighbors = n_neighbors
         self.algorithm = algorithm
-        self.verbose = verbose
 
-    def _match2(self, adata1: AnnData, adata2: AnnData):
-        if self.verbose:
-            print(f"Matching {adata1} against {adata2}.")
+    def _match2(self, adata1: AnnData, adata2: AnnData) -> csr_matrix:
         X = self.to_match(adata1)
         Y = self.to_match(adata2)
         T = mutual_nearest_neighbors(

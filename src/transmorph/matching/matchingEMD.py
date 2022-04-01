@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
+
+import numpy as np
+
+from anndata import AnnData
 from ot import emd
 from scipy.spatial.distance import cdist
+from typing import Optional
 
 from .matchingABC import MatchingABC
 from ..subsampling.subsamplingABC import SubsamplingABC
-from ..subsampling import SubsamplingKeepAll
-
-import numpy as np
-import scanpy as sc
 
 
 class MatchingEMD(MatchingABC):
@@ -30,6 +31,10 @@ class MatchingEMD(MatchingABC):
     metric_kwargs: dict, default = {}
         Additional metric parameters.
 
+    subsampling: SubsamplingABC, default = None
+        Subsampling scheme to apply before computing the matching,
+        can be very helpful when dealing with large datasets.
+
     max_iter: int, default = 1e6
         Maximum number of iterations to solve the optimization problem.
     """
@@ -38,7 +43,7 @@ class MatchingEMD(MatchingABC):
         self,
         metric: str = "sqeuclidean",
         metric_kwargs: dict = {},
-        subsampling: SubsamplingABC = SubsamplingKeepAll(),
+        subsampling: Optional[SubsamplingABC] = None,
         max_iter: int = int(1e6),
     ):
         super().__init__(metadata_keys=[], subsampling=subsampling)
@@ -46,7 +51,7 @@ class MatchingEMD(MatchingABC):
         self.metric_kwargs = metric_kwargs
         self.max_iter = int(max_iter)
 
-    def _match2(self, adata1: sc.AnnData, adata2: sc.AnnData) -> np.ndarray:
+    def _match2(self, adata1: AnnData, adata2: AnnData) -> np.ndarray:
         """
         Simply gathers datasets and compute exact optimal transport.
         """

@@ -132,7 +132,7 @@ class MatchingABC(ABC):
             if not ad.isset_matrix(adata, dataset_key):
                 raise KeyError(f"Error: missing dataset key {dataset_key}")
         for key in self.metadata_keys:
-            if not ad.isset_attribute(adata, key):
+            if not ad.isset_info(adata, key):
                 raise KeyError(f"Error: missing metadata {key}.")
 
     def _preprocess(

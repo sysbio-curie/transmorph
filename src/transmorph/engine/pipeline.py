@@ -14,8 +14,8 @@ from .layers import (
 )
 from .profiler import Profiler
 from ..utils.anndata_interface import (
-    set_attribute,
-    delete_attribute,
+    set_info,
+    delete_info,
     get_matrix,
     set_matrix,
     delete_matrix,
@@ -191,9 +191,9 @@ class TransmorphPipeline:
         if reference is not None:
             for adata in datasets:
                 if adata is not reference:
-                    set_attribute(adata, "is_reference", False)
+                    set_info(adata, "is_reference", False)
                 else:
-                    set_attribute(adata, "is_reference", True)
+                    set_info(adata, "is_reference", True)
         if use_rep is not None:
             self.input_layer.use_rep = use_rep
             for adata in datasets:
@@ -215,7 +215,7 @@ class TransmorphPipeline:
         self.input_layer.clean(datasets)
         if reference is not None:
             for adata in datasets:
-                delete_attribute(adata, "is_reference")
+                delete_info(adata, "is_reference")
         if use_rep is not None:
             for adata in datasets:
                 delete_matrix(adata, use_rep)

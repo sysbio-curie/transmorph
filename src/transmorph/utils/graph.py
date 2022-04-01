@@ -13,7 +13,7 @@ from scipy.sparse import csr_matrix, coo_matrix
 from sklearn.neighbors import NearestNeighbors
 
 
-from typing import Tuple, Optional
+from typing import Dict, Optional, Tuple
 
 
 def fsymmetrize(A: csr_matrix) -> csr_matrix:
@@ -36,7 +36,21 @@ def distance_to_knn(D: np.ndarray, k: int, axis: int):
 
 def clustering(A: csr_matrix, resolution: float = 1.0) -> np.ndarray:
     """
-    A: adjacency matrix
+    Uses Louvain algorithm to provide a clustering of the directed
+    unweighted graph represented as matrix A.
+
+    Parameters
+    ----------
+    A: csr_matrix
+        Adjacency matrix of shape (n,n).
+
+    resolution: float, default = 1.0
+        Resolution parameter for Louvain algorithm.
+        #TODO: adaptive selection of this parameter?
+
+    Returns
+    -------
+    (n,) np.ndarray containing cluster affectation as integers
     """
     sources, targets = A.nonzero()
     A_ig = ig.Graph(directed=True)
@@ -52,14 +66,59 @@ def mutual_nearest_neighbors(
     X: np.ndarray,
     Y: np.ndarray,
     metric: str = "sqeuclidean",
-    metric_kwargs: dict = {},
+    metric_kwargs: Dict = {},
     n_neighbors: int = 10,
     algorithm: str = "auto",
     low_memory: bool = False,
     n_jobs: int = -1,
 ) -> csr_matrix:
     """
-    TODO
+    Runs mutual nearest neighbors algorithm between datasets X and Y.
+    x \\in X and y \\in Y are mutual nearest neighbors if
+    - y belongs to the $k nearest neighbors of x in Y
+    AND
+    - x belongs to the $k nearest neighbors of y in X
+
+    You can choose between two methods:
+    - The exact MNN solver, with high fiability but which can become
+      computationally prohibitive when datasets scale over tens of
+      thousands of samples.
+    - An experimental approached solver, which matches samples between
+      matched clusters, less fiable but more tractable for large problems.
+      This solver will be subject to improvements.
+
+    Parameters
+    ----------
+    X: np.ndarray
+        First dataset of shape (n,d)
+
+    Y: np.ndarray
+        Second dataset of shape (m,d)
+
+    metric: str, default = "sqeuclidean"
+        scipy-compatible metric to use.
+
+    metric_kwargs: Dict, default = {}
+        Additional parameters for metric
+
+    n_neighbors: int, default = 10
+        Number of neighbors to use between datasets.
+
+    algorithm: str, default = "auto"
+        Method to use ("auto", "exact" or "louvain"). If "auto", will
+        choose "exact" for small datasets and "louvain" for large ones.
+
+    low_memory: bool, default = False
+        Run pynndescent using high time/low memory profile for large
+        datasets. Turn it on for very large datasets where memory is an
+        issue.
+
+    n_jobs: int = -1
+        Number of jobs to pass to sklearn nearest_neighbors function.
+
+    Returns
+    -------
+    T = (n,m) csr_matrix where T[i,j] = (xi and yj MNN)
     """
     nx, ny = X.shape[0], Y.shape[0]
     npoints = nx + ny
@@ -79,6 +138,7 @@ def mutual_nearest_neighbors(
         Dxy = np.minimum.outer(dx, dy)
         return csr_matrix((D <= Dxy), shape=D.shape)
     if algorithm == "louvain":
+        # Computing approached kNN matrices of X and Y
         Ax = nearest_neighbors(
             X,
             metric=metric,
@@ -97,11 +157,13 @@ def mutual_nearest_neighbors(
             low_memory=low_memory,
             n_jobs=n_jobs,
         )
+        # Clustering Ax and Ay
         px, py = clustering(Ax), clustering(Ay)
         ncx, ncy = len(set(px)), len(set(py))
         npart = max(ncx, ncy)
         centroidx = np.array([np.mean(X[px == k], axis=0) for k in range(ncx)])
         centroidy = np.array([np.mean(Y[py == k], axis=0) for k in range(ncy)])
+        # MNN matching of cluster centroids
         part_matching = mutual_nearest_neighbors(
             centroidx,
             centroidy,
@@ -110,6 +172,7 @@ def mutual_nearest_neighbors(
             n_neighbors=npart // 3,  # Guess
             algorithm="exact",
         ).toarray()
+        # Match points only between matched clusters
         rows, cols = [], []
         for i in range(ncx):
             indices_i = np.arange(nx)[px == i]
@@ -151,16 +214,12 @@ def nearest_neighbors(
     use_nndescent: Optional[bool] = None,
 ) -> csr_matrix:
     """
-    Encapsulates both Nearest neighbors and Mutual nearest neighbors computations.
+    Encapsulates k-nearest neighbors algorithms.
 
     Parameters
     ----------
     X: np.ndarray
         Vectorized dataset to compute nearest neighbors from.
-
-    Y: np.ndarray, default = None
-        Vectorized reference dataset to use in the mutual nearest neighbors case.
-        For nearest neighbors, leave this as None.
 
     metric: str or Callable, default = "sqeuclidean"
         scipy-compatible metric used to compute nearest neighbors.
@@ -168,17 +227,21 @@ def nearest_neighbors(
     metric_kwargs: dict, default = {}
         Additional metric arguments for scipy.spatial.distance.cdist.
 
+    n_neighbors: int, default = 10
+        Number of neighbors to use between datasets.
+
     include_self_loops: bool, default = False
         Whether points are neighbors of themselves.
 
     symmetrize: bool, default = False
         Make edges undirected
 
-    use_nndescent: bool, default = False
-        Use a nearest neighbors descent heuristic for higher computational
-        efficiency. Not compatible with mutual nearest neighbors. We use
-        the pynndescent implementation. All next parameters are pynndescent
-        parameters, refer to their documentation for more info.
+    algorithm: str, default = "auto"
+        Solver to use in "auto", "sklearn" and "nndescent". Use "sklearn"
+        for small datasets or if the solution must be exact, use "nndescent"
+        for large datasets if an approached solution is enough. With "auto",
+        the function will adapt to dataset size.
+
     """
     nx = X.shape[0]
     if use_nndescent is not None:

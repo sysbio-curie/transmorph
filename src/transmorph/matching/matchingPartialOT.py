@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
+#
+import numpy as np
 
+from anndata import AnnData
 from ot.partial import partial_wasserstein
 from scipy.spatial.distance import cdist
+from typing import Optional
 
 from .matchingABC import MatchingABC
 from ..subsampling.subsamplingABC import SubsamplingABC
-from ..subsampling import SubsamplingKeepAll
-
-import numpy as np
-
-import scanpy as sc
 
 
 class MatchingPartialOT(MatchingABC):
@@ -23,7 +22,6 @@ class MatchingPartialOT(MatchingABC):
     a portion of mass needs to be displaced. It is quite useful
     when dealing with class-specific objects, for instance cell
     types specific to a dataset that we do not want to match.
-    TODO: allow the user to define a custom callable metric?
 
     Parameters
     ----------
@@ -45,8 +43,9 @@ class MatchingPartialOT(MatchingABC):
     max_iter: int, default = 1e6
         Maximum number of iterations to solve the optimization problem.
 
-    use_sparse: boolean, default = True
-        Save matching as sparse matrices.
+    subsampling: SubsamplingABC, default = None
+        Subsampling scheme to apply before computing the matching,
+        can be very helpful when dealing with large datasets.
     """
 
     def __init__(
@@ -56,7 +55,7 @@ class MatchingPartialOT(MatchingABC):
         metric: str = "sqeuclidean",
         metric_kwargs: dict = {},
         max_iter: int = int(1e6),
-        subsampling: SubsamplingABC = SubsamplingKeepAll(),
+        subsampling: Optional[SubsamplingABC] = None,
     ):
         super().__init__(metadata_keys=[], subsampling=subsampling)
         self.transport_mass = transport_mass
@@ -65,7 +64,7 @@ class MatchingPartialOT(MatchingABC):
         self.metric_kwargs = metric_kwargs
         self.max_iter = int(max_iter)
 
-    def _match2(self, adata1: sc.AnnData, adata2: sc.AnnData):
+    def _match2(self, adata1: AnnData, adata2: AnnData) -> np.ndarray:
         X1 = self.to_match(adata1)
         X2 = self.to_match(adata2)
         n1, n2 = X1.shape[0], X2.shape[0]

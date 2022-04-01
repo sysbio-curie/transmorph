@@ -9,11 +9,11 @@ from typing import Dict
 
 from .http_dl import download_dataset
 
+
 # GIT: small datasets, can be hosted on Git
 # ONLINE: bigger datasets, are downloaded if necessary
 #   by the transmorph http API.
-DPATH_GIT = f"{dirname(__file__)}/data/"
-DPATH_ONLINE = "/".join(__file__.split("/")[:-4]) + "/"
+DPATH_DATASETS = dirname(__file__) + "/data/"
 
 
 def load_dataset(source, filename, is_sparse=False) -> np.ndarray:
@@ -61,7 +61,7 @@ def load_test_datasets_small() -> Dict:
             [3, 0],
         ]
     )
-    a1 = ad.AnnData(x1)
+    a1 = ad.AnnData(x1, dtype=x1.dtype)
     a1.obs["class"] = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1]
 
     x2 = np.array(
@@ -79,7 +79,7 @@ def load_test_datasets_small() -> Dict:
             [7, 1],
         ]
     )
-    a2 = ad.AnnData(x2)
+    a2 = ad.AnnData(x2, dtype=x2.dtype)
     a2.obs["class"] = [0, 0, 0, 0, 1, 1, 1, 1, 1]
     errors = np.array(a1.obs["class"])[:, None] != np.array(a2.obs["class"])
     return {"src": a1, "ref": a2, "error": errors}
@@ -104,13 +104,17 @@ def load_spirals():
         "ref": AnnData(obs: "label")
     }
     """
-    xl = load_dataset(DPATH_GIT, "spiralA_labels.csv")
-    yl = load_dataset(DPATH_GIT, "spiralB_labels.csv")
-    xs = ad.AnnData(load_dataset(DPATH_GIT, "spiralA.csv"))
-    xs.obs["label"] = xl
-    yt = ad.AnnData(load_dataset(DPATH_GIT, "spiralB.csv"))
-    yt.obs["label"] = yl
-    return {"src": xs, "ref": yt}
+    xs = load_dataset(DPATH_DATASETS, "spirals/spiralA.csv")
+    ys = load_dataset(DPATH_DATASETS, "spirals/spiralA_labels.csv")
+    adata_s = ad.AnnData(xs, dtype=xs.dtype)
+    adata_s.obs["label"] = ys
+
+    xt = load_dataset(DPATH_DATASETS, "spirals/spiralB.csv")
+    yt = load_dataset(DPATH_DATASETS, "spirals/spiralB_labels.csv")
+    adata_t = ad.AnnData(xt, dtype=xt.dtype)
+    adata_t.obs["label"] = yt
+
+    return {"src": adata_s, "ref": adata_t}
 
 
 def load_travaglini_10x():
@@ -135,7 +139,7 @@ def load_travaglini_10x():
     }
     """
     download_dataset("travaglini_10x")  # TODO handle network exceptions
-    dataset_root = DPATH_ONLINE + "data/travaglini_10x/"
+    dataset_root = DPATH_DATASETS + "travaglini_10x/"
     data = {}
     for patient_id in (1, 2, 3):
         counts = load_dataset(
@@ -151,7 +155,7 @@ def load_travaglini_10x():
         cell_types[cell_types == "1.0"] = "Stromal"
         cell_types[cell_types == "2.0"] = "Epithelial"
         cell_types[cell_types == "3.0"] = "Immune"
-        adata = ad.AnnData(counts)
+        adata = ad.AnnData(counts, dtype=counts.dtype)
         adata.obs["cell_type"] = cell_types
         data[f"patient_{patient_id}"] = adata
     return data
