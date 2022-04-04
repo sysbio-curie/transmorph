@@ -52,7 +52,7 @@ class MatchingFusedGW(MatchingABC):
     def __init__(
         self,
         OT_metric: str = "sqeuclidean",
-        OT_metric_kwargs: Dict = {},
+        OT_metric_kwargs: Dict = {}, #L Meme commentaire ici
         alpha: float = 0.5,
         GW_loss: str = "square_loss",
         subsampling: Optional[SubsamplingABC] = None,

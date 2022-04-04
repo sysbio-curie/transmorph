@@ -16,6 +16,7 @@ from ..utils.graph import nearest_neighbors
 @njit(fastmath=True)
 def entropy(dataset_counts: np.ndarray, labels: np.ndarray):
     """Computes entropy of a discrete label distribution."""
+    #
     (npoints, k), nlabels = dataset_counts.shape, len(labels)
     entropies = np.zeros(npoints)
     if nlabels <= 1:
@@ -55,8 +56,9 @@ class CheckingEntropy(CheckingABC):
     def __init__(
         self, threshold: float = 0.5, n_neighbors: int = 20, verbose: bool = False
     ):
+        """#LProblem de doc pour le parameters n_neighbors. Je sais pas trop comment documenter les nouveaux parametres des classes abstraites."""
         super().__init__(threshold=threshold, accept_if_lower=False, verbose=verbose)
-        self.n_neighbors = 20
+        self.n_neighbors = n_neighbors
 
     def evaluate_metric(self, datasets: List[AnnData], X_kw: str = "") -> float:
         Xs_before = [get_matrix(adata, "") for adata in datasets]
@@ -104,7 +106,7 @@ class CheckingEntropy(CheckingABC):
         T_all = T_all @ np.diag(belongs)
         # T_all: knn matrix with dataset ids as column values
 
-        # origins: n*k matrix whre o[i,j] if the dataset of origin
+        # origins: n*k matrix where o[i,j] if the dataset of origin
         # of the j-th neighbor of xi
         origins = np.zeros((N, self.n_neighbors))
         for i in range(N):

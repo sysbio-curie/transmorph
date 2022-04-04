@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-
+from abc import ABC, abstractmethod
 from typing import List
 from anndata import AnnData
 
 from ..utils.anndata_interface import isset_matrix
 
 
-class CheckingABC:
+class CheckingABC(ABC):
     """
     CheckingABC is the abstract class used to describe checking algorithms.
     A "checking" is a function that takes as input a set of datasets
@@ -73,6 +73,7 @@ class CheckingABC:
             return self.last_value <= self.threshold
         return self.last_value >= self.threshold
 
+    @abstractmethod
     def evaluate_metric(self, datasets: List[AnnData], X_kw: str = "") -> float:
         """
         Computes and return a test value from a set of datasets. Must
@@ -86,4 +87,4 @@ class CheckingABC:
         X_kw: str, default = ""
             Target embeddings location in AnnDatas.
         """
-        raise NotImplementedError
+        pass

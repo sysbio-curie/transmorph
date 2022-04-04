@@ -39,6 +39,7 @@ class MergingLinearCorrection(MergingABC):
     equal to the one of their closest corrected neighbor.
 
     Parameters
+    #L Problèmes avec la doc ici
     ----------
     matching: MatchingABC
         Fitted, referenced matching between datasets.

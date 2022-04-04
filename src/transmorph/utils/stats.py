@@ -131,7 +131,7 @@ def earth_movers_distance(
     X2: np.ndarray,
     C: np.ndarray = None,
     metric: str = "sqeuclidean",
-    metric_kwargs: dict = {},
+    metric_kwargs: dict = {}, #L Same
     per_point: bool = False,
     max_iter: int = 1000000,
 ):

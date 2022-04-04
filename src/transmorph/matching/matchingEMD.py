@@ -42,7 +42,7 @@ class MatchingEMD(MatchingABC):
     def __init__(
         self,
         metric: str = "sqeuclidean",
-        metric_kwargs: dict = {},
+        metric_kwargs: dict = {}, #L Pas ouf ça je crois, un dictionnaire vide c'est bizarre. Je pense que c'est mieux un None mais à toi de voir
         subsampling: Optional[SubsamplingABC] = None,
         max_iter: int = int(1e6),
     ):

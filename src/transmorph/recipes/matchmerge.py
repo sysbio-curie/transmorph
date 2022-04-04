@@ -19,13 +19,13 @@ from ..preprocessing.preprocessingABC import PreprocessingABC
 
 
 class MatchMerge:
-    """ """
+    """ ToDo doc"""
 
     def __init__(
         self,
         matching: MatchingABC,
         merging: MergingABC,
-        preprocessing: List[PreprocessingABC] = [],
+        preprocessing: List[PreprocessingABC] = [], #L Bizarre aussi la liste vide
         verbose: bool = False,
     ):
         self.matching = matching

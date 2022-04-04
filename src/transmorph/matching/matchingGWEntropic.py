@@ -58,7 +58,7 @@ class MatchingGWEntropic(MatchingABC):
         but huge computational downstream benefits. Turn this off if you
         want to keep the non-sparse matching.
 
-    low_cut_threshold: float, default = 0.001
+    low_cut_thr: float, default = 0.001
         If low_cut = True, then all values in the final matrix lesser
         than 1 / (n1 * n2) * low_cut_threshold are discarded (where
         n1 and n2 are the number of points in each dataset).

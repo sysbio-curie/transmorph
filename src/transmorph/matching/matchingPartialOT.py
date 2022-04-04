@@ -53,7 +53,7 @@ class MatchingPartialOT(MatchingABC):
         transport_mass: float = 1.0,
         n_dummies: int = 1,
         metric: str = "sqeuclidean",
-        metric_kwargs: dict = {},
+        metric_kwargs: dict = {}, #L Same
         max_iter: int = int(1e6),
         subsampling: Optional[SubsamplingABC] = None,
     ):

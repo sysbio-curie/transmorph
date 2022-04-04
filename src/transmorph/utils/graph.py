@@ -241,6 +241,7 @@ def nearest_neighbors(
         for small datasets or if the solution must be exact, use "nndescent"
         for large datasets if an approached solution is enough. With "auto",
         the function will adapt to dataset size.
+    #L Doc manquante ?
 
     """
     nx = X.shape[0]

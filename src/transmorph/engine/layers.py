@@ -65,12 +65,12 @@ class LayerTransmorph:
 
     def __init__(
         self,
-        compatible_inputs: List[Type] = [],
+        compatible_inputs: List[Type] = [], #L Why Type as type and not LayerTransmorph because it is the same class ?
         verbose: bool = False,
     ) -> None:
         self.str_rep = ""
         self.compatible_inputs = compatible_inputs
-        self.output_layers: List["LayerTransmorph"] = []
+        self.output_layers: List[LayerTransmorph] = [] # Why "" ?
         self.verbose = verbose
         self.profiler = None
         self.layer_id = LayerTransmorph.LayerID
@@ -85,7 +85,7 @@ class LayerTransmorph:
 
     def __str__(self):
         if self.str_rep == "":
-            typestr = "ABS"  # Abstract
+            typestr = "ABS"  # Abstract #L
             if type(self) is LayerChecking:
                 typestr = "CHK"
             elif type(self) is LayerInput:

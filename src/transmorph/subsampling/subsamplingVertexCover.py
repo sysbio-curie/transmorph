@@ -22,7 +22,7 @@ class SubsamplingVertexCover(SubsamplingABC):
     Parameters
     ----------
     n_neighbors: int, default = 5
-        Number of neighbors to use when building the n eighborhood graph.
+        Number of neighbors to use when building the neighborhood graph.
 
     n_hops: int, default = 1
         Maximal geodesic distance a point is allowed to be to the cover.
@@ -39,7 +39,7 @@ class SubsamplingVertexCover(SubsamplingABC):
         n_neighbors: int = 5,
         n_hops: int = 1,
         metric: str = "sqeuclidean",
-        metric_kwargs: Dict = {},
+        metric_kwargs: Dict = {}, #L Same
     ):
         self.n_neighbors = n_neighbors
         self.n_hops = n_hops

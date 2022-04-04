@@ -153,6 +153,7 @@ class TransmorphPipeline:
             )
         elif reference is not None:
             warnings.warn("Reference provided but no layer uses a reference.")
+        #L Can we be in the last case of the if statement ? Otherwise, it is better to type something like else: raise blablabla
 
     def fit(
         self,

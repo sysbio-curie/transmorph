@@ -53,7 +53,7 @@ class MatchingMNN(MatchingABC):
     def __init__(
         self,
         metric: str = "sqeuclidean",
-        metric_kwargs: dict = {},
+        metric_kwargs: dict = {}, #L Same
         n_neighbors: int = 10,
         algorithm="auto",
         subsampling: Optional[SubsamplingABC] = None,

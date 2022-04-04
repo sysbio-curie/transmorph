@@ -61,7 +61,7 @@ class MatchingGW(MatchingABC):
     def __init__(
         self,
         metric: Union[str, Callable] = "sqeuclidean",
-        metric_kwargs: Dict = {},
+        metric_kwargs: Dict = {}, #L Encore le même comm
         GW_loss: str = "square_loss",
         max_iter: int = int(1e6),
         subsampling: Optional[SubsamplingABC] = None,

@@ -136,7 +136,7 @@ class MergingMDI(MergingABC):
         initialization: str = "quadratic",
         n_neighbors: int = 10,
         knn_metric: str = "sqeuclidean",
-        knn_metric_kwargs: dict = {},
+        knn_metric_kwargs: dict = {}, #L same
         repulsive_fraction: float = 1.0,
         concentration: float = 1.0,
         device: str = "cpu",
@@ -176,7 +176,7 @@ class MergingMDI(MergingABC):
             )
         edges = combine_matchings(datasets, inner_graphs, matching, matching_mtx)
         edges.data = np.clip(edges.data, 0.0, 1.0)
-        edges = edges + edges.T - edges.multiply(edges.T)  # symmetrize
+        edges = edges + edges.T - edges.multiply(edges.T)  # symmetrize #L pourquoi tu enlèves edges.multiply(edges.T) ?
         edges.data[edges.data == 0] = 1e-9
         # Gaussian model
         # pij = exp(-dij**2 * lambda)
