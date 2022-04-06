@@ -52,7 +52,7 @@ class MatchingFusedGW(MatchingABC):
     def __init__(
         self,
         OT_metric: str = "sqeuclidean",
-        OT_metric_kwargs: Dict = {},
+        OT_metric_kwargs: Optional[Dict] = None,
         alpha: float = 0.5,
         GW_loss: str = "square_loss",
         subsampling: Optional[SubsamplingABC] = None,
@@ -61,7 +61,7 @@ class MatchingFusedGW(MatchingABC):
             metadata_keys=["metric", "metric_kwargs"], subsampling=subsampling
         )
         self.OT_metric = OT_metric
-        self.OT_metric_kwargs = OT_metric_kwargs
+        self.OT_metric_kwargs = {} if OT_metric_kwargs is None else OT_metric_kwargs
         self.alpha = alpha
         self.GW_loss = GW_loss
 
@@ -93,8 +93,8 @@ class MatchingFusedGW(MatchingABC):
         """
         n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        X1 = self.to_match(adata1)
-        X2 = self.to_match(adata2)
+        X1 = MatchingABC.to_match(adata1)
+        X2 = MatchingABC.to_match(adata2)
 
         M = cdist(X1, X2, metric=self.OT_metric, *self.OT_metric_kwargs)
         M /= M.max()

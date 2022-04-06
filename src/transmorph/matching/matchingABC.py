@@ -25,21 +25,20 @@ class MatchingABC(ABC):
 
     Parameters
     ----------
-    use_reference: int, default = -1
-        When matching, use the dataset i as the reference for matching. In this
-        case, self.matchings will contain n - 1 matchings, where matching[k] is
-        the matching between k and i if k < i and between k + 1 and i if k > i.
-
-    metadata_needed: List[str], default = []
+    metadata_keys: List[str], default = []
         TData.metadata keywords needed by the matching method.
+
+    subsampling: SubsamplingABC, default = None
+        Subsampling scheme to apply before computing the matching,
+        can be very helpful when dealing with large datasets.
 
     Attributes
     ----------
-    datasets: List[TData]
+    datasets: List[AnnData]
         Datasets the matching has been fitted with.
 
     fitted: boolean
-        Is true if match() method has been successfully exectuted.
+        Is true if match() method has been successfully executed.
 
     n_datasets: int
         Number of TData used during fitting.
@@ -54,8 +53,8 @@ class MatchingABC(ABC):
         reference dataset. Otherwise, matching[i(i-1)/2+j] contains the
         matching between xi and xj (with i > j).
 
-    reference: TData
-        If matching is referenced, contains a link to the reference TData.
+    reference_idx: int
+        Reference dataset index.
     """
 
     def __init__(
@@ -82,7 +81,7 @@ class MatchingABC(ABC):
 
     def get_dataset_idx(self, adata: AnnData) -> int:
         """
-        Internal methods that returns AnnData index in self.datasets.
+        Internal method that returns AnnData index in self.datasets.
         Raises a KeyError if the AnnData is not found.
 
         Parameters
@@ -95,7 +94,8 @@ class MatchingABC(ABC):
                 return i
         raise KeyError("AnnData not found in self.datasets.")
 
-    def to_match(self, adata: AnnData):
+    @staticmethod
+    def to_match(adata: AnnData) -> np.ndarray:
         """
         Retrieves the vectorized preprocessed dataset, to use when implementing
         _match2.
@@ -245,9 +245,9 @@ class MatchingABC(ABC):
         reference: AnnData = None,
     ) -> None:
         """
-        Computes the matching between a set of TData. Should not be overrode in
+        Computes the matching between a set of AnnData. Should not be overriden in
         the implementation in order to ensure compatibility between Matching and
-        all Mergings.
+        all Merging.
 
         Parameters:
         -----------
@@ -257,7 +257,7 @@ class MatchingABC(ABC):
         dataset_key: str, default = ""
             Dictionary key, locating where preprocessed vectorized datasets are.
 
-        reference: TData, default = None
+        reference: AnnData, default = None
             Optional reference dataset. If left empty, all $datasets are matched
             between one another.
         """

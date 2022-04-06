@@ -41,7 +41,7 @@ class LayerTransmorph:
 
     Parameters
     ----------
-    compatible_types: List[LayerType]
+    compatible_inputs: List[Type]
         List of type identifiers of compatible input layers
 
     verbose: bool, default = False

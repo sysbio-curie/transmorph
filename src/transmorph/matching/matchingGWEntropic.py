@@ -5,7 +5,7 @@ import numpy as np
 from anndata import AnnData
 from ot.gromov import entropic_gromov_wasserstein
 from scipy.spatial.distance import cdist
-from typing import Optional
+from typing import Dict, Optional
 
 from .matchingABC import MatchingABC
 from ..subsampling.subsamplingABC import SubsamplingABC
@@ -58,7 +58,7 @@ class MatchingGWEntropic(MatchingABC):
         but huge computational downstream benefits. Turn this off if you
         want to keep the non-sparse matching.
 
-    low_cut_threshold: float, default = 0.001
+    low_cut_thr: float, default = 0.001
         If low_cut = True, then all values in the final matrix lesser
         than 1 / (n1 * n2) * low_cut_threshold are discarded (where
         n1 and n2 are the number of points in each dataset).
@@ -77,7 +77,7 @@ class MatchingGWEntropic(MatchingABC):
     def __init__(
         self,
         metric: str = "sqeuclidean",
-        metric_kwargs: dict = {},
+        metric_kwargs: Optional[Dict] = None,
         epsilon: float = 1e-2,
         GW_loss: str = "square_loss",
         max_iter: int = int(1e6),
@@ -89,7 +89,7 @@ class MatchingGWEntropic(MatchingABC):
             metadata_keys=["metric", "metric_kwargs"], subsampling=subsampling
         )
         self.metric = metric
-        self.metric_kwargs = metric_kwargs
+        self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.epsilon = epsilon
         self.loss = GW_loss
         self.max_iter = int(max_iter)
@@ -124,8 +124,8 @@ class MatchingGWEntropic(MatchingABC):
         """
         n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        X1 = self.to_match(adata1)
-        X2 = self.to_match(adata2)
+        X1 = MatchingABC.to_match(adata1)
+        X2 = MatchingABC.to_match(adata2)
 
         metric_1 = get_info(adata1, "metric")
         metric_1_kwargs = get_info(adata1, "metric_kwargs")

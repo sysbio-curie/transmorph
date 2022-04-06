@@ -5,7 +5,7 @@ import numpy as np
 from anndata import AnnData
 from ot.bregman import sinkhorn_stabilized
 from scipy.spatial.distance import cdist
-from typing import Optional
+from typing import Dict, Optional
 
 
 from .matchingABC import MatchingABC
@@ -57,25 +57,25 @@ class MatchingSinkhorn(MatchingABC):
 
     def __init__(
         self,
-        metric="sqeuclidean",
-        metric_kwargs={},
-        epsilon=1e-2,
-        max_iter=5e2,
+        metric: str = "sqeuclidean",
+        metric_kwargs: Optional[Dict] = None,
+        epsilon: float = 1e-2,
+        max_iter: int = int(5e2),
         low_cut: bool = True,
         low_cut_thr: float = 1e-3,
         subsampling: Optional[SubsamplingABC] = None,
     ):
         super().__init__(metadata_keys=[], subsampling=subsampling)
         self.metric = metric
-        self.metric_kwargs = metric_kwargs
+        self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.epsilon = epsilon
         self.max_iter = int(max_iter)
         self.low_cut = low_cut
         self.low_cut_thr = low_cut_thr
 
     def _match2(self, adata1: AnnData, adata2: AnnData) -> np.ndarray:
-        X1 = self.to_match(adata1)
-        X2 = self.to_match(adata2)
+        X1 = MatchingABC.to_match(adata1)
+        X2 = MatchingABC.to_match(adata2)
         n1, n2 = X1.shape[0], X2.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
         M = cdist(X1, X2, metric=self.metric, **self.metric_kwargs)

@@ -3,7 +3,7 @@
 import numpy as np
 
 from anndata import AnnData
-from typing import Dict
+from typing import Dict, Optional
 
 from transmorph.utils.anndata_interface import get_matrix
 from .subsamplingABC import SubsamplingABC
@@ -22,7 +22,7 @@ class SubsamplingVertexCover(SubsamplingABC):
     Parameters
     ----------
     n_neighbors: int, default = 5
-        Number of neighbors to use when building the n eighborhood graph.
+        Number of neighbors to use when building the neighborhood graph.
 
     n_hops: int, default = 1
         Maximal geodesic distance a point is allowed to be to the cover.
@@ -39,12 +39,12 @@ class SubsamplingVertexCover(SubsamplingABC):
         n_neighbors: int = 5,
         n_hops: int = 1,
         metric: str = "sqeuclidean",
-        metric_kwargs: Dict = {},
+        metric_kwargs: Optional[Dict] = None,
     ):
         self.n_neighbors = n_neighbors
         self.n_hops = n_hops
         self.metric = metric
-        self.metric_kwargs = metric_kwargs
+        self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
 
     def _subsample_one(self, adata: AnnData, X_kw: str = "") -> Dict[str, np.ndarray]:
         X = get_matrix(adata, X_kw)

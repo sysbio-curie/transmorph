@@ -50,13 +50,19 @@ class CheckingEntropy(CheckingABC):
 
     stability(x) = |neighbors of x before and after|/|neighbors of x|
     diversity(x) = H(datasets in x neighborhood) where H is Shannon entropy
+
+    Parameters
+    ----------
+    n_neighbors: int, default = 20
+        Number of nearest neighbors to take into account when computing
+        label entropy.
     """
 
     def __init__(
         self, threshold: float = 0.5, n_neighbors: int = 20, verbose: bool = False
     ):
         super().__init__(threshold=threshold, accept_if_lower=False, verbose=verbose)
-        self.n_neighbors = 20
+        self.n_neighbors = n_neighbors
 
     def evaluate_metric(self, datasets: List[AnnData], X_kw: str = "") -> float:
         Xs_before = [get_matrix(adata, "") for adata in datasets]
@@ -104,7 +110,7 @@ class CheckingEntropy(CheckingABC):
         T_all = T_all @ np.diag(belongs)
         # T_all: knn matrix with dataset ids as column values
 
-        # origins: n*k matrix whre o[i,j] if the dataset of origin
+        # origins: n*k matrix where o[i,j] if the dataset of origin
         # of the j-th neighbor of xi
         origins = np.zeros((N, self.n_neighbors))
         for i in range(N):

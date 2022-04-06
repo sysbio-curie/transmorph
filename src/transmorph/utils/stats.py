@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from typing import Union
 import numpy as np
+from typing import Dict, Optional, Union
 
 from ot.lp import emd
 from scipy.sparse import csr_matrix
@@ -18,7 +18,7 @@ def matching_divergence(
     X2: np.ndarray,
     matching: csr_matrix,
     metric: str = "sqeuclidean",
-    metric_kwargs: dict = {},
+    metric_kwargs: Optional[Dict] = None,
     per_point: bool = False,
     accelerated: bool = False,
 ) -> Union[float, np.ndarray]:
@@ -54,6 +54,7 @@ def matching_divergence(
         speed. If so, metric can only be those supported by sparse_cdist
         from Transmorph.utils.geometry.
     """
+    metric_kwargs = {} if metric_kwargs is None else metric_kwargs
     if accelerated:
         matched_distances = sparse_cdist(X1, X2=X2, T=matching, metric=metric)
     else:
@@ -73,7 +74,7 @@ def neighborhood_preservation(
     X_after,
     n_neighbors: int = 10,
     metric: str = "sqeuclidean",
-    metric_kwargs: dict = {},
+    metric_kwargs: Optional[Dict] = None,
     per_point: bool = False,
 ) -> Union[float, np.ndarray]:
     """
@@ -115,6 +116,7 @@ def neighborhood_preservation(
             ).sum()
             / X_before.shape[0]
         )
+    metric_kwargs = {} if metric_kwargs is None else metric_kwargs
     nn_before = nearest_neighbors(
         X_before, n_neighbors=n_neighbors, metric=metric, metric_kwargs=metric_kwargs
     )
@@ -129,9 +131,9 @@ def neighborhood_preservation(
 def earth_movers_distance(
     X1: np.ndarray,
     X2: np.ndarray,
-    C: np.ndarray = None,
+    C: Optional[np.ndarray] = None,
     metric: str = "sqeuclidean",
-    metric_kwargs: dict = {},
+    metric_kwargs: Optional[Dict] = None,
     per_point: bool = False,
     max_iter: int = 1000000,
 ):
@@ -149,7 +151,7 @@ def earth_movers_distance(
     X2: np.ndarray
         Reference dataset
 
-    C: np.ndarray, default = None
+    C: np.ndarray, optional
         Cost matrix between X1 and X2, if None then C is set to be
         the distance matrix between X1 and X2.
 
@@ -171,6 +173,7 @@ def earth_movers_distance(
     assert (
         C is not None or X1.shape[1] == X2.shape[1]
     ), "Explicit cost matrix needed if datasets are not in the same space."
+    metric_kwargs = {} if metric_kwargs is None else metric_kwargs
     if C is None:
         C = cdist(X1, X2, metric=metric, **metric_kwargs)
     C /= C.max()

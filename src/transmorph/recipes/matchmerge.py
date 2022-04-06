@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from anndata import AnnData
-from typing import List
+from typing import List, Optional
 
 from ..engine import (
     LayerInput,
@@ -19,18 +19,34 @@ from ..preprocessing.preprocessingABC import PreprocessingABC
 
 
 class MatchMerge:
-    """ """
+    """
+    Simple two-steps recipe, combining a matching and a merging:
+
+    Optional preprocessing -> Matching -> Merging
+
+    Parameters
+    ----------
+    matching: MatchingABC
+        Matching algorithm to use.
+
+    merging: MergingABC
+        Merging algorithm to use.
+
+    preprocessing: List[PreprocessingABC], optional
+        Sequence of preprocessing steps to carry out before the
+        pipeline.
+    """
 
     def __init__(
         self,
         matching: MatchingABC,
         merging: MergingABC,
-        preprocessing: List[PreprocessingABC] = [],
+        preprocessing: Optional[List[PreprocessingABC]] = None,
         verbose: bool = False,
     ):
         self.matching = matching
         self.merging = merging
-        self.preprocessing = preprocessing
+        self.preprocessing = [] if preprocessing is None else preprocessing
         self.verbose = verbose
 
         self.layers: List[LayerTransmorph] = [LayerInput(verbose=self.verbose)]

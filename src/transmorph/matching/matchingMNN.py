@@ -2,7 +2,7 @@
 
 from anndata import AnnData
 from scipy.sparse import csr_matrix
-from typing import Optional
+from typing import Dict, Optional
 
 from .matchingABC import MatchingABC
 from ..subsampling.subsamplingABC import SubsamplingABC
@@ -53,20 +53,20 @@ class MatchingMNN(MatchingABC):
     def __init__(
         self,
         metric: str = "sqeuclidean",
-        metric_kwargs: dict = {},
+        metric_kwargs: Optional[Dict] = None,
         n_neighbors: int = 10,
         algorithm="auto",
         subsampling: Optional[SubsamplingABC] = None,
     ):
         super().__init__(metadata_keys=[], subsampling=subsampling)
         self.metric = metric
-        self.metric_kwargs = metric_kwargs
+        self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.n_neighbors = n_neighbors
         self.algorithm = algorithm
 
     def _match2(self, adata1: AnnData, adata2: AnnData) -> csr_matrix:
-        X = self.to_match(adata1)
-        Y = self.to_match(adata2)
+        X = MatchingABC.to_match(adata1)
+        Y = MatchingABC.to_match(adata2)
         T = mutual_nearest_neighbors(
             X,
             Y,

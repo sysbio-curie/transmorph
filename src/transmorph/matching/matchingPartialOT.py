@@ -5,7 +5,7 @@ import numpy as np
 from anndata import AnnData
 from ot.partial import partial_wasserstein
 from scipy.spatial.distance import cdist
-from typing import Optional
+from typing import Dict, Optional
 
 from .matchingABC import MatchingABC
 from ..subsampling.subsamplingABC import SubsamplingABC
@@ -53,7 +53,7 @@ class MatchingPartialOT(MatchingABC):
         transport_mass: float = 1.0,
         n_dummies: int = 1,
         metric: str = "sqeuclidean",
-        metric_kwargs: dict = {},
+        metric_kwargs: Optional[Dict] = None,
         max_iter: int = int(1e6),
         subsampling: Optional[SubsamplingABC] = None,
     ):
@@ -61,12 +61,12 @@ class MatchingPartialOT(MatchingABC):
         self.transport_mass = transport_mass
         self.n_dummies = n_dummies
         self.metric = metric
-        self.metric_kwargs = metric_kwargs
+        self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.max_iter = int(max_iter)
 
     def _match2(self, adata1: AnnData, adata2: AnnData) -> np.ndarray:
-        X1 = self.to_match(adata1)
-        X2 = self.to_match(adata2)
+        X1 = MatchingABC.to_match(adata1)
+        X2 = MatchingABC.to_match(adata2)
         n1, n2 = X1.shape[0], X2.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
         M = cdist(X1, X2, metric=self.metric, **self.metric_kwargs)

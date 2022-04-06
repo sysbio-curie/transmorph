@@ -61,7 +61,7 @@ class MatchingGW(MatchingABC):
     def __init__(
         self,
         metric: Union[str, Callable] = "sqeuclidean",
-        metric_kwargs: Dict = {},
+        metric_kwargs: Optional[Dict] = None,
         GW_loss: str = "square_loss",
         max_iter: int = int(1e6),
         subsampling: Optional[SubsamplingABC] = None,
@@ -72,7 +72,7 @@ class MatchingGW(MatchingABC):
         )
         self.loss = GW_loss
         self.metric = metric
-        self.metric_kwargs = metric_kwargs
+        self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.max_iter = int(max_iter)
 
     def _check_input(self, adata: AnnData, dataset_key: str = ""):
@@ -103,8 +103,8 @@ class MatchingGW(MatchingABC):
         """
         n1, n2 = adata1.X.shape[0], adata2.X.shape[0]
         w1, w2 = np.ones(n1) / n1, np.ones(n2) / n2
-        X1 = self.to_match(adata1)
-        X2 = self.to_match(adata2)
+        X1 = MatchingABC.to_match(adata1)
+        X2 = MatchingABC.to_match(adata2)
 
         metric_1 = get_info(adata1, "metric")
         metric_1_kwargs = get_info(adata1, "metric_kwargs")

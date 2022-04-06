@@ -12,9 +12,10 @@ docs/tutorial/.ipynb_checkpoints/
 examples/*.png
 docs/_build/
 dist/
-data/
 transmorph.egg-info/
 .archive/
 **/__pycache__/**
 venv
 .pre-commit-config.yaml
+*.png
+build/
