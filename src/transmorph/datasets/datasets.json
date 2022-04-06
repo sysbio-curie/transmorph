@@ -36,5 +36,68 @@
                 "url": "https://1drv.ms/u/s!Al03Ky07bKkGheIvrPrMKslY0R0Qwg?e=BRcOTE" 
             }
         ]
+    }, 
+    {
+        "name": "zhou_10x",
+        "reference": "https://www.nature.com/articles/s41467-020-20059-6",
+        "type": "single-cell",
+        "n_files": 11,
+        "files": [
+            {
+                "name": "BC2.h5ad",
+                "type": "AnnData h5ad",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJUKzkZO7UpnPlpnw?e=NIOjjE"
+            },
+            {
+                "name": "BC3.h5ad",
+                "type": "AnnData h5ad",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJSDNJ510lK8mTPSA?e=REQEMU"
+            },
+            {
+                "name": "BC5.h5ad",
+                "type": "AnnData h5ad",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJT-S7ThICDSzdHVA?e=4nwJAJ"
+            },
+            {
+                "name": "BC6.h5ad",
+                "type": "AnnData h5ad",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJVQFgNFIpEsJlawQ?e=hN5Yn8"
+            },
+            {
+                "name": "BC10.h5ad",
+                "type": "AnnData h5ad",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJQQ9B2KMp3v5ds3w?e=1Q4MXd"
+            },
+            {
+                "name": "BC11.h5ad",
+                "type": "AnnData h5ad",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJRxV7rzJKnVkOmUg?e=13qBMZ"
+            },
+            {
+                "name": "BC16.h5ad",
+                "type": "AnnData h5ad",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJPQzSzm0clYKi90g?e=fuMDDb"
+            },
+            {
+                "name": "BC17.h5ad",
+                "type": "AnnData h5ad",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJOMuTPiq9-sfMJlA?e=c9rW8r"
+            },
+            {
+                "name": "BC20.h5ad",
+                "type": "AnnData h5ad",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJNqyEu0eZXcH3vVA?e=98GSke"
+            },
+            {
+                "name": "BC21.h5ad",
+                "type": "AnnData h5ad",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJLA8zUGxDdWS94bQ?e=IrW9Wp"
+            },
+            {
+                "name": "BC22.h5ad",
+                "type": "AnnData h5ad",
+                "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJMK11WRZokIk2JRQ?e=Hn5qnr"
+            }
+        ]
     } 
 ]

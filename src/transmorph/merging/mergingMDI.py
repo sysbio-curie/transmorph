@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from logging import warn
 from typing import List, Optional, Union
 import numpy as np
 import pymde
@@ -173,6 +174,11 @@ class MergingMDI(MergingABC):
                     metric_kwargs=self.knn_metric_kwargs,
                     include_self_loops=False,
                 )
+            )
+        if any(G.shape[0] > 100 for G in inner_graphs):
+            warn(
+                "High dimensional data detected (D>100)."
+                "You may want to reduce dimensionality first."
             )
         edges = combine_matchings(datasets, inner_graphs, matching, matching_mtx)
         edges.data = np.clip(edges.data, 0.0, 1.0)

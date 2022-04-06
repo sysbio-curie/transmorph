@@ -31,6 +31,7 @@ setuptools.setup(
         "pot",
         "pymde",
         "pynndescent",
+        "scanpy",
         "scikit-learn",
         "scipy",
         "umap-learn",

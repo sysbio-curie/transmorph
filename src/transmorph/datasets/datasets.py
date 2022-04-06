@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 import anndata as ad
+import scanpy as sc
 import numpy as np
+import os
 
 from os.path import dirname
 from scipy.sparse import load_npz
@@ -158,4 +160,31 @@ def load_travaglini_10x():
         adata = ad.AnnData(counts, dtype=counts.dtype)
         adata.obs["cell_type"] = cell_types
         data[f"patient_{patient_id}"] = adata
+    return data
+
+
+def load_zhou_10x():
+    """
+    Dataset
+    -------
+    - Number of datasets: 11
+    - Embedding dimension: Variable
+    - Number of cell types: 11
+
+    Format
+    ------
+    {
+        "BC2": AnnData,
+        "BC3": AnnData
+        etc.
+    }
+    """
+    download_dataset("zhou_10x")
+    dataset_root = DPATH_DATASETS + "zhou_10x/"
+    data = {}
+    for fname in os.listdir(dataset_root):
+        adata = sc.read_h5ad(dataset_root + fname)
+        adata.X = adata.X.toarray()
+        pid = fname.split(".")[0]
+        data[pid] = adata
     return data

@@ -248,9 +248,17 @@ def plot_result(
 
     # Reordering legend
     handles, labels = plt.gca().get_legend_handles_labels()
+    if len(handles) < 5:
+        legendsize = 12
+    elif len(handles) < 10:
+        legendsize = 8
+    else:
+        legendsize = 5
     order = np.argsort(labels)
     plt.legend(
-        [handles[idx] for idx in order], [labels[idx] for idx in order], fontsize=8
+        [handles[idx] for idx in order],
+        [labels[idx] for idx in order],
+        fontsize=legendsize,
     )
 
     # Adding text pieces
