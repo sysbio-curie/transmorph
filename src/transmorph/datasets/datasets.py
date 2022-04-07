@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
 import anndata as ad
+import json
 import scanpy as sc
 import numpy as np
 import os
 
-from os.path import dirname
+from os.path import dirname, exists
 from scipy.sparse import load_npz
-from typing import Dict
+from typing import Dict, Optional
 
-from .http_dl import download_dataset
+from .http_dl import download_dataset, DATASETS_JSON
 
 
 # GIT: small datasets, can be hosted on Git
@@ -181,6 +182,37 @@ def load_zhou_10x():
     """
     download_dataset("zhou_10x")
     dataset_root = DPATH_DATASETS + "zhou_10x/"
+    data = {}
+    for fname in os.listdir(dataset_root):
+        adata = sc.read_h5ad(dataset_root + fname)
+        adata.X = adata.X.toarray()
+        pid = fname.split(".")[0]
+        data[pid] = adata
+    return data
+
+
+def load_chen_10x():
+    """
+    TODO
+    """
+    dataset_name = "chen_10x"
+    download_need = False  # TODO: check_download(dataset) function
+    with open(dirname(__file__) + "/" + DATASETS_JSON, "r") as f:
+        all_datasets = json.load(f)
+        dataset: Optional[Dict] = None
+        for ds in all_datasets:
+            if ds["name"] == dataset_name:
+                dataset = ds
+                break
+        assert dataset is not None, "json file missing."
+        for fname in dataset["files"]:
+            if not exists(f"{DPATH_DATASETS}{dataset_name}/{fname}"):
+                print("a", fname)
+                download_need = True
+                break
+    if download_need:
+        download_dataset(dataset_name)
+    dataset_root = DPATH_DATASETS + f"{dataset_name}/"
     data = {}
     for fname in os.listdir(dataset_root):
         adata = sc.read_h5ad(dataset_root + fname)

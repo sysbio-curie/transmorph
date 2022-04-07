@@ -1,17 +1,21 @@
 import base64
 import json
 import os
-from posixpath import dirname
+import time
 import urllib.request
+import zipfile
 
 from os import path
+from posixpath import dirname
+from socket import error as SocketError
 
+CALLBACK = 30
 DATASETS_JSON = "datasets.json"
 
 
 # From https://towardsdatascience.com/
 #      how-to-get-onedrive-direct-download-link-ecb52a62fee4
-def url_to_dllink(onedrive_link):
+def url_to_dllink(onedrive_link: str) -> str:
     # Converts a "share" link to a direct download link
     data_bytes64 = base64.b64encode(bytes(onedrive_link, "utf-8"))
     data_bytes64_String = (
@@ -23,7 +27,7 @@ def url_to_dllink(onedrive_link):
     return resultUrl
 
 
-def download_dataset(dataset_name):
+def download_dataset(dataset_name: str) -> None:
     # Downloads a dataset from onedrive
     # using data from datasets.json
     # TODO print -> log
@@ -54,15 +58,32 @@ def download_dataset(dataset_name):
         print(f"http_dl > data/{dataset_name}/ not found, creating it.")
         os.mkdir(data_path)
 
-    # Loading dataset
+    # Loading dataset TODO 100% zip files
     downloads = 0
-    for dfile in dataset["files"]:
-        if path.exists(data_path + dfile["name"]):
-            continue
-        print(f"http_dl > Downloading file {dfile['name']}...")
-        dl_url = url_to_dllink(dfile["url"])
-        urllib.request.urlretrieve(dl_url, data_path + dfile["name"])
-        downloads += 1
+    is_zip = "zip_link" in dataset
+    if not is_zip:
+        for dfile in dataset["files"]:
+            if path.exists(data_path + dfile["name"]):
+                continue
+            print(f"http_dl > Downloading file {dfile['name']}...")
+            dl_url = url_to_dllink(dfile["url"])
+            urllib.request.urlretrieve(dl_url, data_path + dfile["name"])
+            downloads += 1
+    else:
+        dl_url = url_to_dllink(dataset["zip_link"])
+        print(f"http_dl > Downloading file {dataset['zip_name']}...")
+        try:
+            urllib.request.urlretrieve(dl_url, data_path + dataset["zip_name"])
+        except SocketError as e:
+            print(f"http_dl > # ERROR # {e}")
+            print(f"http_dl > Retrying in {CALLBACK} seconds.")
+            time.sleep(CALLBACK)
+            download_dataset(dataset_name)
+            return
+        print(f"http_dl > Unzipping file {dataset['zip_name']}...")
+        with zipfile.ZipFile(data_path + dataset["zip_name"], "r") as fzip:
+            fzip.extractall(data_path)
+        os.remove(data_path + dataset["zip_name"])
 
     f.close()
     if downloads > 0:

@@ -164,8 +164,11 @@ class MergingMDI(MergingABC):
     ) -> List[np.ndarray]:
         self._check_input(datasets, matching, matching_mtx, X_kw, reference_idx)
         inner_graphs = []
+        is_high_dim = False
         for dataset in datasets:
             X = get_matrix(dataset, X_kw)
+            if X.shape[1] > 100:
+                is_high_dim = True
             inner_graphs.append(
                 nearest_neighbors(
                     X,
@@ -175,7 +178,7 @@ class MergingMDI(MergingABC):
                     include_self_loops=False,
                 )
             )
-        if any(G.shape[0] > 100 for G in inner_graphs):
+        if is_high_dim:
             warn(
                 "High dimensional data detected (D>100)."
                 "You may want to reduce dimensionality first."

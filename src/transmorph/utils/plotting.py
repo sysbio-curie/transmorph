@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from logging import warn
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -11,7 +12,7 @@ from numbers import Number
 from os.path import exists
 from scipy.sparse import csr_matrix
 from sklearn.decomposition import PCA
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from ..utils.anndata_interface import get_matrix, set_matrix, isset_matrix
 
@@ -19,7 +20,7 @@ MARKERS = "osv^<>pP*hHXDd"
 
 
 def plot_result(
-    datasets: List[AnnData],
+    datasets: Union[AnnData, List[AnnData]],
     matching_mtx: Optional[csr_matrix] = None,
     reducer: str = "umap",
     use_cache: bool = False,
@@ -110,6 +111,9 @@ def plot_result(
     dpi: int, default = 200,
         Dot per inch to use for the figure.
     """
+    if type(datasets) is AnnData:
+        datasets = [datasets]
+
     # Checking parameters
     assert all(
         type(adata) is AnnData for adata in datasets
@@ -139,6 +143,10 @@ def plot_result(
         representations = [adata.obsm["transmorph"] for adata in datasets]
     else:
         representations = [adata.X for adata in datasets]
+    for i, X in enumerate(representations):
+        if type(X) is csr_matrix:
+            warn("csr_matrix detected, converting to ndarray.")
+            representations[i] = X.toarray()
     assert all(type(X) is np.ndarray for X in representations)
     repr_dim = representations[0].shape[1]
     assert all(X.shape[1] == repr_dim for X in representations)
@@ -207,7 +215,8 @@ def plot_result(
             )
             continue
         else:
-            plt.scatter([], [], marker=mk, s=40, c="k", label=f"Dataset {i}")
+            if ndatasets > 1:
+                plt.scatter([], [], marker=mk, s=40, c="k", label=f"Dataset {i}")
         if continuous:
             plt.scatter(
                 *X.T,

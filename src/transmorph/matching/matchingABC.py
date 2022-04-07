@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from abc import ABC, abstractmethod
+from logging import warn
 from scipy.sparse import csr_matrix
 
 import numpy as np
@@ -134,6 +135,12 @@ class MatchingABC(ABC):
         for key in self.metadata_keys:
             if not ad.isset_info(adata, key):
                 raise KeyError(f"Error: missing metadata {key}.")
+        if adata.n_obs > 10000 and type(self.subsampling) is SubsamplingKeepAll:
+            warn(
+                "Large dataset detected. You may want to consider a subsampling"
+                " strategy to improve performance and facilitate convergence "
+                " (e.g. SubsamplingVertexCover)."
+            )
 
     def _preprocess(
         self, adata1: AnnData, adata2: AnnData, dataset_key: str

@@ -99,5 +99,29 @@
                 "url": "https://1drv.ms/u/s!Al03Ky07bKkGheJMK11WRZokIk2JRQ?e=Hn5qnr"
             }
         ]
-    } 
+    },
+    {
+        "name": "chen_10x",
+        "reference": "https://www.nature.com/articles/s41422-020-0374-x",
+        "type": "single-cell",
+        "n_files": 14,
+        "zip_link": "https://1drv.ms/u/s!Al03Ky07bKkGheMGsWpiP1Gk7DI0DQ?e=irVnzx",
+        "zip_name": "han_chen_10x.zip",
+        "files": [
+            "P01.h5ad",
+            "P02.h5ad",
+            "P03.h5ad",
+            "P04.h5ad",
+            "P05.h5ad",
+            "P06.h5ad",
+            "P07.h5ad",
+            "P08.h5ad",
+            "P09.h5ad",
+            "P10.h5ad",
+            "P11.h5ad",
+            "P12.h5ad",
+            "P14.h5ad",
+            "P15.h5ad"
+        ]
+    }
 ]
