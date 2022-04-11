@@ -120,17 +120,6 @@ def load_spirals():
     return {"src": adata_s, "ref": adata_t}
 
 
-def load_travaglini_10x():
-    """
-    Dataset
-    -------
-    - Number of datasets: 3
-    - Embedding dimension: 10000
-    - Number of labels: 4
-    """
-    return load_bank("travaglini_10x")
-
-
 def load_chen_10x():
     """
     Dataset
@@ -140,6 +129,28 @@ def load_chen_10x():
     - Number of cell types: ? TODO
     """
     return load_bank("chen_10x")
+
+
+def load_pal_10x():
+    """
+    Dataset
+    -------
+    - Number of datasets: 14
+    - Embedding dimension: 10000
+    - Number of cell types: ? TODO
+    """
+    return load_bank("pal_10x")
+
+
+def load_travaglini_10x():
+    """
+    Dataset
+    -------
+    - Number of datasets: 3
+    - Embedding dimension: 10000
+    - Number of labels: 4
+    """
+    return load_bank("travaglini_10x")
 
 
 def load_zhou_10x():

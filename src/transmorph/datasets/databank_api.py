@@ -75,6 +75,11 @@ def url_to_dllink(onedrive_link: str) -> str:
     return resultUrl
 
 
+def print_download_state(blocks_received: int, block_size: int, file_size: int) -> None:
+    percent = int(blocks_received * block_size / file_size * 100)
+    print(f"databank_api > Downloading bank: {percent}%", end="\r")
+
+
 def download_dataset(dataset_name: str) -> str:
     # Downloads a dataset from onedrive
     # using data from datasets.json
@@ -107,12 +112,13 @@ def download_dataset(dataset_name: str) -> str:
 
     # Loading dataset
     dl_url = url_to_dllink(dataset["zip_link"])
-    print(f"databank_api > Downloading file {dataset['zip_name']}...")
     zip_path = f"{data_path}{dataset['zip_name']}"
     try:
-        urllib.request.urlretrieve(dl_url, zip_path)
+        urllib.request.urlretrieve(dl_url, zip_path, print_download_state)
+        print("")
     except SocketError as e:
         f.close()
+        print("")
         print(f"databank_api > # ERROR # {e}")
         print(f"databank_api > Retrying in {CALLBACK} seconds.")
         time.sleep(CALLBACK)
