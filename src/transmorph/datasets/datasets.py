@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
+# Contains high level functions to load datasets.
 
 import anndata as ad
-import json
 import scanpy as sc
 import numpy as np
 import os
 
-from os.path import dirname, exists
+from os.path import dirname
 from scipy.sparse import load_npz
-from typing import Dict, Optional
+from typing import Dict
 
-from .http_dl import download_dataset, DATASETS_JSON
+from .databank_api import check_files, download_dataset, remove_dataset, unzip_file
 
 
 # GIT: small datasets, can be hosted on Git
@@ -140,6 +140,7 @@ def load_travaglini_10x():
         "patient_2": AnnData(obs: "cell_type"),
         "patient_3": AnnData(obs: "cell_type"),
     }
+    TODO: .zip directly the .h5ad to recover proper datasets.
     """
     download_dataset("travaglini_10x")  # TODO handle network exceptions
     dataset_root = DPATH_DATASETS + "travaglini_10x/"
@@ -164,6 +165,25 @@ def load_travaglini_10x():
     return data
 
 
+def load_chen_10x():
+    """
+    Dataset
+    -------
+    - Number of datasets: 11
+    - Embedding dimension: Variable
+    - Number of cell types: 11
+
+    Format
+    ------
+    {
+        "BC2": AnnData,
+        "BC3": AnnData
+        etc.
+    }
+    """
+    return load_bank("chen_10x")
+
+
 def load_zhou_10x():
     """
     Dataset
@@ -180,43 +200,38 @@ def load_zhou_10x():
         etc.
     }
     """
-    download_dataset("zhou_10x")
-    dataset_root = DPATH_DATASETS + "zhou_10x/"
-    data = {}
-    for fname in os.listdir(dataset_root):
-        adata = sc.read_h5ad(dataset_root + fname)
-        adata.X = adata.X.toarray()
-        pid = fname.split(".")[0]
-        data[pid] = adata
-    return data
+    return load_bank("zhou_10x")
 
 
-def load_chen_10x():
+def load_bank(dataset_name: str, keep_sparse: bool = False):
     """
-    TODO
+    Parameters
+    ----------
+    dataset_name: str
+        "name" value in the json file for the bank of datasets.
+
+    keep_sparse: bool, default = False
+        Prevents AnnData.X to be converted to ndarray.
     """
-    dataset_name = "chen_10x"
-    download_need = False  # TODO: check_download(dataset) function
-    with open(dirname(__file__) + "/" + DATASETS_JSON, "r") as f:
-        all_datasets = json.load(f)
-        dataset: Optional[Dict] = None
-        for ds in all_datasets:
-            if ds["name"] == dataset_name:
-                dataset = ds
-                break
-        assert dataset is not None, "json file missing."
-        for fname in dataset["files"]:
-            if not exists(f"{DPATH_DATASETS}{dataset_name}/{fname}"):
-                print("a", fname)
-                download_need = True
-                break
-    if download_need:
-        download_dataset(dataset_name)
+    # TODO: print information about dataset here
+    download_needed = not check_files(dataset_name)
+    if download_needed:
+        zip_path = download_dataset(dataset_name)
+        unzip_file(zip_path, dataset_name)
+        check_files(dataset_name)
     dataset_root = DPATH_DATASETS + f"{dataset_name}/"
     data = {}
     for fname in os.listdir(dataset_root):
         adata = sc.read_h5ad(dataset_root + fname)
-        adata.X = adata.X.toarray()
+        if not keep_sparse:
+            adata.X = adata.X.toarray()
         pid = fname.split(".")[0]
         data[pid] = adata
     return data
+
+
+def remove_bank(dataset_name: str):
+    """
+    Removes all data banks.
+    """
+    remove_dataset(dataset_name)
