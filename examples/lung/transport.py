@@ -21,13 +21,8 @@ pipeline = Transport(
 
 # Running the pipeline
 
-datasets = load_travaglini_10x()
-adatas = (
-    datasets["patient_1"],
-    datasets["patient_2"],
-    datasets["patient_3"],
-)
-pipeline.fit(adatas, reference=adatas[2])
+adatas = list(load_travaglini_10x().values())
+pipeline.fit(adatas, reference=adatas[1])
 
 # Plotting the result
 
@@ -43,7 +38,7 @@ plot_result(
 
 plot_result(
     datasets=adatas,
-    color_by="cell_type",
+    color_by="compartment",
     title="Recipe: Transport",
     show=False,
     save=True,

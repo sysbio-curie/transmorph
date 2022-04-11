@@ -45,18 +45,13 @@ pipeline.initialize(linput)
 
 # Running the pipeline
 
-datasets = load_travaglini_10x()
-adata1, adata2, adata3 = (
-    datasets["patient_1"],
-    datasets["patient_2"],
-    datasets["patient_3"],
-)
-pipeline.fit([adata1, adata2, adata3], reference=adata2)
+datasets = list(load_travaglini_10x().values())
+pipeline.fit(datasets, reference=datasets[1])
 
 # Plotting results
 
 plot_result(
-    datasets=[adata1, adata2, adata3],
+    datasets=datasets,
     title="I > ST > PC > MNN (+VC) > LC > O",
     xlabel="UMAP1",
     ylabel="UMAP2",
@@ -67,8 +62,8 @@ plot_result(
 )
 
 plot_result(
-    datasets=[adata1, adata2, adata3],
-    color_by="cell_type",
+    datasets=datasets,
+    color_by="compartment",
     title="I > ST > PC > MNN (+VC) > LC > O",
     xlabel="UMAP1",
     ylabel="UMAP2",

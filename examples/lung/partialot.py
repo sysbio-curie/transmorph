@@ -19,12 +19,7 @@ pipeline = MatchMerge(
     verbose=True,
 )
 
-trav_datasets = load_travaglini_10x()
-datasets = [
-    trav_datasets["patient_1"],
-    trav_datasets["patient_2"],
-    trav_datasets["patient_3"],
-]
+datasets = list(load_travaglini_10x().values())
 pipeline.fit(datasets, reference=datasets[1])
 
 plot_result(
@@ -39,7 +34,7 @@ plot_result(
 plot_result(
     datasets=datasets,
     title="Recipe: MatchMerge",
-    color_by="cell_type",
+    color_by="compartment",
     show=False,
     save=True,
     use_cache=True,

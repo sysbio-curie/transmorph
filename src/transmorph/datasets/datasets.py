@@ -122,64 +122,22 @@ def load_spirals():
 
 def load_travaglini_10x():
     """
-    Loads a large single-cell lung dataset. Reference:
-
-    https://www.nature.com/articles/s41586-020-2922-4
-
     Dataset
     -------
     - Number of datasets: 3
-    - Embedding dimension: 500
-    - Sizes: (9744,500), (28793,500) and (27125,500)
+    - Embedding dimension: 10000
     - Number of labels: 4
-
-    Format
-    ------
-    {
-        "patient_1": AnnData(obs: "cell_type"),
-        "patient_2": AnnData(obs: "cell_type"),
-        "patient_3": AnnData(obs: "cell_type"),
-    }
-    TODO: .zip directly the .h5ad to recover proper datasets.
     """
-    download_dataset("travaglini_10x")  # TODO handle network exceptions
-    dataset_root = DPATH_DATASETS + "travaglini_10x/"
-    data = {}
-    for patient_id in (1, 2, 3):
-        counts = load_dataset(
-            dataset_root,
-            f"P{patient_id}_counts.npz",
-            is_sparse=True,
-        )
-        cell_types = load_dataset(
-            dataset_root,
-            f"P{patient_id}_labels.csv",
-        ).astype(str)
-        cell_types[cell_types == "0.0"] = "Endothelial"
-        cell_types[cell_types == "1.0"] = "Stromal"
-        cell_types[cell_types == "2.0"] = "Epithelial"
-        cell_types[cell_types == "3.0"] = "Immune"
-        adata = ad.AnnData(counts, dtype=counts.dtype)
-        adata.obs["cell_type"] = cell_types
-        data[f"patient_{patient_id}"] = adata
-    return data
+    return load_bank("travaglini_10x")
 
 
 def load_chen_10x():
     """
     Dataset
     -------
-    - Number of datasets: 11
-    - Embedding dimension: Variable
-    - Number of cell types: 11
-
-    Format
-    ------
-    {
-        "BC2": AnnData,
-        "BC3": AnnData
-        etc.
-    }
+    - Number of datasets: 14
+    - Embedding dimension: 10000
+    - Number of cell types: ? TODO
     """
     return load_bank("chen_10x")
 
@@ -188,17 +146,9 @@ def load_zhou_10x():
     """
     Dataset
     -------
-    - Number of datasets: 11
-    - Embedding dimension: Variable
-    - Number of cell types: 11
-
-    Format
-    ------
-    {
-        "BC2": AnnData,
-        "BC3": AnnData
-        etc.
-    }
+    - Number of datasets: 14
+    - Embedding dimension: 10000
+    - Number of cell types: ? TODO
     """
     return load_bank("zhou_10x")
 
