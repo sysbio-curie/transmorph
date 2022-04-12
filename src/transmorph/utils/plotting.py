@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from logging import warn
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -14,7 +13,7 @@ from scipy.sparse import csr_matrix
 from sklearn.decomposition import PCA
 from typing import List, Optional, Union
 
-from ..utils.anndata_interface import get_matrix, set_matrix, isset_matrix
+from ..utils.anndata_interface import get_matrix, set_matrix, isset_matrix, common_genes
 
 MARKERS = "osv^<>pP*hHXDd"
 
@@ -142,10 +141,11 @@ def plot_result(
     elif all("transmorph" in adata.obsm for adata in datasets):
         representations = [adata.obsm["transmorph"] for adata in datasets]
     else:
-        representations = [adata.X for adata in datasets]
+        cgenes = common_genes(datasets)
+        assert cgenes.shape[0] > 1, "No common gene space found for datasets."
+        representations = [adata[:, cgenes].X.copy() for adata in datasets]
     for i, X in enumerate(representations):
         if type(X) is csr_matrix:
-            warn("csr_matrix detected, converting to ndarray.")
             representations[i] = X.toarray()
     assert all(type(X) is np.ndarray for X in representations)
     repr_dim = representations[0].shape[1]
@@ -208,22 +208,27 @@ def plot_result(
     plt.figure(figsize=(6, 6), dpi=dpi)
     for i, adata in enumerate(datasets):
         X = representations[i]
-        mk = MARKERS[i]
+        mk = MARKERS[i % len(MARKERS)]  # Loops to avoid oob error
         if color_by == "__dataset__":
+            color = cmap(i / (ndatasets - 1))
+            plt.scatter(*X.T, marker=mk, s=size, alpha=alpha, color=color)
             plt.scatter(
-                *X.T, marker=mk, s=size, label=f"Dataset {i}", ec="k", alpha=alpha
+                [],
+                [],
+                marker=mk,
+                s=40,
+                label=f"Dataset {i}",
+                color=color,
             )
             continue
-        else:
-            if ndatasets > 1:
-                plt.scatter([], [], marker=mk, s=40, c="k", label=f"Dataset {i}")
+        if ndatasets > 1:
+            plt.scatter([], [], marker=mk, s=40, c="k", label=f"Dataset {i}")
         if continuous:
             plt.scatter(
                 *X.T,
                 c=adata.obs[color_by],
                 alpha=alpha,
                 marker=mk,
-                ec="k",
                 s=size,
                 cmap=palette,
             )
@@ -232,13 +237,17 @@ def plot_result(
                 color = cmap(k / (n_labels - 1))
                 if i == 0:
                     plt.scatter(
-                        [], [], marker="o", s=40, color=color, label=label, ec="k"
+                        [],
+                        [],
+                        marker="o",
+                        s=40,
+                        color=color,
+                        label=label,
                     )
                 plt.scatter(
                     *X[adata.obs[color_by] == label].T,
                     alpha=alpha,
                     marker=mk,
-                    ec="k",
                     s=size,
                     color=color,
                 )

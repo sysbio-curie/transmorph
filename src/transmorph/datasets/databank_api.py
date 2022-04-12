@@ -121,6 +121,10 @@ def download_dataset(dataset_name: str) -> str:
         print("")
         print(f"databank_api > # ERROR # {e}")
         print(f"databank_api > Retrying in {CALLBACK} seconds.")
+        print(
+            "databank_api > Please make sure you're running the"
+            "latest package version."
+        )
         time.sleep(CALLBACK)
         return download_dataset(dataset_name)
 

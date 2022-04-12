@@ -4,8 +4,8 @@ from transmorph.datasets import load_travaglini_10x
 from transmorph.recipes import MatchMerge
 
 from transmorph.matching import MatchingPartialOT
-from transmorph.merging import MergingBarycenter
-from transmorph.preprocessing import PPStandardize, PPPCA
+from transmorph.merging import MergingLinearCorrection
+from transmorph.preprocessing import PPCommonGenes, PPStandardize, PPPCA
 from transmorph.subsampling import SubsamplingVertexCover
 
 from transmorph.utils import plot_result
@@ -14,8 +14,12 @@ pipeline = MatchMerge(
     matching=MatchingPartialOT(
         transport_mass=0.7, subsampling=SubsamplingVertexCover()
     ),
-    merging=MergingBarycenter(),
-    preprocessing=[PPStandardize(center=True, scale=True), PPPCA(n_components=30)],
+    merging=MergingLinearCorrection(),
+    preprocessing=[
+        PPCommonGenes(),
+        PPStandardize(center=True, scale=True),
+        PPPCA(n_components=30),
+    ],
     verbose=True,
 )
 

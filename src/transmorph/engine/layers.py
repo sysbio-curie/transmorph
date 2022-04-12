@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 from abc import abstractmethod
+from warnings import warn
 from anndata import AnnData
 
-from typing import List, Type, Union
+from typing import List, Optional, Type, Union
 
 from ..checking.checkingABC import CheckingABC
 from ..matching.matchingABC import MatchingABC
@@ -66,7 +67,7 @@ class LayerTransmorph:
     def __init__(
         self,
         compatible_inputs: List[Type] = [],
-        verbose: bool = False,
+        verbose: Optional[bool] = None,
     ) -> None:
         self.str_rep = ""
         self.compatible_inputs = compatible_inputs
@@ -77,6 +78,12 @@ class LayerTransmorph:
         self.embedding_layer = None
         LayerTransmorph.LayerID += 1
         self._log("Initialized.")
+
+        if verbose is not None:
+            warn(
+                "Using 'verbose' parameter for layers is deprecated."
+                "It uses TransmorphPipeline's verbose parameter instead."
+            )
 
     def _log(self, msg: str):
         if not self.verbose:
@@ -168,7 +175,7 @@ class LayerInput(LayerTransmorph):
     input layer.
     """
 
-    def __init__(self, verbose: bool = False) -> None:
+    def __init__(self, verbose: Optional[bool] = None) -> None:
         super().__init__(compatible_inputs=[], verbose=verbose)
         self.use_rep = ""
 
@@ -201,7 +208,7 @@ class LayerOutput(LayerTransmorph):
     (actually not for now)
     """
 
-    def __init__(self, verbose: bool = False) -> None:
+    def __init__(self, verbose: Optional[bool] = None) -> None:
         super().__init__(
             compatible_inputs=[
                 LayerChecking,
@@ -241,7 +248,7 @@ class LayerMatching(LayerTransmorph):
     It wraps an object derived from MatchingABC.
     """
 
-    def __init__(self, matching: MatchingABC, verbose: bool = False) -> None:
+    def __init__(self, matching: MatchingABC, verbose: Optional[bool] = None) -> None:
         super().__init__(
             compatible_inputs=[
                 LayerChecking,
@@ -283,7 +290,7 @@ class LayerMerging(LayerTransmorph):
     It wraps an object derived from MergingABC.
     """
 
-    def __init__(self, merging: MergingABC, verbose: bool = False) -> None:
+    def __init__(self, merging: MergingABC, verbose: Optional[bool] = None) -> None:
         """
         TODO
         """
@@ -347,7 +354,10 @@ class LayerChecking(LayerTransmorph):
     """
 
     def __init__(
-        self, checking: CheckingABC, n_checks_max: int = 10, verbose: bool = False
+        self,
+        checking: CheckingABC,
+        n_checks_max: int = 10,
+        verbose: Optional[bool] = None,
     ) -> None:
         super().__init__(
             compatible_inputs=[
@@ -430,7 +440,7 @@ class LayerPreprocessing(LayerTransmorph):
     def __init__(
         self,
         preprocessing: PreprocessingABC,
-        verbose: bool = False,
+        verbose: Optional[bool] = None,
     ) -> None:
         super().__init__(
             compatible_inputs=[

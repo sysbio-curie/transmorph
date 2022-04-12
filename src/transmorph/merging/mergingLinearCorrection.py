@@ -12,7 +12,7 @@ from transmorph.utils.anndata_interface import get_matrix
 
 from .mergingABC import MergingABC
 from ..matching.matchingABC import MatchingABC
-from ..utils import nearest_neighbors
+from ..utils import nearest_neighbors, pca
 
 
 class MergingLinearCorrection(MergingABC):
@@ -65,6 +65,7 @@ class MergingLinearCorrection(MergingABC):
 
     def __init__(
         self,
+        n_components: Optional[int] = None,
         learning_rate: float = 1.0,
         n_neighbors: int = 5,
         metric: str = "sqeuclidean",
@@ -74,6 +75,7 @@ class MergingLinearCorrection(MergingABC):
         n_jobs: int = -1,
     ):
         super().__init__(use_reference=True)
+        self.n_pcs = n_components
         assert (
             learning_rate > 0.0 and learning_rate <= 1.0
         ), f"Learning rate {learning_rate} out of bounds (0.0, 1.0]."
@@ -105,9 +107,18 @@ class MergingLinearCorrection(MergingABC):
 
         # We smooth correction vectors wrt neighborhood
         n = X.shape[0]
+        X_knn = X
+        if self.n_pcs is not None:
+            X_knn = pca(X, n_components=self.n_pcs)
+        elif X.shape[1] > 100:
+            warnings.warn(
+                "High dimensional data detected. Please consider setting "
+                "'n_components' to a value in order to build the kNN graph "
+                "based on a PC view."
+            )
         matched = ref_locations.any(axis=1)
         knn_graph = nearest_neighbors(  # Neighborhood matrix
-            X,
+            X_knn,
             metric=self.metric,
             metric_kwargs=self.metric_kwargs,
             symmetrize=True,

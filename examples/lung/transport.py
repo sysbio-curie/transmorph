@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from transmorph.datasets import load_travaglini_10x
-from transmorph.preprocessing import PPStandardize, PPPCA
+from transmorph.preprocessing import PPCommonGenes, PPStandardize, PPPCA
 from transmorph.recipes import Transport
 from transmorph.subsampling import SubsamplingVertexCover
 from transmorph.utils import plot_result
@@ -13,9 +13,8 @@ VERBOSE = True
 
 subsampling = SubsamplingVertexCover(n_neighbors=10)
 pipeline = Transport(
-    flavor="emd",
     subsampling=subsampling,
-    preprocessing=[PPStandardize(), PPPCA(n_components=30)],
+    preprocessing=[PPCommonGenes(), PPStandardize(), PPPCA(n_components=30)],
     verbose=VERBOSE,
 )
 

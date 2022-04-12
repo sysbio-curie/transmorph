@@ -49,14 +49,11 @@ class MatchMerge:
         self.preprocessing = [] if preprocessing is None else preprocessing
         self.verbose = verbose
 
-        self.layers: List[LayerTransmorph] = [LayerInput(verbose=self.verbose)]
-        self.layers += [
-            LayerPreprocessing(ppobj, verbose=self.verbose)
-            for ppobj in self.preprocessing
-        ]
-        self.layers.append(LayerMatching(matching=self.matching, verbose=self.verbose))
-        self.layers.append(LayerMerging(merging=self.merging, verbose=self.verbose))
-        self.layers.append(LayerOutput(verbose=self.verbose))
+        self.layers: List[LayerTransmorph] = [LayerInput()]
+        self.layers += [LayerPreprocessing(ppobj) for ppobj in self.preprocessing]
+        self.layers.append(LayerMatching(matching=self.matching))
+        self.layers.append(LayerMerging(merging=self.merging))
+        self.layers.append(LayerOutput())
 
         current = self.layers[0]
         for nextl in self.layers[1:]:

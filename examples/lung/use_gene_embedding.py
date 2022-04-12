@@ -11,7 +11,7 @@ from transmorph.engine import (
 )
 from transmorph.matching import MatchingMNN
 from transmorph.merging import MergingLinearCorrection
-from transmorph.preprocessing import PPStandardize, PPPCA
+from transmorph.preprocessing import PPCommonGenes, PPStandardize, PPPCA
 from transmorph.subsampling import SubsamplingVertexCover
 
 from transmorph.utils.plotting import plot_result
@@ -20,18 +20,18 @@ from transmorph.utils.plotting import plot_result
 # Building a subsampling pipeline
 # Input -> PP -> MatchMNN + VertexCover -> MergeBarycenter -> Output
 
-VERBOSE = True
-
 subsampling = SubsamplingVertexCover(n_neighbors=10)
 
-linput = LayerInput(verbose=VERBOSE)
-lppstd = LayerPreprocessing(preprocessing=PPStandardize(True, True), verbose=VERBOSE)
-lpppca = LayerPreprocessing(preprocessing=PPPCA(n_components=30), verbose=VERBOSE)
-lmatch = LayerMatching(matching=MatchingMNN(subsampling=subsampling), verbose=VERBOSE)
-lmerge = LayerMerging(merging=MergingLinearCorrection(), verbose=VERBOSE)
-lout = LayerOutput(verbose=VERBOSE)
+linput = LayerInput()
+lppcom = LayerPreprocessing(preprocessing=PPCommonGenes())
+lppstd = LayerPreprocessing(preprocessing=PPStandardize(True, True))
+lpppca = LayerPreprocessing(preprocessing=PPPCA(n_components=30))
+lmatch = LayerMatching(matching=MatchingMNN(subsampling=subsampling))
+lmerge = LayerMerging(merging=MergingLinearCorrection(n_components=30))
+lout = LayerOutput()
 
-linput.connect(lppstd)
+linput.connect(lppcom)
+lppcom.connect(lppstd)
 lppstd.connect(lpppca)
 lpppca.connect(lmatch)
 lmatch.connect(lmerge)
@@ -40,7 +40,7 @@ lmerge.connect(lout)
 # merge in gene space
 lmerge.set_embedding_reference(lppstd)
 
-pipeline = TransmorphPipeline(verbose=VERBOSE)
+pipeline = TransmorphPipeline(verbose=True)
 pipeline.initialize(linput)
 
 # Running the pipeline

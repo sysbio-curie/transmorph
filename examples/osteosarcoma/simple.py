@@ -20,17 +20,15 @@ from transmorph.utils.plotting import plot_result
 # Building a subsampling pipeline
 # Input -> PP -> MatchMNN + VertexCover -> MergeBarycenter -> Output
 
-VERBOSE = True
-
 subsampling = SubsamplingVertexCover(n_neighbors=10)
 
-linput = LayerInput(verbose=VERBOSE)
-lppcom = LayerPreprocessing(preprocessing=PPCommonGenes(verbose=True), verbose=VERBOSE)
-lppstd = LayerPreprocessing(preprocessing=PPStandardize(True, True), verbose=VERBOSE)
-lpppca = LayerPreprocessing(preprocessing=PPPCA(n_components=30), verbose=VERBOSE)
-lmatch = LayerMatching(matching=MatchingMNN(subsampling=subsampling), verbose=VERBOSE)
-lmerge = LayerMerging(merging=MergingMDI(), verbose=VERBOSE)
-lout = LayerOutput(verbose=VERBOSE)
+linput = LayerInput()
+lppcom = LayerPreprocessing(preprocessing=PPCommonGenes())
+lppstd = LayerPreprocessing(preprocessing=PPStandardize(True, True))
+lpppca = LayerPreprocessing(preprocessing=PPPCA(n_components=30))
+lmatch = LayerMatching(matching=MatchingMNN(subsampling=subsampling))
+lmerge = LayerMerging(merging=MergingMDI())
+lout = LayerOutput()
 
 linput.connect(lppcom)
 lppcom.connect(lppstd)
@@ -39,7 +37,7 @@ lpppca.connect(lmatch)
 lmatch.connect(lmerge)
 lmerge.connect(lout)
 
-pipeline = TransmorphPipeline(verbose=VERBOSE)
+pipeline = TransmorphPipeline(verbose=True)
 pipeline.initialize(linput)
 
 # Running the pipeline

@@ -97,6 +97,7 @@ class TransmorphPipeline:
         while len(layers_to_visit) > 0:
             current_layer = layers_to_visit.pop(0)
             current_layer.profiler = self.profiler
+            current_layer.verbose = self.verbose
             for output_layer in current_layer.output_layers:
                 if output_layer in self.layers:
                     continue

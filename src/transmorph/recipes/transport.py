@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 from anndata import AnnData
-from typing import List
-
+from typing import List, Optional
+from warnings import warn
 
 from ..engine import (
     LayerInput,
@@ -17,9 +17,8 @@ from ..engine.layers import LayerTransmorph
 from ..subsampling.subsamplingABC import SubsamplingABC
 
 from ..matching import MatchingEMD, MatchingGW, MatchingSinkhorn
-from ..merging import MergingBarycenter
+from ..merging import MergingBarycenter, MergingLinearCorrection
 from ..preprocessing.preprocessingABC import PreprocessingABC
-from ..subsampling import SubsamplingKeepAll
 
 
 class Transport:
@@ -32,36 +31,48 @@ class Transport:
 
     def __init__(
         self,
-        flavor: str = "emd",
-        subsampling: SubsamplingABC = SubsamplingKeepAll(),
+        transport_flavor: str = "emd",
+        merge_flavor: str = "linearcorrection",
+        subsampling: Optional[SubsamplingABC] = None,
         preprocessing: List[PreprocessingABC] = [],
         verbose: bool = False,
     ):
-        self.flavor = flavor
+        self.transport_flavor = transport_flavor
+        self.merge_flavor = merge_flavor
         self.preprocessing = preprocessing
         self.verbose = verbose
 
-        self.layers: List[LayerTransmorph] = [LayerInput(verbose=self.verbose)]
-        self.layers += [
-            LayerPreprocessing(ppobj, verbose=self.verbose)
-            for ppobj in self.preprocessing
-        ]
-        if flavor == "emd":
+        if transport_flavor == "emd":
             matching = MatchingEMD(subsampling=subsampling)
-        elif flavor == "gromov":
+        elif transport_flavor == "gromov":
             matching = MatchingGW(subsampling=subsampling)
-        elif flavor == "sinkhorn":
+        elif transport_flavor == "sinkhorn":
             matching = MatchingSinkhorn(subsampling=subsampling)
         else:
             raise ValueError(
-                f"Unrecognized flavor: {flavor}. Accepted parameters "
+                f"Unrecognized flavor: {transport_flavor}. Accepted parameters "
                 "are 'emd', 'gromov' or 'sinkhorn'."
             )
-        self.layers.append(LayerMatching(matching=matching, verbose=self.verbose))
-        self.layers.append(
-            LayerMerging(merging=MergingBarycenter(), verbose=self.verbose)
-        )
-        self.layers.append(LayerOutput(verbose=self.verbose))
+        if merge_flavor == "linearcorrection":
+            merging = MergingLinearCorrection()
+        elif merge_flavor == "barycenter":
+            merging = MergingBarycenter()
+            if subsampling is not None:
+                warn(
+                    "Subsampling specified, you should use merging"
+                    "MergingLinearCorrection to avoid instabilities."
+                )
+        else:
+            raise ValueError(
+                f"Unrecognized flavor: {merge_flavor}. Accepted parameters "
+                "are 'barycenter' or 'linearcorrection'."
+            )
+
+        self.layers: List[LayerTransmorph] = [LayerInput()]
+        self.layers += [LayerPreprocessing(ppobj) for ppobj in self.preprocessing]
+        self.layers.append(LayerMatching(matching=matching))
+        self.layers.append(LayerMerging(merging=merging))
+        self.layers.append(LayerOutput())
 
         current = self.layers[0]
         for nextl in self.layers[1:]:

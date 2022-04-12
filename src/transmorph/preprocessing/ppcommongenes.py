@@ -6,6 +6,7 @@ from anndata import AnnData
 import numpy as np
 
 from .preprocessingABC import PreprocessingABC
+from ..utils.anndata_interface import common_genes
 
 
 class PPCommonGenes(PreprocessingABC):
@@ -18,12 +19,10 @@ class PPCommonGenes(PreprocessingABC):
         self.verbose = verbose
 
     def transform(self, datasets: List[AnnData], X_kw: str = "") -> List[np.ndarray]:
+        cgenes = common_genes(datasets)
         results = []
-        common_genes = datasets[0].var_names
-        for adata in datasets[1:]:
-            common_genes = common_genes.intersection(adata.var_names)
         if self.verbose:
-            print(f"{len(common_genes)} genes kept.")
+            print(f"{len(cgenes)} genes kept.")
         for adata in datasets:
-            results.append(adata[:, common_genes].X)
+            results.append(adata[:, cgenes].X)
         return results

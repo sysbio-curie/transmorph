@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from anndata import AnnData
+from typing import List
 
 import numpy as np
 
@@ -171,3 +172,17 @@ def isset_info(adata: AnnData, dataset_key: str) -> bool:
     if "infos" not in adata.uns["transmorph"]:
         return False
     return dataset_key in adata.uns["transmorph"]["infos"]
+
+
+def common_genes(datasets: List[AnnData]) -> np.ndarray:
+    """
+    Returns common genes between datasets.
+    """
+    if len(datasets) == 0:
+        return np.array([])
+    if len(datasets) == 1:
+        return datasets[0].var_names.to_numpy()
+    common_genes = datasets[0].var_names
+    for adata in datasets[1:]:
+        common_genes = common_genes.intersection(adata.var_names)
+    return common_genes.to_numpy()
