@@ -10,7 +10,7 @@ from scipy.spatial.distance import cdist
 from ..utils import sparse_cdist
 from ..utils import nearest_neighbors
 
-# TODO: move them into checking?
+# TODO: update to better compare between datasets
 
 
 def matching_divergence(

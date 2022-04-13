@@ -6,21 +6,52 @@ from anndata import AnnData
 from scipy.sparse import csr_matrix
 
 
-def edge_accuracy(
-    adata1: AnnData, adata2: AnnData, matching: csr_matrix, label: str
+def base_edge_quality(
+    adata1: AnnData,
+    adata2: AnnData,
+    matching: csr_matrix,
+    label: str,
+    tp_cost: float,
+    fp_cost: float,
 ) -> float:
     """
     Computes a quality metric for a matching between two datasets whose
     point labels are known. For every point $x matched with $y1 .. $yn,
     its score is given by
+
     sum_{i=1..n} M(x, yi)*eq(x, yi) / sum_{i=1..n} M(x, yi)
+
     where M(x, yi) is the matching strength between x and yi, and
-    eq(x, yi) = 1 if label(x) == label(yi), -1 otherwise.
+    eq(x, yi) = tp_cost if label(x) == label(yi), fp_cost otherwise.
 
     Then, edge accuracy is given as the average over all points of this
     score. A zero edge accuracy is interpreted as a matching decorrelated
     with labels, negative as an anticorrelated matching/labels and positive
     means matches are positively correlated with labels.
+
+    A bad edge accuracy is associated with a high chance of poor integration
+    quality, as matching edges are the skeleton of the final embedding.
+
+    Parameters
+    ----------
+    adata1: AnnData
+        First dataset (in rows in matching), n_obs = n1
+
+    adata2: AnnData
+        Second dataset (in columns in matching), n_obs = n2
+
+    matching: csr_matrix
+        Matching edges represented as a matrix of shape (n1, n2)
+
+    label: str
+        adata.obs key for labels to compare. Must be the same for
+        adata1 and adata2.
+
+    tp_cost: float
+        Cost associated to an edge matching two samples of the same class.
+
+    fp_cost: float
+        Cost associated to an edge matching two samples of different classes.
     """
     # Sanity checks
     assert label in adata1.obs
@@ -37,7 +68,48 @@ def edge_accuracy(
     matching = matching.tocoo().astype(float)
     for i1, i2, v in zip(matching.row, matching.col, matching.data):
         if label1[i1] != label2[i2]:
-            v = -v
+            v = fp_cost * v
+        else:
+            v = tp_cost * v
         accuracy[i1] += v / counts1[i1]
         accuracy[n1 + i2] += v / counts2[i2]
     return accuracy.sum() / accuracy.shape[0]
+
+
+def edge_accuracy(
+    adata1: AnnData, adata2: AnnData, matching: csr_matrix, label: str
+) -> float:
+    """
+    Computes an accuracy metric for a matching between two datasets whose
+    point labels are known. For every point $x matched with $y1 .. $yn,
+    its score is given by
+
+    sum_{i=1..n} M(x, yi)*eq(x, yi) / sum_{i=1..n} M(x, yi)
+
+    where M(x, yi) is the matching strength between x and yi, and
+    eq(x, yi) = 1 if label(x) == label(yi), -1 otherwise.
+
+    Then, edge accuracy is given as the average over all points of this
+    score. A zero edge accuracy is interpreted as a matching decorrelated
+    with labels, negative as an anticorrelated matching/labels and positive
+    means matches are positively correlated with labels.
+
+    A bad edge accuracy is associated with a high chance of poor integration
+    quality, as matching edges are the skeleton of the final embedding.
+
+    Parameters
+    ----------
+    adata1: AnnData
+        First dataset (in rows in matching), n_obs = n1
+
+    adata2: AnnData
+        Second dataset (in columns in matching), n_obs = n2
+
+    matching: csr_matrix
+        Matching edges represented as a matrix of shape (n1, n2)
+
+    label: str
+        adata.obs key for labels to compare. Must be the same for
+        adata1 and adata2.
+    """
+    return base_edge_quality(adata1, adata2, matching, label, 1, -1)

@@ -4,9 +4,8 @@ from scipy.sparse import csr_matrix
 
 from transmorph.datasets import load_test_datasets_small
 from transmorph.merging import MergingMDI
-from transmorph.utils import matching_divergence
-
-from transmorph.utils.plotting import plot_result
+from transmorph.stats import matching_divergence
+from transmorph.utils import plot_result
 
 
 def test_merging_mdi():
