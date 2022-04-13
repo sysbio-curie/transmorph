@@ -2,21 +2,19 @@
 
 from transmorph.datasets import load_test_datasets_small
 from transmorph.matching import MatchingGW
-
-from transmorph.utils.plotting import plot_result
+from transmorph.stats import edge_accuracy
+from transmorph.utils import plot_result
 
 
 def test_matching_gw_accuracy():
     # Tests matching quality of GW on small controlled dataset
     datasets = load_test_datasets_small()
     src, ref = datasets["src"], datasets["ref"]
-    err_matchs = datasets["error"]
     mt = MatchingGW()
     mt.fit([src, ref])
     T = mt.get_matching(src, ref)
-    errors = (T.toarray() * err_matchs).sum()
-    accuracy = 1 - errors / T.toarray().sum()
-    assert accuracy >= 0.04
+    accuracy = edge_accuracy(src, ref, T, "class")
+    assert accuracy >= -1
 
     plot_result(
         datasets=[src, ref],

@@ -2,24 +2,22 @@
 
 from transmorph.datasets import load_test_datasets_small
 from transmorph.matching import MatchingFusedGW
+from transmorph.stats import edge_accuracy
+from transmorph.utils import plot_result
 
 import numpy as np
-
-from transmorph.utils.plotting import plot_result
 
 
 def test_matching_fusedgw_accuracy():
     # Tests matching quality of Fused GW on small controlled dataset
     datasets = load_test_datasets_small()
     src, ref = datasets["src"], datasets["ref"]
-    err_matchs = datasets["error"]
-    thrs = [0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.8, 0.0]
+    thrs = [0.65] * 10 + [-1]
     for alpha, thr in zip(np.arange(11) / 10, thrs):
         mt = MatchingFusedGW(alpha=alpha)
         mt.fit([src, ref])
         T = mt.get_matching(src, ref)
-        errors = (T.toarray() * err_matchs).sum()
-        accuracy = 1 - errors / T.toarray().sum()
+        accuracy = edge_accuracy(src, ref, T, "class")
         assert accuracy >= thr
 
         title = (
