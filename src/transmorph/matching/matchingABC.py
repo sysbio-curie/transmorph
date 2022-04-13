@@ -245,6 +245,13 @@ class MatchingABC(ABC):
             matching = csr_matrix(matching / coefs)
         return matching
 
+    def get_anchors(self, adata: AnnData) -> np.ndarray:
+        """
+        Returns a boolean vector containing sample indices used during
+        matching, zero indices representing ignored points.
+        """
+        return self.subsampling.get_anchors(adata)
+
     def fit(
         self,
         datasets: List[AnnData],

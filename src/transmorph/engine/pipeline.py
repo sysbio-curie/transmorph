@@ -10,8 +10,9 @@ from .layers import (
     LayerInput,
     LayerMerging,
     LayerOutput,
-    LayerTransmorph,
+    Layer,
 )
+from .watchers import Watcher
 from .profiler import Profiler
 from ..utils.anndata_interface import (
     set_info,
@@ -30,7 +31,7 @@ class TransmorphPipeline:
     Initialization
     --------------
     Initializing a TransmorphPipeline requires a connected network of
-    LayerTransmorphs. Network source must be an LayerInput, and finish with one
+    Layers. Network source must be an LayerInput, and finish with one
     or more LayerOutput.
 
     Running
@@ -47,7 +48,7 @@ class TransmorphPipeline:
     ----------
     - layer_input: LayerInput, entry node in the network.
     - output_layers: List[LayerOutput], output nodes
-    - layers: List[LayerTransmorph], set of layers connected to self.layer_input
+    - layers: List[Layer], set of layers connected to self.layer_input
 
     Example
     -------
@@ -67,7 +68,8 @@ class TransmorphPipeline:
     def __init__(self, verbose: bool = False) -> None:
         self.input_layer = None
         self.output_layers = []
-        self.layers: List[LayerTransmorph] = []
+        self.layers: List[Layer] = []
+        self.watchers: List[Watcher] = []
         self.verbose = verbose
         self.profiler = Profiler()
 
@@ -92,12 +94,15 @@ class TransmorphPipeline:
         assert type(input_layer) is LayerInput, "LayerInput expected."
         self._log("Fetching pipeline...")
         self.input_layer = input_layer
-        layers_to_visit: List[LayerTransmorph] = [self.input_layer]
+        layers_to_visit: List[Layer] = [self.input_layer]
         self.layers = [self.input_layer]
         while len(layers_to_visit) > 0:
             current_layer = layers_to_visit.pop(0)
             current_layer.profiler = self.profiler
             current_layer.verbose = self.verbose
+            for watcher in current_layer.watchers:
+                self.watchers.append(watcher)
+                watcher.verbose = self.verbose
             for output_layer in current_layer.output_layers:
                 if output_layer in self.layers:
                     continue
@@ -105,12 +110,17 @@ class TransmorphPipeline:
                     self.output_layers.append(output_layer)
                 layers_to_visit.append(output_layer)
                 self.layers.append(output_layer)
-        assert len(self.output_layers) > 0, "No output layer reachable from input."
+        if len(self.output_layers) == 0:
+            warnings.warn(
+                "No output layer reachable from input. This pipeline will not "
+                "write results in AnnData objects."
+            )
         if len(self.output_layers) > 1:  # Temp
             raise NotImplementedError("No more than one output allowed.")
         self._log(
             f"Terminated -- {len(self.layers)} layers, "
-            f"{len(self.output_layers)} output found."
+            f"{len(self.output_layers)} outputs, "
+            f"{len(self.watchers)} watchers found."
         )
 
     def _check_input(
@@ -205,12 +215,15 @@ class TransmorphPipeline:
         while len(layers_to_run) > 0:
             caller, called = layers_to_run.pop(0)
             output_layers = called.fit(caller, datasets)
+            for watcher in called.watchers:
+                watcher.compute(datasets)
             layers_to_run += [(called, out) for out in output_layers]
 
-        # TODO several output layers
-        output_kw = self.output_layers[0].get_representation()
-        for adata in datasets:
-            adata.obsm["transmorph"] = get_matrix(adata, output_kw)
+        if len(self.output_layers) > 0:
+            # TODO several output layers
+            output_kw = self.output_layers[0].get_representation()
+            for adata in datasets:
+                adata.obsm["transmorph"] = get_matrix(adata, output_kw)
 
         # Cleaning
         self.input_layer.clean(datasets)
@@ -222,9 +235,10 @@ class TransmorphPipeline:
                 delete_matrix(adata, use_rep)
 
         # Summary
-        npoints = sum(adata.n_obs for adata in datasets)
-        ndims = datasets[0].obsm["transmorph"].shape[1]
-        self._log(f"Embedding shape: {(npoints, ndims)}")
+        if len(self.output_layers) > 0:
+            npoints = sum(adata.n_obs for adata in datasets)
+            ndims = datasets[0].obsm["transmorph"].shape[1]
+            self._log(f"Embedding shape: {(npoints, ndims)}")
         self._log(
             "### REPORT_START ###\n"
             + self.profiler.log_stats()

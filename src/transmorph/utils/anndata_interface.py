@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 from anndata import AnnData
-from typing import List
+from typing import List, Optional
 
 import numpy as np
+import scanpy as sc
 
 # This file implements a standardized way for Transmorph modules
 # to interact with annotated data objects. Two data types can
@@ -174,15 +175,28 @@ def isset_info(adata: AnnData, dataset_key: str) -> bool:
     return dataset_key in adata.uns["transmorph"]["infos"]
 
 
-def common_genes(datasets: List[AnnData]) -> np.ndarray:
+def common_genes(
+    datasets: List[AnnData], n_top_var: Optional[int] = None
+) -> np.ndarray:
     """
     Returns common genes between datasets.
     """
+    if n_top_var is not None:
+        for adata in datasets:
+            sc.pp.highly_variable_genes(adata, n_top_genes=n_top_var)
     if len(datasets) == 0:
         return np.array([])
+    adata = datasets[0]
+    if n_top_var is None:
+        common_genes = datasets[0].var_names
+    else:
+        common_genes = datasets[0].var_names[adata.var.highly_variable]
     if len(datasets) == 1:
-        return datasets[0].var_names.to_numpy()
-    common_genes = datasets[0].var_names
+        return common_genes.to_numpy()
     for adata in datasets[1:]:
-        common_genes = common_genes.intersection(adata.var_names)
+        if n_top_var is None:
+            adata_genes = adata.var_names
+        else:
+            adata_genes = adata.var_names[adata.var.highly_variable]
+        common_genes = common_genes.intersection(adata_genes)
     return common_genes.to_numpy()

@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 
-from abc import abstractmethod
-from warnings import warn
-from anndata import AnnData
+# All types are string by default
+from __future__ import annotations
 
-from typing import List, Optional, Type, Union
+import numpy as np
+
+from abc import abstractmethod
+from anndata import AnnData
+from scipy.sparse import csr_matrix
+from typing import List, Optional, Type, Union, TYPE_CHECKING
+from warnings import warn
+
+if TYPE_CHECKING:
+    from .watchers import Watcher
 
 from ..checking.checkingABC import CheckingABC
 from ..matching.matchingABC import MatchingABC
@@ -29,15 +37,16 @@ def profile_method(method):
         profiler: Profiler = self.profiler
         tid = profiler.task_start(str(self))
         result = method(*args)
-        profiler.task_end(tid)
+        elapsed = profiler.task_end(tid)
+        self.time_elapsed = elapsed
         return result
 
     return wrapper
 
 
-class LayerTransmorph:
+class Layer:
     """
-    A LayerTransmorph wraps an integration module, and manage its connections
+    A Layer wraps an integration module, and manage its connections
     with other modules. All Layers derive from this class.
 
     Parameters
@@ -50,7 +59,7 @@ class LayerTransmorph:
 
     Attributes
     ----------
-    output_layers: List[LayerTransmorph]
+    output_layers: List[Layer]
         Set of next layers in the pipeline.
 
     layer_id: int
@@ -71,12 +80,14 @@ class LayerTransmorph:
     ) -> None:
         self.str_rep = ""
         self.compatible_inputs = compatible_inputs
-        self.output_layers: List["LayerTransmorph"] = []
+        self.output_layers: List[Layer] = []
+        self.watchers: List[Watcher] = []
         self.verbose = verbose
         self.profiler = None
-        self.layer_id = LayerTransmorph.LayerID
+        self.layer_id = Layer.LayerID
         self.embedding_layer = None
-        LayerTransmorph.LayerID += 1
+        self.time_elapsed = -1
+        Layer.LayerID += 1
         self._log("Initialized.")
 
         if verbose is not None:
@@ -85,12 +96,12 @@ class LayerTransmorph:
                 "It uses TransmorphPipeline's verbose parameter instead."
             )
 
-    def _log(self, msg: str):
+    def _log(self, msg: str) -> None:
         if not self.verbose:
             return
         print(f"{self} >", msg)
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.str_rep == "":
             typestr = "ABS"  # Abstract
             if type(self) is LayerChecking:
@@ -110,13 +121,13 @@ class LayerTransmorph:
             self.str_rep = f"{typestr}#{self.layer_id}"
         return self.str_rep
 
-    def connect(self, layer: "LayerTransmorph") -> None:
+    def connect(self, layer: Layer) -> None:
         """
         Connects the current layer to an output layer, if compatible.
 
         Parameters
         ----------
-        layer: LayerTransmorph
+        layer: Layer
             Output layer of compatible type.
         """
         assert (
@@ -126,10 +137,16 @@ class LayerTransmorph:
         self.output_layers.append(layer)
         self._log(f"Connected to layer {layer}.")
 
+    def add_watcher(self, watcher: Watcher) -> None:
+        """
+        Adds a watcher to the layer to monitor it. Only the Watcher
+        class should call this function, and is trusted to do so.
+        """
+        assert watcher not in self.watchers
+        self.watchers.append(watcher)
+
     @abstractmethod
-    def fit(
-        self, caller: "LayerTransmorph", datasets: List[AnnData]
-    ) -> List["LayerTransmorph"]:
+    def fit(self, caller: Layer, datasets: List[AnnData]) -> List[Layer]:
         """
         This is the computational method, running an internal module.
         It then should write its output in the AnnDatas, and callback
@@ -137,7 +154,7 @@ class LayerTransmorph:
 
         Parameters
         ----------
-        caller: LayerTransmorph
+        caller: Layer
             Reference to current layer, used to retrieve relevant information
             relative to computation results.
 
@@ -167,8 +184,11 @@ class LayerTransmorph:
     def set_embedding_reference(self, layer):
         self.embedding_layer = layer
 
+    def get_time_spent(self) -> float:
+        return self.time_elapsed
 
-class LayerInput(LayerTransmorph):
+
+class LayerInput(Layer):
     """
     Every pipeline must contain exactly one input layer, followed by an
     arbitrary network structure. Every pipeline is initialized using this
@@ -180,9 +200,7 @@ class LayerInput(LayerTransmorph):
         self.use_rep = ""
 
     @profile_method
-    def fit(
-        self, caller: LayerTransmorph, datasets: List[AnnData]
-    ) -> List[LayerTransmorph]:
+    def fit(self, caller: Layer, datasets: List[AnnData]) -> List[Layer]:
         """
         Simply calls the downstream layers.
         """
@@ -202,7 +220,7 @@ class LayerInput(LayerTransmorph):
         return self.use_rep
 
 
-class LayerOutput(LayerTransmorph):
+class LayerOutput(Layer):
     """
     Simple layer to manage network outputs. There can be several output layers.
     (actually not for now)
@@ -221,9 +239,7 @@ class LayerOutput(LayerTransmorph):
         self.representation_kw = ""
 
     @profile_method
-    def fit(
-        self, caller: LayerTransmorph, datasets: List[AnnData]
-    ) -> List[LayerTransmorph]:
+    def fit(self, caller: Layer, datasets: List[AnnData]) -> List[Layer]:
         """
         Runs the upstream pipeline and stores results in AnnData objects.
         """
@@ -242,7 +258,7 @@ class LayerOutput(LayerTransmorph):
         return self.representation_kw
 
 
-class LayerMatching(LayerTransmorph):
+class LayerMatching(Layer):
     """
     This layer performs a matching between two or more datasets.
     It wraps an object derived from MatchingABC.
@@ -262,9 +278,7 @@ class LayerMatching(LayerTransmorph):
         self.representation_kw = ""
 
     @profile_method
-    def fit(
-        self, caller: LayerTransmorph, datasets: List[AnnData]
-    ) -> List[LayerTransmorph]:
+    def fit(self, caller: Layer, datasets: List[AnnData]) -> List[Layer]:
         self._log("Requesting keyword.")
         if self.embedding_layer is None:
             self.representation_kw = caller.get_representation()
@@ -280,11 +294,17 @@ class LayerMatching(LayerTransmorph):
         for output in self.output_layers:
             output.clean(datasets)
 
+    def get_matching(self, adata1: AnnData, adata2: AnnData) -> csr_matrix:
+        return self.matching.get_matching(adata1, adata2)
+
+    def get_anchors(self, adata: AnnData) -> np.ndarray:
+        return self.matching.get_anchors(adata)
+
     def get_representation(self) -> str:
         return self.representation_kw
 
 
-class LayerMerging(LayerTransmorph):
+class LayerMerging(Layer):
     """
     This layer performs a merging between two or more datasets and their matchings.
     It wraps an object derived from MergingABC.
@@ -303,9 +323,7 @@ class LayerMerging(LayerTransmorph):
         self.mtx_id = f"merging_{self.layer_id}"  # To write results
 
     @profile_method
-    def fit(
-        self, caller: LayerMatching, datasets: List[AnnData]
-    ) -> List[LayerTransmorph]:
+    def fit(self, caller: LayerMatching, datasets: List[AnnData]) -> List[Layer]:
         self._log("Requesting keyword.")
         if self.embedding_layer is None:
             representation_kw = caller.get_representation()
@@ -343,7 +361,7 @@ class LayerMerging(LayerTransmorph):
         return self.mtx_id
 
 
-class LayerChecking(LayerTransmorph):
+class LayerChecking(Layer):
     """
     Conditional layers with exactly two outputs. Performs a statistical test
     on its input data (typically the result of a merging), then
@@ -371,30 +389,28 @@ class LayerChecking(LayerTransmorph):
         self.checking = checking
         self.n_checks = 0
         self.n_checks_max = n_checks_max
-        self.layer_yes: Union[None, LayerTransmorph] = None
-        self.layer_no: Union[None, LayerTransmorph] = None
+        self.layer_yes: Union[None, Layer] = None
+        self.layer_no: Union[None, Layer] = None
         self.mtx_id = f"checking_{self.layer_id}"
         self.cleaned = False  # FIXME: investigate this to avoid looping
 
-    def connect(self, layer: LayerTransmorph):
+    def connect(self, layer: Layer):
         raise NotImplementedError(
             "Please use instead connect_yes and connect_no for LayerChecking."
         )
 
-    def connect_yes(self, layer: LayerTransmorph):
+    def connect_yes(self, layer: Layer):
         assert self.layer_yes is None, "Error: Only one layer 'YES' is allowed."
         super().connect(layer)
         self.layer_yes = layer
 
-    def connect_no(self, layer: LayerTransmorph):
+    def connect_no(self, layer: Layer):
         assert self.layer_no is None, "Error: Only one layer 'NO' is allowed."
         super().connect(layer)
         self.layer_no = layer
 
     @profile_method
-    def fit(
-        self, caller: LayerTransmorph, datasets: List[AnnData]
-    ) -> List[LayerTransmorph]:
+    def fit(self, caller: Layer, datasets: List[AnnData]) -> List[Layer]:
         assert self.layer_yes is not None, "Error: No layer found for 'YES' path."
         assert self.layer_no is not None, "Error: No layer found for 'NO' path."
         self._log("Requesting keyword.")
@@ -431,7 +447,7 @@ class LayerChecking(LayerTransmorph):
         return self.mtx_id
 
 
-class LayerPreprocessing(LayerTransmorph):
+class LayerPreprocessing(Layer):
     """
     This layer encapsulates a preprocessing algorithm derived
     from PreprocessingABC.
@@ -455,9 +471,7 @@ class LayerPreprocessing(LayerTransmorph):
         self.mtx_id = f"preprocessing_{self.layer_id}"
 
     @profile_method
-    def fit(
-        self, caller: LayerTransmorph, datasets: List[AnnData]
-    ) -> List[LayerTransmorph]:
+    def fit(self, caller: Layer, datasets: List[AnnData]) -> List[Layer]:
         self._log("Requesting keyword.")
         if self.embedding_layer is None:
             self.representation_kw = caller.get_representation()

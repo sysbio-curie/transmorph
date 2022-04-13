@@ -54,13 +54,6 @@ class MergingLinearCorrection(MergingABC):
 
     use_nndescent: bool, default = False
         Use the quicker, approximate solver for nearest neighbors.
-
-    low_memory: bool, default = False
-        If using use_nndescent=True, switch to a low memory/high time
-        strategy.
-
-    n_jobs: int, default = -1
-        Number of threads to use.
     """
 
     def __init__(
@@ -71,8 +64,6 @@ class MergingLinearCorrection(MergingABC):
         metric: str = "sqeuclidean",
         metric_kwargs: dict = {},
         jitter: Optional[float] = None,
-        low_memory: bool = False,
-        n_jobs: int = -1,
     ):
         super().__init__(use_reference=True)
         self.n_pcs = n_components
@@ -88,8 +79,6 @@ class MergingLinearCorrection(MergingABC):
         if jitter > 0 and self.lr < 1.0:
             warnings.warn("Jitter > 0 and lr < 1.0 is discouraged.")
         self.jitter = jitter
-        self.low_memory = low_memory
-        self.n_jobs = n_jobs
 
     def do_jitter(self, X):
         stdev = self.jitter * (np.max(X, axis=0) - np.min(X, axis=0))
@@ -123,8 +112,6 @@ class MergingLinearCorrection(MergingABC):
             metric_kwargs=self.metric_kwargs,
             symmetrize=True,
             n_neighbors=n_neighbors,
-            low_memory=self.low_memory,
-            n_jobs=self.n_jobs,
         ).astype(bool)
         knn_graph += np.diag(matched)
         n_connections = np.asarray(knn_graph[:, matched].sum(axis=1)).reshape(

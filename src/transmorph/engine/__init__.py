@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 
-from .layers import LayerChecking
-from .layers import LayerInput
-from .layers import LayerOutput
-from .layers import LayerMatching
-from .layers import LayerMerging
-from .layers import LayerPreprocessing
+from .layers import (
+    Layer,
+    LayerChecking,
+    LayerInput,
+    LayerOutput,
+    LayerMatching,
+    LayerMerging,
+    LayerPreprocessing,
+)
 from .pipeline import TransmorphPipeline
+from .watchers import WatcherMatching, WatcherTiming
+
 
 __all__ = [
+    "Layer",
     "LayerChecking",
     "LayerInput",
     "LayerOutput",
@@ -16,4 +22,6 @@ __all__ = [
     "LayerMerging",
     "LayerPreprocessing",
     "TransmorphPipeline",
+    "WatcherMatching",
+    "WatcherTiming",
 ]

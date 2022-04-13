@@ -53,12 +53,13 @@ class Profiler:
         self.n_tasks_ongoing += 1
         return task_id
 
-    def task_end(self, task_id: int) -> None:
+    def task_end(self, task_id: int) -> float:
         assert 0 <= task_id < len(self.tasks), "Task id out of range."
         self.n_tasks_ongoing -= 1
         if self.n_tasks_ongoing == 0:
             self.tend = time.time()
         self.tasks[task_id].end()
+        return self.tasks[task_id].elapsed()
 
     def elapsed(self) -> float:
         if self.tstart == -1:

@@ -145,7 +145,6 @@ def mutual_nearest_neighbors(
             metric_kwargs=metric_kwargs,
             n_neighbors=n_neighbors,
             algorithm="nndescent",
-            low_memory=low_memory,
             n_jobs=n_jobs,
         )
         Ay = nearest_neighbors(
@@ -154,7 +153,6 @@ def mutual_nearest_neighbors(
             metric_kwargs=metric_kwargs,
             n_neighbors=n_neighbors,
             algorithm="nndescent",
-            low_memory=low_memory,
             n_jobs=n_jobs,
         )
         # Clustering Ax and Ay
@@ -206,10 +204,6 @@ def nearest_neighbors(
     symmetrize: bool = False,
     algorithm: str = "auto",
     random_seed: int = 42,
-    min_iters: int = 5,
-    min_trees: int = 64,
-    max_candidates: int = 60,
-    low_memory: bool = False,
     n_jobs: int = -1,
     use_nndescent: Optional[bool] = None,
 ) -> csr_matrix:
@@ -273,20 +267,12 @@ def nearest_neighbors(
         # https://github.com/lmcinnes/umap
         if not include_self_loops:
             n_neighbors += 1
-        n_trees = min(min_trees, 5 + int(round((X.shape[0]) ** 0.5 / 20.0)))
-        n_iters = max(min_iters, int(round(np.log2(X.shape[0]))))
         knn_result = NNDescent(
             X,
             n_neighbors=n_neighbors,
             metric=metric,
             metric_kwds=metric_kwargs,
             random_state=RandomState(random_seed),
-            n_trees=n_trees,
-            n_iters=n_iters,
-            max_candidates=max_candidates,
-            low_memory=low_memory,
-            n_jobs=n_jobs,
-            verbose=False,
         )
         knn_indices, _ = knn_result.neighbor_graph
         rows, cols, data = [], [], []

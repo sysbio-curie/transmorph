@@ -5,9 +5,9 @@ import numpy as np
 from anndata import AnnData
 from typing import Dict, Optional
 
-from transmorph.utils.anndata_interface import get_matrix
 from .subsamplingABC import SubsamplingABC
 
+from ..utils.anndata_interface import get_matrix
 from ..utils.graph import nearest_neighbors, vertex_cover
 
 
