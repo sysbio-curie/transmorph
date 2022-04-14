@@ -7,6 +7,7 @@ from scipy.sparse import csr_matrix
 import numpy as np
 from typing import Dict, List, Optional, Tuple, Union
 from anndata import AnnData
+from transmorph.preprocessing.preprocessingABC import PreprocessingABC
 
 from ..subsampling.subsamplingABC import SubsamplingABC
 from ..subsampling import SubsamplingKeepAll
@@ -73,6 +74,8 @@ class MatchingABC(ABC):
         self.reference_idx: int = -1
         self.n_datasets: int = 0
         self.fitted: bool = False
+        self.preprocessings: List[PreprocessingABC] = []
+        self.verbose = False
 
     def is_referenced(self) -> bool:
         """
@@ -149,7 +152,7 @@ class MatchingABC(ABC):
         Matching-specific preprocessing step, useful to avoid redundant actions.
         It must return vectorized representations of both datasets. This method can
         also be used to write addtitional information or metadata using set_matrix()
-        method if necessary. This method can be left as default.
+        method if necessary. This method should be left as default.
 
         Parameters
         ----------
@@ -162,12 +165,13 @@ class MatchingABC(ABC):
         dataset_key: str
             Location of vectorized datasets at this point of the pipeline.
         """
-        if dataset_key == "":
-            return adata1.X, adata2.X
-        return (
-            ad.get_matrix(adata1, dataset_key),
-            ad.get_matrix(adata2, dataset_key),
-        )
+        X1 = ad.get_matrix(adata1, dataset_key)
+        X2 = ad.get_matrix(adata2, dataset_key)
+        for preprocessing in self.preprocessings:
+            ad.set_matrix(adata1, "tmp", X1)
+            ad.set_matrix(adata2, "tmp", X2)
+            X1, X2 = preprocessing.transform([adata1, adata2], X_kw="tmp")
+        return X1, X2
 
     def _clean(self, adata1: AnnData, adata2: AnnData) -> None:
         """
@@ -224,8 +228,6 @@ class MatchingABC(ABC):
         adata2: AnnData
             Reference dataset
 
-        TODO: restore normalization?
-
         Returns
         -------
         T = (adata1.n_obs, adata2.n_obs) sparse array, where Tkl is the
@@ -251,6 +253,9 @@ class MatchingABC(ABC):
         matching, zero indices representing ignored points.
         """
         return self.subsampling.get_anchors(adata)
+
+    def add_preprocessing(self, preprocessing: PreprocessingABC) -> None:
+        self.preprocessings.append(preprocessing)
 
     def fit(
         self,
@@ -296,6 +301,8 @@ class MatchingABC(ABC):
         self.reference_idx = ref_idx
 
         # Computing subsampling if necessary
+        if self.verbose and type(self.subsampling) is not SubsamplingKeepAll:
+            print("MATABC > Subsampling...")
         self.subsampling.subsample(datasets, X_kw=dataset_key)
 
         # Computing the pairwise matchings
@@ -307,6 +314,8 @@ class MatchingABC(ABC):
             for j, ref in zip(ref_indices, ref_datasets):
                 if i == j or (j, i) in self.matchings:
                     continue
+                if self.verbose:
+                    print(f"MATABC > Matching {i} vs {j}")
                 Xi, Xj = self._preprocess(src, ref, dataset_key)
                 anci, ancj = (
                     self.subsampling.get_anchors(src),

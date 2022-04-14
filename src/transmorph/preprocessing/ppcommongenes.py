@@ -6,7 +6,7 @@ from anndata import AnnData
 import numpy as np
 
 from .preprocessingABC import PreprocessingABC
-from ..utils.anndata_interface import common_genes
+from ..utils.anndata_interface import common_genes, get_matrix
 
 
 class PPCommonGenes(PreprocessingABC):
@@ -15,8 +15,8 @@ class PPCommonGenes(PreprocessingABC):
     on AnnData.X matrix, so this must be done very early in a pipeline.
     """
 
-    def __init__(self, n_top_var: Optional[int] = None, verbose: bool = False):
-        self.verbose = verbose
+    def __init__(self, n_top_var: Optional[int] = None):
+        super().__init__()
         self.n_top_var = n_top_var
         self.n_genes = -1
 
@@ -29,7 +29,18 @@ class PPCommonGenes(PreprocessingABC):
         )
         results = []
         if self.verbose:
-            print(f"{self.n_genes} genes kept.")
+            print(f"PPCG > {self.n_genes} genes kept.")
         for adata in datasets:
-            results.append(adata[:, cgenes].X)
+            if X_kw == "":
+                results.append(adata[:, cgenes].X)
+            else:
+                X = get_matrix(adata, X_kw)
+                assert X.shape[1] == adata.n_vars, (
+                    f"Inconsistent number of features in {X_kw} representation."
+                    f"Expected {adata.n_vars}, found {X.shape[1]}."
+                )
+                all_pos = np.zeros(cgenes.shape, dtype=int)
+                for i, gene in enumerate(cgenes):
+                    all_pos[i] = adata.var_names.get_loc(gene)
+                results.append(X[:, all_pos])
         return results

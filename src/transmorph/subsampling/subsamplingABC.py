@@ -18,7 +18,7 @@ class SubsamplingABC:
     """
 
     def __init__(self):
-        pass
+        self.verbose = False
 
     @abstractmethod
     def _subsample_one(self, adata: AnnData, X_kw: str = "") -> Dict[str, np.ndarray]:
@@ -47,9 +47,11 @@ class SubsamplingABC:
         """
         Applies _subsample_one to all datasets if necessary
         """
-        for adata in datasets:  # Just flag everything as an anchor
+        for i, adata in enumerate(datasets):  # Just flag everything as an anchor
             if self.is_computed(adata):
                 continue
+            if self.verbose:
+                print(f"SSABC > Subsampling dataset {i}...")
             result = self._subsample_one(adata, X_kw)
             self.set_anchors(adata, result["is_anchor"])
             self.set_references(adata, result["ref_anchor"])

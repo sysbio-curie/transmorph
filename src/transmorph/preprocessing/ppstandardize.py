@@ -23,10 +23,13 @@ class PPStandardize(PreprocessingABC):
     """
 
     def __init__(self, center: bool = True, scale: bool = True):
+        super().__init__()
         self.center = center
         self.scale = scale
 
     def transform(self, datasets: List[AnnData], X_kw: str = "") -> List[np.ndarray]:
+        if self.verbose:
+            print("PPSTD > Standardizing datasets...")
         results = []
         for adata in datasets:
             X = get_matrix(adata, X_kw).copy()

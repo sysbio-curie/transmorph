@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from typing import List
+from typing import Literal, List
 from anndata import AnnData
 
 import numpy as np
@@ -38,7 +38,12 @@ class PPPCA(PreprocessingABC):
         'composite' and 'independent'
     """
 
-    def __init__(self, n_components: int = 2, strategy: str = "concatenate"):
+    def __init__(
+        self,
+        n_components: int = 2,
+        strategy: Literal["concatenate", "composite", "independent"] = "concatenate",
+    ):
+        super().__init__()
         self.n_components = n_components
         self.strategy = strategy
 
@@ -46,6 +51,8 @@ class PPPCA(PreprocessingABC):
         to_reduce = []
         for adata in datasets:
             to_reduce.append(get_matrix(adata, X_kw))
+        if self.verbose:
+            print(f"PPPCA > Running PCA with {self.n_components} components...")
         return pca_multi(
             to_reduce,
             n_components=self.n_components,

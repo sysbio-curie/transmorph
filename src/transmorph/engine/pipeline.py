@@ -99,10 +99,9 @@ class TransmorphPipeline:
         while len(layers_to_visit) > 0:
             current_layer = layers_to_visit.pop(0)
             current_layer.profiler = self.profiler
-            current_layer.verbose = self.verbose
+            current_layer.set_verbose(self.verbose)
             for watcher in current_layer.watchers:
                 self.watchers.append(watcher)
-                watcher.verbose = self.verbose
             for output_layer in current_layer.output_layers:
                 if output_layer in self.layers:
                     continue
@@ -209,6 +208,13 @@ class TransmorphPipeline:
             self.input_layer.use_rep = use_rep
             for adata in datasets:
                 set_matrix(adata, use_rep, adata.obsm[use_rep])
+
+        ndatasets = len(datasets)
+        nsamples = sum([adata.n_obs for adata in datasets])
+        self._log(
+            f"Ready to start the integration of {ndatasets} datasets,"
+            f" {nsamples} total samples."
+        )
 
         # Running
         layers_to_run = [(None, self.input_layer)]

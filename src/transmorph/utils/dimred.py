@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from logging import warn
-from typing import List, Tuple, Union
+from typing import Literal, List, Tuple, Union
 import numpy as np
 
 from sklearn.decomposition import PCA
@@ -42,7 +42,9 @@ def pca(
 def pca_multi(
     Xs: List[np.ndarray],
     n_components: int = 2,
-    strategy: str = "concatenate",
+    strategy: Literal[
+        "concatenate", "reference", "composite", "independent"
+    ] = "concatenate",
     return_transformation: bool = False,
 ) -> Union[
     List[np.ndarray], Tuple[List[np.ndarray], PCA], Tuple[List[np.ndarray], np.ndarray]

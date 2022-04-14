@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import numpy as np
 import scanpy as sc
+import warnings
 
 # This file implements a standardized way for Transmorph modules
 # to interact with annotated data objects. Two data types can
@@ -184,7 +185,9 @@ def highly_variable_genes(adata: AnnData, n_top_genes: int) -> np.ndarray:
     # Patching a possible error in scanpy pipeline
     if "log1p" in adata.uns and "base" not in adata.uns["log1p"]:
         adata.uns["log1p"]["base"] = None
-    sc.pp.highly_variable_genes(adata, n_top_genes=n_top_genes)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        sc.pp.highly_variable_genes(adata, n_top_genes=n_top_genes)
     return adata.var_names[adata.var.highly_variable].to_numpy()
 
 

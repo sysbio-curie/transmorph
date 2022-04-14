@@ -9,7 +9,7 @@ import numpy as np
 
 class PreprocessingABC:
     def __init__(self):
-        pass
+        self.verbose = False
 
     @abstractmethod
     def transform(self, datasets: List[AnnData], X_kw: str = "") -> List[np.ndarray]:

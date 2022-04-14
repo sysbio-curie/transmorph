@@ -41,6 +41,7 @@ class SubsamplingVertexCover(SubsamplingABC):
         metric: str = "sqeuclidean",
         metric_kwargs: Optional[Dict] = None,
     ):
+        super().__init__()
         self.n_neighbors = n_neighbors
         self.n_hops = n_hops
         self.metric = metric

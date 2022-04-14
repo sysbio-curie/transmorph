@@ -82,6 +82,7 @@ class Layer:
         self.compatible_inputs = compatible_inputs
         self.output_layers: List[Layer] = []
         self.watchers: List[Watcher] = []
+        self.preprocessings: List[PreprocessingABC] = []
         self.verbose = verbose
         self.profiler = None
         self.layer_id = Layer.LayerID
@@ -120,6 +121,16 @@ class Layer:
                 raise NotImplementedError  # wth am I?
             self.str_rep = f"{typestr}#{self.layer_id}"
         return self.str_rep
+
+    def set_verbose(self, verbose: bool = False) -> None:
+        self.verbose = verbose
+        for watcher in self.watchers:
+            watcher.verbose = verbose
+        for preprocessing in self.preprocessings:
+            preprocessing.verbose = verbose
+
+    def add_preprocessing(self, preprocessing: PreprocessingABC) -> None:
+        self.preprocessings.append(preprocessing)
 
     def connect(self, layer: Layer) -> None:
         """
@@ -219,6 +230,9 @@ class LayerInput(Layer):
         """
         return self.use_rep
 
+    def add_preprocessing(self, preprocessing: PreprocessingABC) -> None:
+        raise NotImplementedError
+
 
 class LayerOutput(Layer):
     """
@@ -257,6 +271,9 @@ class LayerOutput(Layer):
     def get_representation(self) -> str:
         return self.representation_kw
 
+    def add_preprocessing(self, preprocessing: PreprocessingABC) -> None:
+        raise NotImplementedError
+
 
 class LayerMatching(Layer):
     """
@@ -285,6 +302,8 @@ class LayerMatching(Layer):
         else:
             self.representation_kw = self.embedding_layer.get_representation()
         self._log(f"Found '{self.representation_kw}'. Calling matching.")
+        for preprocessing in self.preprocessings:
+            self.matching.add_preprocessing(preprocessing)
         self.matching.fit(datasets, self.representation_kw)
         self._log("Fitted.")
         return self.output_layers
@@ -302,6 +321,11 @@ class LayerMatching(Layer):
 
     def get_representation(self) -> str:
         return self.representation_kw
+
+    def set_verbose(self, verbose: bool = False) -> None:
+        super().set_verbose(verbose)
+        self.matching.verbose = verbose  # FIXME all this is dirty
+        self.matching.subsampling.verbose = verbose
 
 
 class LayerMerging(Layer):
@@ -329,7 +353,7 @@ class LayerMerging(Layer):
             representation_kw = caller.get_representation()
         else:
             representation_kw = self.embedding_layer.get_representation()
-        self._log(f"Found '{representation_kw}'. Calling merging.")
+        self._log(f"Found '{representation_kw}'. Preprocessing.")
         ref_id = -1
         if self.use_reference:
             for k, adata in enumerate(datasets):
@@ -339,6 +363,12 @@ class LayerMerging(Layer):
             assert (
                 ref_id != -1
             ), "Error: No reference found in TransmorphPipeline.fit()."
+        for preprocessing in self.preprocessings:
+            representations = preprocessing.transform(datasets, representation_kw)
+            for adata, X in zip(datasets, representations):
+                set_matrix(adata, "tmp", X)
+            representation_kw = "tmp"
+        self._log("Running merging.")
         X_transform = self.merging.fit(
             datasets,
             matching=caller.matching,
@@ -446,6 +476,9 @@ class LayerChecking(Layer):
     def get_representation(self) -> str:
         return self.mtx_id
 
+    def add_preprocessing(self, preprocessing: PreprocessingABC) -> None:
+        raise NotImplementedError
+
 
 class LayerPreprocessing(Layer):
     """
@@ -495,3 +528,6 @@ class LayerPreprocessing(Layer):
     def get_representation(self) -> str:
         assert self.fitted, "{self} must be fitted to access its representation."
         return self.mtx_id
+
+    def add_preprocessing(self, preprocessing: PreprocessingABC) -> None:
+        raise NotImplementedError

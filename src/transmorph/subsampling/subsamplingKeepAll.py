@@ -14,7 +14,7 @@ class SubsamplingKeepAll(SubsamplingABC):
     """
 
     def __init__(self):
-        pass
+        super().__init__()
 
     def _subsample_one(self, adata: AnnData, X_kw: str = "") -> Dict[str, np.ndarray]:
         n = adata.n_obs
