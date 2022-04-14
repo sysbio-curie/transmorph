@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import numpy as np
 import warnings
 
 from abc import ABC, abstractmethod
@@ -26,9 +27,6 @@ class Watcher(ABC):
 
     target_type: Type
         Type of layer that can be watched by the Watcher.
-
-    verbose: bool, default = False
-        Can be used to toggle display of information.
 
     Attributes
     ----------
@@ -89,31 +87,12 @@ class Watcher(ABC):
 
 class WatcherTiming(Watcher):
     """
-    Watches a LayerMatching, and measures its quality by comparing
-    guessed edges with ground truth (matching between sample labels).
+    Watches a Layer, and measures the time it takes to execute.
 
     Parameters
     ----------
-    target: LayerMatching
-        Layer containing the Matching to watch.
-
-    label: str
-        String identifying the AnnData.obs column containing label
-        to compare.
-
-    callblack: Callable, Optional
-        Function to call to evaluate quality, must have the following
-        signature:
-
-        callback(AnnData, AnnData, csr_matrix, str, bool) -> float
-        callback(adata_src, adata_ref, matching,
-                 label, ignore_unmatched) -> float
-
-        By default, the Watcher will use edge accuracy
-        (see src/stats/matching.py)
-
-    verbose: bool, default = False
-        Can be used to toggle display of information.
+    target: Layer
+        Layer to watch.
     """
 
     def __init__(
@@ -156,15 +135,13 @@ class WatcherMatching(Watcher):
 
         By default, the Watcher will use edge accuracy
         (see src/stats/matching.py)
-
-    verbose: bool, default = False
-        Can be used to toggle display of information.
     """
 
     def __init__(
         self,
         target: LayerMatching,
         label: str,
+        ignore_unmatched: bool = False,
         callback: Optional[Callable] = None,
     ):
         super().__init__(target, LayerMatching)
@@ -172,6 +149,7 @@ class WatcherMatching(Watcher):
             callback = edge_accuracy
         self.callback = callback
         self.label = label
+        self.ignore_unmatched = ignore_unmatched
 
     def __str__(self) -> str:
         return f"{super().__str__()} - MAT"
@@ -188,9 +166,15 @@ class WatcherMatching(Watcher):
             self.data[f"#samples{i}"] = n_anchors_i
             for j in range(i + 1, ndatasets):
                 ref = datasets[j]
-                n_anchors_j = self.target.get_anchors(ref).sum()
                 Tij = self.target.get_matching(src, ref)
+                if not self.ignore_unmatched:
+                    n_anchors_j = self.target.get_anchors(ref).sum()
+                    n_anchors = n_anchors_i + n_anchors_j
+                else:
+                    counts1 = np.array(Tij.sum(axis=1))[:, 0]
+                    counts2 = np.array(Tij.sum(axis=0))[0]
+                    n_anchors = (counts1 != 0).sum() + (counts2 != 0).sum()
                 self.data[f"{i},{j}"] = self.callback(
-                    src, ref, Tij, self.label, n_anchors_i + n_anchors_j
+                    src, ref, Tij, self.label, n_anchors
                 )
         self.readable = True

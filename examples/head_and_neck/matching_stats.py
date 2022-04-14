@@ -2,7 +2,7 @@
 
 # Testing all matchings
 
-from transmorph.datasets import load_travaglini_10x
+from transmorph.datasets import load_chen_10x
 from transmorph.engine import (
     LayerInput,
     LayerPreprocessing,
@@ -25,10 +25,11 @@ methods = [
     MatchingEMD(subsampling=subsampling),
 ]
 
-datasets = list(load_travaglini_10x().values())
-LABEL = "compartment"
+datasets = list(load_chen_10x().values())
+LABEL = "cell_type"
 
 for methname, method in zip(method_names, methods):
+    print(f"## Method: {methname}")
     FNAME = f"{dirname(__file__)}/logs/{methname}_accuracy_per_gene.txt"
 
     with open(FNAME, "w") as fout:
@@ -50,6 +51,7 @@ for methname, method in zip(method_names, methods):
         9000,
         10000,
     ]:
+        print(f"#### Top genes: {n_top_genes}")
         ppcom = PPCommonGenes(n_top_var=n_top_genes, verbose=True)
 
         linput = LayerInput()

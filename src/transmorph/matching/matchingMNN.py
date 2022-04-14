@@ -2,7 +2,7 @@
 
 from anndata import AnnData
 from scipy.sparse import csr_matrix
-from typing import Dict, Optional
+from typing import Dict, Literal, Optional
 
 from .matchingABC import MatchingABC
 from ..subsampling.subsamplingABC import SubsamplingABC
@@ -55,7 +55,7 @@ class MatchingMNN(MatchingABC):
         metric: str = "sqeuclidean",
         metric_kwargs: Optional[Dict] = None,
         n_neighbors: int = 10,
-        algorithm="auto",
+        algorithm: Literal["auto", "exact", "louvain"] = "auto",
         subsampling: Optional[SubsamplingABC] = None,
     ):
         super().__init__(metadata_keys=[], subsampling=subsampling)

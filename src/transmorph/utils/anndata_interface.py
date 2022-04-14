@@ -175,28 +175,38 @@ def isset_info(adata: AnnData, dataset_key: str) -> bool:
     return dataset_key in adata.uns["transmorph"]["infos"]
 
 
+def highly_variable_genes(adata: AnnData, n_top_genes: int) -> np.ndarray:
+    """
+    Substitute for highly variable genes from scanpy.
+    """
+    if n_top_genes >= adata.n_vars:
+        return adata.var_names.to_numpy()
+    # Patching a possible error in scanpy pipeline
+    if "log1p" in adata.uns and "base" not in adata.uns["log1p"]:
+        adata.uns["log1p"]["base"] = None
+    sc.pp.highly_variable_genes(adata, n_top_genes=n_top_genes)
+    return adata.var_names[adata.var.highly_variable].to_numpy()
+
+
 def common_genes(
     datasets: List[AnnData], n_top_var: Optional[int] = None
 ) -> np.ndarray:
     """
     Returns common genes between datasets.
     """
-    if n_top_var is not None:
-        for adata in datasets:
-            sc.pp.highly_variable_genes(adata, n_top_genes=n_top_var)
     if len(datasets) == 0:
         return np.array([])
     adata = datasets[0]
     if n_top_var is None:
-        common_genes = datasets[0].var_names
+        common_genes = datasets[0].var_names.to_numpy()
     else:
-        common_genes = datasets[0].var_names[adata.var.highly_variable]
+        common_genes = highly_variable_genes(datasets[0], n_top_genes=n_top_var)
     if len(datasets) == 1:
-        return common_genes.to_numpy()
+        return common_genes
     for adata in datasets[1:]:
         if n_top_var is None:
-            adata_genes = adata.var_names
+            adata_genes = adata.var_names.to_numpy()
         else:
-            adata_genes = adata.var_names[adata.var.highly_variable]
-        common_genes = common_genes.intersection(adata_genes)
-    return common_genes.to_numpy()
+            adata_genes = highly_variable_genes(adata, n_top_genes=n_top_var)
+        common_genes = np.intersect1d(common_genes, adata_genes)
+    return common_genes

@@ -18,13 +18,18 @@ class PPCommonGenes(PreprocessingABC):
     def __init__(self, n_top_var: Optional[int] = None, verbose: bool = False):
         self.verbose = verbose
         self.n_top_var = n_top_var
+        self.n_genes = -1
 
     def transform(self, datasets: List[AnnData], X_kw: str = "") -> List[np.ndarray]:
         cgenes = common_genes(datasets, self.n_top_var)
-        assert cgenes.shape[0] > 0, "No common gene found."
+        self.n_genes = cgenes.shape[0]
+        assert self.n_genes > 0, (
+            "No common gene found between datasets. "
+            "Try increasing the number of available genes."
+        )
         results = []
         if self.verbose:
-            print(f"{len(cgenes)} genes kept.")
+            print(f"{self.n_genes} genes kept.")
         for adata in datasets:
             results.append(adata[:, cgenes].X)
         return results
