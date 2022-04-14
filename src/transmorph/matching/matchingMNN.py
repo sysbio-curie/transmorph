@@ -55,7 +55,7 @@ class MatchingMNN(MatchingABC):
         metric: str = "sqeuclidean",
         metric_kwargs: Optional[Dict] = None,
         n_neighbors: int = 10,
-        algorithm: Literal["auto", "exact", "louvain"] = "auto",
+        algorithm: Literal["auto", "exact", "louvain"] = "exact",
         subsampling: Optional[SubsamplingABC] = None,
     ):
         super().__init__(metadata_keys=[], subsampling=subsampling)
