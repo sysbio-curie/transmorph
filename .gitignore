@@ -10,3 +10,4 @@ src/transmorph/datasets/data/
 **/__pycache__/**
 .pre-commit-config.yaml
 **/figures/**
+**/logs/**
