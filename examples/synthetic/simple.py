@@ -16,18 +16,16 @@ from transmorph.utils.plotting import plot_result
 # Building a simple pipeline
 # Input -> MatchMNN -> MergeBarycenter -> Output
 
-VERBOSE = True
-
-linput = LayerInput(verbose=VERBOSE)
-lmatch = LayerMatching(matching=MatchingMNN(), verbose=VERBOSE)
-lmerge = LayerMerging(merging=MergingBarycenter(), verbose=VERBOSE)
-lout = LayerOutput(verbose=VERBOSE)
+linput = LayerInput()
+lmatch = LayerMatching(matching=MatchingMNN())
+lmerge = LayerMerging(merging=MergingBarycenter())
+lout = LayerOutput()
 
 linput.connect(lmatch)
 lmatch.connect(lmerge)
 lmerge.connect(lout)
 
-pipeline = TransmorphPipeline(verbose=VERBOSE)
+pipeline = TransmorphPipeline(verbose=True)
 pipeline.initialize(linput)
 
 # Running the pipeline

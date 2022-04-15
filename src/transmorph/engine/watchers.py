@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+import logging
 import numpy as np
 import warnings
 
 from abc import ABC, abstractmethod
 
 from anndata import AnnData
+from transmorph import logger
 from typing import Any, Callable, List, Optional, Type
 
 from .layers import Layer, LayerMatching
@@ -57,10 +59,8 @@ class Watcher(ABC):
     def __str__(self):
         return f"WAT[{self.watcher_id}]"
 
-    def _log(self, msg: str):
-        if not self.verbose:
-            return
-        print(f"{self} >", msg)
+    def _log(self, msg: str, level: int = logging.DEBUG):
+        logger.log(level, f"{self} > {msg}")
 
     @abstractmethod
     def compute(self, datasets: List[AnnData]) -> None:

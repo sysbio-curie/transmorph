@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 from abc import ABC, abstractmethod
-from logging import warn
+import logging
 from scipy.sparse import csr_matrix
+from transmorph import logger
+from warnings import warn
 
 import numpy as np
 from typing import Dict, List, Optional, Tuple, Union
@@ -63,6 +65,7 @@ class MatchingABC(ABC):
         self,
         metadata_keys: List[str],
         subsampling: Optional[SubsamplingABC] = None,
+        _str_rep: Optional[str] = None,
     ):
         self.metadata_keys: List[str] = metadata_keys
         if subsampling is None:
@@ -76,6 +79,15 @@ class MatchingABC(ABC):
         self.fitted: bool = False
         self.preprocessings: List[PreprocessingABC] = []
         self.verbose = False
+        if _str_rep is None:
+            _str_rep = "MATCHING"
+        self._str_rep = _str_rep
+
+    def _log(self, msg: str, level: int = logging.DEBUG):
+        logger.log(level, f"{self} > {msg}")
+
+    def __str__(self) -> str:
+        return self._str_rep
 
     def is_referenced(self) -> bool:
         """
@@ -301,8 +313,7 @@ class MatchingABC(ABC):
         self.reference_idx = ref_idx
 
         # Computing subsampling if necessary
-        if self.verbose and type(self.subsampling) is not SubsamplingKeepAll:
-            print("MATABC > Subsampling...")
+        self._log("MATABC > Subsampling...")
         self.subsampling.subsample(datasets, X_kw=dataset_key)
 
         # Computing the pairwise matchings
@@ -314,8 +325,7 @@ class MatchingABC(ABC):
             for j, ref in zip(ref_indices, ref_datasets):
                 if i == j or (j, i) in self.matchings:
                     continue
-                if self.verbose:
-                    print(f"MATABC > Matching {i} vs {j}")
+                self._log(f"MATABC > Matching {i} vs {j}")
                 Xi, Xj = self._preprocess(src, ref, dataset_key)
                 anci, ancj = (
                     self.subsampling.get_anchors(src),

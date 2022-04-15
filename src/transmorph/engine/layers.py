@@ -3,11 +3,13 @@
 # All types are string by default
 from __future__ import annotations
 
+import logging
 import numpy as np
 
 from abc import abstractmethod
 from anndata import AnnData
 from scipy.sparse import csr_matrix
+from transmorph import logger
 from typing import List, Optional, Type, Union, TYPE_CHECKING
 from warnings import warn
 
@@ -97,10 +99,8 @@ class Layer:
                 "It uses TransmorphPipeline's verbose parameter instead."
             )
 
-    def _log(self, msg: str) -> None:
-        if not self.verbose:
-            return
-        print(f"{self} >", msg)
+    def _log(self, msg: str, level: int = logging.DEBUG) -> None:
+        logger.log(level, f"{self} > {msg}")
 
     def __str__(self) -> str:
         if self.str_rep == "":
@@ -301,11 +301,12 @@ class LayerMatching(Layer):
             self.representation_kw = caller.get_representation()
         else:
             self.representation_kw = self.embedding_layer.get_representation()
-        self._log(f"Found '{self.representation_kw}'. Calling matching.")
+        self._log(f"Found '{self.representation_kw}'")
+        self._log("Calling matching.", level=logging.INFO)
         for preprocessing in self.preprocessings:
             self.matching.add_preprocessing(preprocessing)
         self.matching.fit(datasets, self.representation_kw)
-        self._log("Fitted.")
+        self._log("Fitted.", level=logging.INFO)
         return self.output_layers
 
     def clean(self, datasets: List[AnnData]):
@@ -353,7 +354,8 @@ class LayerMerging(Layer):
             representation_kw = caller.get_representation()
         else:
             representation_kw = self.embedding_layer.get_representation()
-        self._log(f"Found '{representation_kw}'. Preprocessing.")
+        self._log(f"Found '{representation_kw}'.")
+        self._log("Running preprocessing...", level=logging.INFO)
         ref_id = -1
         if self.use_reference:
             for k, adata in enumerate(datasets):
@@ -368,7 +370,7 @@ class LayerMerging(Layer):
             for adata, X in zip(datasets, representations):
                 set_matrix(adata, "tmp", X)
             representation_kw = "tmp"
-        self._log("Running merging.")
+        self._log("Running merging...", level=logging.INFO)
         X_transform = self.merging.fit(
             datasets,
             matching=caller.matching,
@@ -377,7 +379,7 @@ class LayerMerging(Layer):
         )
         for adata, X_after in zip(datasets, X_transform):
             set_matrix(adata, self.mtx_id, X_after)
-        self._log("Fitted.")
+        self._log("Fitted.", level=logging.INFO)
         return self.output_layers
 
     def clean(self, datasets: List[AnnData]):
@@ -448,7 +450,8 @@ class LayerChecking(Layer):
             representation_kw = caller.get_representation()
         else:
             representation_kw = self.embedding_layer.get_representation()
-        self._log(f"Found '{representation_kw}'. Checking validity.")
+        self._log(f"Found '{representation_kw}'.")
+        self._log("Checking representation validity...", level=logging.INFO)
         for adata in datasets:
             set_matrix(adata, self.mtx_id, get_matrix(adata, representation_kw))
         valid = self.checking.check(datasets, self.mtx_id)
@@ -456,11 +459,13 @@ class LayerChecking(Layer):
         self.n_checks += 1
         if valid or self.n_checks >= self.n_checks_max:
             if not valid:
-                self._log("Warning, number of checks exceeded, validating by default.")
-            self._log("Checking loop ended, pursuing.")
+                prefix = "Maximum number of checks reached."
+            else:
+                prefix = "Checking is valid."
+            self._log(f"{prefix} Pursuing.", level=logging.INFO)
             return [self.layer_yes]
         else:
-            self._log("Check fail, retrying.")
+            self._log("Check fail, retrying.", level=logging.INFO)
             return [self.layer_no]
 
     def clean(self, datasets: List[AnnData]):
@@ -510,12 +515,13 @@ class LayerPreprocessing(Layer):
             self.representation_kw = caller.get_representation()
         else:
             self.representation_kw = self.embedding_layer.get_representation()
-        self._log(f"Found '{self.representation_kw}'. Preprocessing.")
+        self._log(f"Found '{self.representation_kw}'.")
+        self._log("Preprocessing...", level=logging.INFO)
         Xs = self.preprocessing.transform(datasets, self.representation_kw)
         self.fitted = True
         for adata, X in zip(datasets, Xs):
             set_matrix(adata, self.mtx_id, X)
-        self._log("Fitted.")
+        self._log("Fitted.", level=logging.INFO)
         return self.output_layers
 
     def clean(self, datasets: List[AnnData]):

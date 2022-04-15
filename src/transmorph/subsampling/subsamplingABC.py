@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
+import logging
+import numpy as np
+
 from abc import abstractmethod
 from anndata import AnnData
-from typing import List, Dict
+from transmorph import logger
+from typing import List, Dict, Optional
 
-from transmorph.utils.anndata_interface import get_matrix, isset_matrix, set_matrix
-
-import numpy as np
+from ..utils.anndata_interface import get_matrix, isset_matrix, set_matrix
 
 
 class SubsamplingABC:
@@ -17,8 +19,17 @@ class SubsamplingABC:
     that allows other parts of Transmorph to manipulate subsampling schemes.
     """
 
-    def __init__(self):
+    def __init__(self, str_rep: Optional[str] = None):
         self.verbose = False
+        if str_rep is None:
+            str_rep = "Subsampling"
+        self.str_rep = str_rep
+
+    def __str__(self) -> str:
+        return self.str_rep
+
+    def _log(self, msg: str, level: int = logging.DEBUG) -> None:
+        logger.log(level, f"{self} > {msg}")
 
     @abstractmethod
     def _subsample_one(self, adata: AnnData, X_kw: str = "") -> Dict[str, np.ndarray]:
@@ -50,8 +61,7 @@ class SubsamplingABC:
         for i, adata in enumerate(datasets):  # Just flag everything as an anchor
             if self.is_computed(adata):
                 continue
-            if self.verbose:
-                print(f"SSABC > Subsampling dataset {i}...")
+            self._log(f"SSABC > Subsampling dataset {i}...")
             result = self._subsample_one(adata, X_kw)
             self.set_anchors(adata, result["is_anchor"])
             self.set_references(adata, result["ref_anchor"])

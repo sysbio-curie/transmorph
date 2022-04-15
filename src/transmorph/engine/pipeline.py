@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
+import logging
 import warnings
 import numpy as np
 
 from anndata import AnnData
+from transmorph import logger
 from typing import List, Optional
 
 from .layers import (
@@ -73,13 +75,11 @@ class TransmorphPipeline:
         self.verbose = verbose
         self.profiler = Profiler()
 
-    def _log(self, msg: str):
-        if not self.verbose:
-            return
-        print("TRPIP >", msg)
+    def _log(self, msg: str, level: int = logging.DEBUG) -> None:
+        logger.log(level, f"PIPELINE > {msg}")
 
     def __str__(self):
-        return "(TransmorphPipeline)"
+        return "(Pipeline)"
 
     def initialize(self, input_layer: LayerInput):
         """
@@ -117,9 +117,10 @@ class TransmorphPipeline:
         if len(self.output_layers) > 1:  # Temp
             raise NotImplementedError("No more than one output allowed.")
         self._log(
-            f"Terminated -- {len(self.layers)} layers, "
+            f"Pipeline initialized -- {len(self.layers)} layers, "
             f"{len(self.output_layers)} outputs, "
-            f"{len(self.watchers)} watchers found."
+            f"{len(self.watchers)} watchers found.",
+            level=logging.INFO,
         )
 
     def _check_input(
@@ -213,7 +214,8 @@ class TransmorphPipeline:
         nsamples = sum([adata.n_obs for adata in datasets])
         self._log(
             f"Ready to start the integration of {ndatasets} datasets,"
-            f" {nsamples} total samples."
+            f" {nsamples} total samples.",
+            level=logging.INFO,
         )
 
         # Running
@@ -244,7 +246,9 @@ class TransmorphPipeline:
         if len(self.output_layers) > 0:
             npoints = sum(adata.n_obs for adata in datasets)
             ndims = datasets[0].obsm["transmorph"].shape[1]
-            self._log(f"Embedding shape: {(npoints, ndims)}")
+            self._log(
+                f"Terminated. Embedding shape: {(npoints, ndims)}", level=logging.INFO
+            )
         self._log(
             "### REPORT_START ###\n"
             + self.profiler.log_stats()

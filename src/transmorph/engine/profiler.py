@@ -2,6 +2,8 @@
 
 import time
 
+from transmorph import logger
+
 
 class Task:
     """
@@ -51,6 +53,7 @@ class Profiler:
             self.tstart = time.time()
         self.tasks.append(Task(task_id, time.time(), task_label))
         self.n_tasks_ongoing += 1
+        logger.debug(f"Profiler > Starting task {task_label} [{task_id}]")
         return task_id
 
     def task_end(self, task_id: int) -> float:
@@ -59,7 +62,9 @@ class Profiler:
         if self.n_tasks_ongoing == 0:
             self.tend = time.time()
         self.tasks[task_id].end()
-        return self.tasks[task_id].elapsed()
+        elapsed = self.tasks[task_id].elapsed()
+        logger.debug(f"Profiler > Ending task [{task_id}], elapsed: {elapsed}s")
+        return elapsed
 
     def elapsed(self) -> float:
         if self.tstart == -1:
