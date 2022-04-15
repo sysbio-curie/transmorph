@@ -7,74 +7,13 @@ import pymde
 
 from anndata import AnnData
 from pymde.preprocess import Graph
-from scipy.sparse import csr_matrix, coo_matrix, csc_matrix
+from scipy.sparse import csr_matrix
 
 from .mergingABC import MergingABC
 from ..matching.matchingABC import MatchingABC
-from ..utils import nearest_neighbors
+from ..utils import nearest_neighbors, extract_chunks
 from ..utils.anndata_interface import get_matrix
-
-
-def combine_matchings(
-    datasets: List[AnnData],
-    knn_graphs: List[csr_matrix],
-    matching: Optional[MatchingABC] = None,
-    matching_mtx: Optional[Union[csr_matrix, np.ndarray]] = None,
-) -> csr_matrix:
-    """
-    Concatenates any number of matchings Mij and knn-graph
-    adjacency matrices Ai in a single sparse matrix T. Diagonal
-    blocks of T is composed by Ai matrices, and ij block is
-    Mij if i < j otherwise Mji.T
-
-    matching: MatchingABC
-        A fitted MatchingABC object with no reference.
-
-    knn_graph: List[csr_matrix]
-        List of knn-graphs, where knn-graph[i] is the knn-graph
-        associated to matching.datasets[i].
-    """
-    rows, cols, data, N = [], [], [], 0
-    offset_i = 0
-    for i, adata_i in enumerate(datasets):
-        # Initial relations
-        knn_graph = knn_graphs[i].tocoo()
-        rows += list(knn_graph.row + offset_i)
-        cols += list(knn_graph.col + offset_i)
-        data += list(knn_graph.data)
-        # Matchings
-        offset_j = 0
-        ni = datasets[i].X.shape[0]
-        for j, adata_j in enumerate(datasets):
-            nj = datasets[j].X.shape[0]
-            if i >= j:
-                offset_j += nj
-                continue
-            if matching is not None:
-                T = matching.get_matching(adata_i, adata_j)
-            elif matching_mtx is not None:  # Works as an elif
-                T = matching_mtx
-                if T.shape[0] == adata_j.n_obs:
-                    T = T.T
-                if type(T) is csc_matrix or type(T) is csr_matrix:
-                    T = T.toarray()
-                assert type(T) is np.ndarray, f"Unrecognized type: {type(T)}"
-                T = csr_matrix(T / T.sum(axis=1, keepdims=True))
-            else:
-                raise AssertionError("matching or matching_mtx must be set.")
-            matching_ij = T.tocoo()
-            rows_k, cols_k = matching_ij.row, matching_ij.col
-            rows_k += offset_i
-            cols_k += offset_j
-            rows += list(rows_k)  # Keep the symmetry
-            rows += list(cols_k)
-            cols += list(cols_k)
-            cols += list(rows_k)
-            data += 2 * len(cols_k) * [1]
-            offset_j += nj
-        offset_i += ni
-        N += ni
-    return coo_matrix((data, (rows, cols)), shape=(N, N)).tocsr()
+from ..utils.graph import combine_matchings
 
 
 class MergingMDI(MergingABC):
@@ -135,7 +74,7 @@ class MergingMDI(MergingABC):
         self,
         embedding_dimension: int = 2,
         initialization: str = "quadratic",
-        n_neighbors: int = 10,
+        n_neighbors: int = 15,
         knn_metric: str = "sqeuclidean",
         knn_metric_kwargs: dict = {},
         repulsive_fraction: float = 1.0,
@@ -183,15 +122,21 @@ class MergingMDI(MergingABC):
                 "High dimensional data detected (D>100)."
                 "You may want to reduce dimensionality first."
             )
-        edges = combine_matchings(datasets, inner_graphs, matching, matching_mtx)
-        edges.data = np.clip(edges.data, 0.0, 1.0)
-        edges = edges + edges.T - edges.multiply(edges.T)  # symmetrize
-        edges.data[edges.data == 0] = 1e-9
-        # Gaussian model
-        # pij = exp(-dij**2 * lambda)
-        # iff dij = sqrt(-ln(pij) / lambda)
-        # + epsilon to stabilize MDE solver
-        edges.data = np.sqrt(-np.log(edges.data) / self.concentration) + 1e-9
+        ndatasets = len(datasets)
+        matchings = {}
+        if matching is not None:
+            for i in range(ndatasets):
+                for j in range(i):
+                    T = matching.get_matching(datasets[i], datasets[j])
+                    matchings[i, j] = T
+                    matchings[j, i] = T
+        elif matching_mtx is not None:
+            matchings[0, 1] = matching_mtx
+            matchings[1, 0] = matching_mtx
+
+        edges = combine_matchings(
+            inner_graphs, matchings, "distance", self.concentration
+        )
         mde = pymde.preserve_neighbors(
             Graph(edges),
             embedding_dim=self.embedding_dimension,
@@ -201,11 +146,5 @@ class MergingMDI(MergingABC):
             device=self.device,
             verbose=self.verbose,
         )
-        X_tot = mde.embed(verbose=self.verbose)
-        result = []
-        offset = 0
-        for adata in datasets:
-            n_obs = adata.n_obs
-            result.append(X_tot[offset : offset + n_obs].numpy())
-            offset += n_obs
-        return result
+        X_result = np.array(mde.embed(verbose=self.verbose))
+        return extract_chunks(X_result, [adata.n_obs for adata in datasets])

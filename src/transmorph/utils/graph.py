@@ -9,11 +9,11 @@ from numba import njit
 from numpy.random import RandomState
 from pynndescent import NNDescent
 from scipy.spatial.distance import cdist
-from scipy.sparse import csr_matrix, coo_matrix
+from scipy.sparse import csr_matrix, coo_matrix, csc_matrix
 from sklearn.neighbors import NearestNeighbors
 
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Literal, Optional, Tuple
 
 
 def fsymmetrize(A: csr_matrix) -> csr_matrix:
@@ -68,9 +68,6 @@ def mutual_nearest_neighbors(
     metric: str = "sqeuclidean",
     metric_kwargs: Dict = {},
     n_neighbors: int = 10,
-    algorithm: str = "auto",
-    low_memory: bool = False,
-    n_jobs: int = -1,
 ) -> csr_matrix:
     """
     Runs mutual nearest neighbors algorithm between datasets X and Y.
@@ -105,8 +102,8 @@ def mutual_nearest_neighbors(
         Number of neighbors to use between datasets.
 
     algorithm: str, default = "auto"
-        Method to use ("auto", "exact" or "louvain"). If "auto", will
-        choose "exact" for small datasets and "louvain" for large ones.
+        Method to use ("auto", "exact" or "nndescent"). If "auto", will
+        choose "exact" for small datasets and "nndescent" for large ones.
 
     low_memory: bool, default = False
         Run pynndescent using high time/low memory profile for large
@@ -121,78 +118,14 @@ def mutual_nearest_neighbors(
     T = (n,m) csr_matrix where T[i,j] = (xi and yj MNN)
     """
     nx, ny = X.shape[0], Y.shape[0]
-    npoints = nx + ny
-    if algorithm == "auto":
-        algorithm = "louvain" if npoints > 4096 else "exact"
-    if algorithm == "louvain" and npoints < 500:
-        algorithm = "exact"
-    if algorithm == "exact":
-        if min(nx, ny) < n_neighbors:
-            warnings.warn(
-                "Y.shape[0] < n_neighbors. " "Setting n_neighbors to Y.shape[0]."
-            )
-            n_neighbors = min(nx, ny)
-        D = cdist(X, Y, metric=metric, **metric_kwargs)
-        dx = distance_to_knn(D, n_neighbors, 1)
-        dy = distance_to_knn(D, n_neighbors, 0)
-        Dxy = np.minimum.outer(dx, dy)
-        return csr_matrix((D <= Dxy), shape=D.shape)
-    if algorithm == "louvain":
-        # Computing approached kNN matrices of X and Y
-        Ax = nearest_neighbors(
-            X,
-            metric=metric,
-            metric_kwargs=metric_kwargs,
-            n_neighbors=n_neighbors,
-            algorithm="nndescent",
-            n_jobs=n_jobs,
-        )
-        Ay = nearest_neighbors(
-            Y,
-            metric=metric,
-            metric_kwargs=metric_kwargs,
-            n_neighbors=n_neighbors,
-            algorithm="nndescent",
-            n_jobs=n_jobs,
-        )
-        # Clustering Ax and Ay
-        px, py = clustering(Ax), clustering(Ay)
-        ncx, ncy = len(set(px)), len(set(py))
-        npart = max(ncx, ncy)
-        centroidx = np.array([np.mean(X[px == k], axis=0) for k in range(ncx)])
-        centroidy = np.array([np.mean(Y[py == k], axis=0) for k in range(ncy)])
-        # MNN matching of cluster centroids
-        part_matching = mutual_nearest_neighbors(
-            centroidx,
-            centroidy,
-            metric=metric,
-            metric_kwargs=metric_kwargs,
-            n_neighbors=npart // 3,  # Guess
-            algorithm="exact",
-        ).toarray()
-        # Match points only between matched clusters
-        rows, cols = [], []
-        for i in range(ncx):
-            indices_i = np.arange(nx)[px == i]
-            for j in range(ncy):
-                indices_j = np.arange(ny)[py == j]
-                if part_matching[i, j]:
-                    Tij = mutual_nearest_neighbors(
-                        X[px == i],
-                        Y[py == j],
-                        metric=metric,
-                        metric_kwargs=metric_kwargs,
-                        n_neighbors=n_neighbors,  # Guess :D
-                        algorithm="auto",
-                        low_memory=low_memory,
-                        n_jobs=n_jobs,
-                    ).tocoo()
-                    rows += list(indices_i[Tij.row])
-                    cols += list(indices_j[Tij.col])
-        data = [1] * len(rows)
-        return coo_matrix((data, (rows, cols)), shape=(nx, ny)).tocsr()
-
-    raise ValueError(f"Unknown algorithm: {algorithm}")
+    if min(nx, ny) < n_neighbors:
+        warnings.warn("Y.shape[0] < n_neighbors. " "Setting n_neighbors to Y.shape[0].")
+        n_neighbors = min(nx, ny)
+    D = cdist(X, Y, metric=metric, **metric_kwargs)
+    dx = distance_to_knn(D, n_neighbors, 1)
+    dy = distance_to_knn(D, n_neighbors, 0)
+    Dxy = np.minimum.outer(dx, dy)
+    return csr_matrix((D <= Dxy), shape=D.shape)
 
 
 def nearest_neighbors(
@@ -366,3 +299,79 @@ def vertex_cover_njit(
     for i in set(anchors):
         anchors_set[i] = 1
     return anchors_set, anchors  # set, map
+
+
+def combine_matchings(
+    knn_graphs: List[csr_matrix],
+    matchings: Dict[Tuple[int, int], csr_matrix],
+    mode: Literal["probability", "distance"],
+    lam: float = 1.0,
+) -> csr_matrix:
+    """
+    Concatenates any number of matchings Mij and knn-graph
+    adjacency matrices Ai in a single sparse matrix T. Diagonal
+    blocks of T is composed by Ai matrices, and ij block is
+    Mij if i < j otherwise Mji.T
+
+    matching: MatchingABC
+        A fitted MatchingABC object with no reference.
+
+    knn_graph: List[csr_matrix]
+        List of knn-graphs, where knn-graph[i] is the knn-graph
+        associated to matching.datasets[i].
+    """
+    rows, cols, data, N = [], [], [], 0
+    offset_i = 0
+    ndatasets = len(knn_graphs)
+    for i in range(ndatasets):
+        # Initial relations
+        knn_graph = knn_graphs[i].tocoo()
+        rows += list(knn_graph.row + offset_i)
+        cols += list(knn_graph.col + offset_i)
+        data += list(knn_graph.data)
+        # Matchings
+        offset_j = 0
+        ni = knn_graphs[i].shape[0]
+        for j in range(ndatasets):
+            nj = knn_graphs[j].shape[0]
+            if i >= j:
+                offset_j += nj
+                continue
+            T = matchings[i, j]
+            if T.shape[0] == nj:  # FIXME a lot of unnecessary conversions
+                T = T.T
+            if type(T) is csc_matrix or type(T) is csr_matrix:
+                T = T.toarray()
+            assert type(T) is np.ndarray, f"Unrecognized type: {type(T)}"
+            norm = T.sum(axis=1, keepdims=True)
+            norm[norm == 0.0] = 1.0
+            T = csr_matrix(T / norm)
+            matching_ij = T.tocoo()
+            rows_k, cols_k = matching_ij.row, matching_ij.col
+            rows_k += offset_i
+            cols_k += offset_j
+            rows += list(rows_k)  # Keep the symmetry
+            rows += list(cols_k)
+            cols += list(cols_k)
+            cols += list(rows_k)
+            data += 2 * len(cols_k) * [1]
+            offset_j += nj
+        offset_i += ni
+        N += ni
+    T = coo_matrix((data, (rows, cols)), shape=(N, N)).tocsr()
+    T.data = np.clip(T.data, 0.0, 1.0)
+    T = T + T.T - T.multiply(T.T)  # symmetrize
+    T.data[T.data == 0] = 1e-12  # Stabilize
+    if mode == "probability":
+        return T
+    elif mode == "distance":
+        # Gaussian model
+        # pij = exp(-dij**2 * lambda)
+        # iff dij = sqrt(-ln(pij) / lambda)
+        # + epsilon to stabilize MDE solver
+        T.data = np.sqrt(-np.log(T.data) / lam) + 1e-9
+        return T
+    else:
+        raise ValueError(
+            f"Mode {mode} unrecognized, should be 'probability'" " or 'distance'."
+        )

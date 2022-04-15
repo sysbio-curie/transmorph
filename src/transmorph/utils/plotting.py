@@ -111,7 +111,7 @@ def plot_result(
         Dot per inch to use for the figure.
     """
     if type(datasets) is AnnData:
-        datasets = [datasets]
+        datasets = list(datasets)
 
     # Checking parameters
     assert all(

@@ -3,6 +3,7 @@
 from .dimred import pca, pca_multi
 from .geometry import sparse_cdist
 from .graph import mutual_nearest_neighbors, nearest_neighbors, vertex_cover
+from .matrix import extract_chunks
 from .plotting import plot_result
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "nearest_neighbors",
     "sparse_cdist",
     "vertex_cover",
+    "extract_chunks",
 ]
