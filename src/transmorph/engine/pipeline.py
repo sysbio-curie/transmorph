@@ -6,23 +6,18 @@ import numpy as np
 
 from anndata import AnnData
 from transmorph import logger
+from transmorph import settings
+from transmorph.utils import anndata_manager as adm
+from transmorph.utils import AnnDataKeyIdentifiers
 from typing import List, Optional
 
 from .layers import (
     LayerInput,
-    LayerMerging,
     LayerOutput,
     Layer,
 )
 from .watchers import Watcher
 from .profiler import Profiler
-from ..utils.anndata_interface import (
-    set_info,
-    delete_info,
-    get_matrix,
-    set_matrix,
-    delete_matrix,
-)
 
 
 class TransmorphPipeline:
@@ -72,14 +67,16 @@ class TransmorphPipeline:
         self.output_layers = []
         self.layers: List[Layer] = []
         self.watchers: List[Watcher] = []
-        self.verbose = verbose
         self.profiler = Profiler()
+        self.verbose = verbose
+        if verbose:
+            settings.verbose = "INFO"
+        else:
+            settings.verbose = "WARNING"
 
-    def _log(self, msg: str, level: int = logging.DEBUG) -> None:
+    @staticmethod
+    def _log(msg: str, level: int = logging.DEBUG) -> None:
         logger.log(level, f"PIPELINE > {msg}")
-
-    def __str__(self):
-        return "(Pipeline)"
 
     def initialize(self, input_layer: LayerInput):
         """
@@ -140,7 +137,8 @@ class TransmorphPipeline:
                     "metadata is required."
                 )
                 warnings.warn(
-                    "AnnData expected as input, np.ndarray found. Casting to AnnData."
+                    "AnnData expected as input, np.ndarray found. Casting to AnnData. "
+                    "Gene names being absent can cause inconsistencies in the pipeline."
                 )
                 datasets[i] = AnnData(adata)
 
@@ -148,22 +146,6 @@ class TransmorphPipeline:
         if use_rep is not None:
             for adata in datasets:
                 assert use_rep in adata.obsm, f"KeyError: {use_rep}"
-
-        # Check reference is provided is needed
-        need_reference = False
-        for layer in self.layers:
-            if type(layer) is not LayerMerging or not layer.use_reference:
-                continue
-            need_reference = True
-            break
-        if need_reference:
-            assert reference is not None, (
-                "Some layers need a reference AnnData to be provided to "
-                "TransmorphPipeline.fit(..., reference=...). Please reconsider "
-                "using these layers, or provide a valid reference dataset."
-            )
-        elif reference is not None:
-            warnings.warn("Reference provided but no layer uses a reference.")
 
     def fit(
         self,
@@ -201,15 +183,29 @@ class TransmorphPipeline:
         self._check_input(datasets, reference, use_rep)
         if reference is not None:
             for adata in datasets:
-                if adata is not reference:
-                    set_info(adata, "is_reference", False)
-                else:
-                    set_info(adata, "is_reference", True)
-        if use_rep is not None:
-            self.input_layer.use_rep = use_rep
-            for adata in datasets:
-                set_matrix(adata, use_rep, adata.obsm[use_rep])
+                adm.set_value(
+                    adata=adata,
+                    key=AnnDataKeyIdentifiers.IsReference,
+                    field="uns",
+                    value=adata is reference,
+                    persist="pipeline",
+                )
 
+        # Setting base representation
+        for adata in datasets:
+            if use_rep is not None:
+                base_rep = adata.obsm[use_rep]
+            else:
+                base_rep = adata.X
+            adm.set_value(
+                adata=adata,
+                key=AnnDataKeyIdentifiers.BaseRepresentation,
+                field="obsm",
+                value=base_rep,
+                persist="pipeline",
+            )
+
+        # Logging some info
         ndatasets = len(datasets)
         nsamples = sum([adata.n_obs for adata in datasets])
         self._log(
@@ -226,23 +222,14 @@ class TransmorphPipeline:
             for watcher in called.watchers:
                 watcher.compute(datasets)
             layers_to_run += [(called, out) for out in output_layers]
-
-        if len(self.output_layers) > 0:
-            # TODO several output layers
-            output_kw = self.output_layers[0].get_representation()
             for adata in datasets:
-                adata.obsm["transmorph"] = get_matrix(adata, output_kw)
+                adm.clean(adata, "layer")
 
         # Cleaning
-        self.input_layer.clean(datasets)
-        if reference is not None:
-            for adata in datasets:
-                delete_info(adata, "is_reference")
-        if use_rep is not None:
-            for adata in datasets:
-                delete_matrix(adata, use_rep)
+        for adata in datasets:
+            adm.clean(adata, "pipeline")
 
-        # Summary
+        # Logging summary
         if len(self.output_layers) > 0:
             npoints = sum(adata.n_obs for adata in datasets)
             ndims = datasets[0].obsm["transmorph"].shape[1]

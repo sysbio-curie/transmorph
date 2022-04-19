@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import logging
 import numpy as np
 import warnings
@@ -10,8 +12,34 @@ from anndata import AnnData
 from transmorph import logger
 from typing import Any, Callable, List, Optional, Type
 
-from .layers import Layer, LayerMatching
+from .layers import LayerMatching
 from ..stats import edge_accuracy
+
+
+class IsWatchable:
+    """
+    A watchable object is an object that can be observed by a Watcher.
+    """
+
+    def __init__(self, compatible_watchers: List[Type]):
+        self.compatible_watchers = compatible_watchers
+        self.watchers: List[Watcher] = []
+
+    def add_watcher(self, watcher: Watcher) -> None:
+        """
+        Adds a watcher to the layer to monitor it. Only the Watcher
+        class should call this function, and is trusted to do so.
+        """
+        assert watcher not in self.watchers
+        assert isinstance(watcher, tuple(self.compatible_watchers))
+        self.watchers.append(watcher)
+
+    def update_watchers(self, datasets: List[AnnData]) -> None:
+        """
+        Calls the different watchers of the object.
+        """
+        for watcher in self.watchers:
+            watcher.compute(datasets)
 
 
 class Watcher(ABC):
@@ -44,12 +72,10 @@ class Watcher(ABC):
 
     WatcherID = 0
 
-    def __init__(self, target: Layer, target_type: Type):
+    def __init__(self, target: IsWatchable):
         self.watcher_id = Watcher.WatcherID
         Watcher.WatcherID += 1
-        assert (
-            target_type is Layer or type(target) is target_type
-        ), f"A watcher {self} can only watch a {target_type}. Found: {target}"
+        assert isinstance(target, IsWatchable)
         self.target = target
         self.target.add_watcher(self)
         self.verbose = False
@@ -97,9 +123,9 @@ class WatcherTiming(Watcher):
 
     def __init__(
         self,
-        target: Layer,
+        target: IsWatchable,
     ):
-        super().__init__(target, Layer)
+        super().__init__(target)
 
     def __str__(self) -> str:
         return f"{super().__str__()} - TIM"

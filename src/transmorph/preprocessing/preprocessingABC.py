@@ -2,15 +2,25 @@
 
 from abc import abstractmethod
 from typing import List
-from anndata import AnnData
 
 import numpy as np
 
 
 class PreprocessingABC:
+    """
+    Abstract class for Preprocessing objects. Implements a method
+    transform(List[np.ndarray]) that computes the preprocessing.
+    Child classes can be enriched by traits.
+    """
+
     def __init__(self):
-        self.verbose = False
+        pass
 
     @abstractmethod
-    def transform(self, datasets: List[AnnData], X_kw: str = "") -> List[np.ndarray]:
+    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+        """
+        Takes a list of representations as input, and returns a list of
+        representations as output in the same order. Retrieved metadata
+        can be used in this step.
+        """
         pass

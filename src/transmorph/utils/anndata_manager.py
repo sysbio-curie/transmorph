@@ -43,10 +43,10 @@ class AnnDataManager:
     AnnDataId: int = 0
 
     def __init__(self):
-        self.keys: Dict[AnnDataKeyIdentifiers, AnnDataKey] = {}
+        self.keys: Dict[Union[str, AnnDataKeyIdentifiers], AnnDataKey] = {}
 
     @staticmethod
-    def gen_keystring(base: AnnDataKeyIdentifiers) -> str:
+    def gen_keystring(base: Union[str, AnnDataKeyIdentifiers]) -> str:
         """
         Adds a prefix to a given key to decrease collision cases
         with other packages.
@@ -119,7 +119,7 @@ class AnnDataManager:
     def set_value(
         self,
         adata: AnnData,
-        key: AnnDataKeyIdentifiers,
+        key: Union[str, AnnDataKeyIdentifiers],
         field: ANNDATA_FIELDS,
         value: Any,
         persist: PERSIST_LEVELS = "pipeline",
@@ -190,7 +190,9 @@ class AnnDataManager:
         else:
             raise ValueError(f"Unrecognized field: {field}.")
 
-    def get_value(self, adata: AnnData, key: AnnDataKeyIdentifiers) -> Optional[Any]:
+    def get_value(
+        self, adata: AnnData, key: Union[str, AnnDataKeyIdentifiers]
+    ) -> Optional[Any]:
         """
         Retrieves value previously stored. Returns None if nothing is found.
         """

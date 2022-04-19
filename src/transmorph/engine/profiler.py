@@ -1,8 +1,45 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import time
+from typing import Dict
 
 from transmorph import logger
+
+
+def profile_method(method):
+    # Profiling decorator for class methods that
+    # allows to measure time elapsed in a profilable
+    # object.
+    def wrapper(*args):
+        self = args[0]
+        assert self is not None
+        assert isinstance(self, IsProfilable), f"{self} is not timeable."
+        tstr = f"{str(self)}.{method.__name__}"
+        tid = profiler.task_start(tstr)
+        result = method(*args)
+        elapsed = profiler.task_end(tid)
+        self.elapsed[tstr] = elapsed
+        return result
+
+    return wrapper
+
+
+class IsProfilable:
+    """
+    A profilable object can be monitored by the Profiler. Methods
+    to profile must be decorated by @profile_method
+    """
+
+    def __init__(self):
+        self.elapsed: Dict[str, float] = {}
+
+    def get_time_spent(self) -> float:
+        """
+        Returns the total time of all methods profiled.
+        """
+        return sum(self.elapsed.values())
 
 
 class Task:
@@ -95,3 +132,6 @@ class Profiler:
             + f"Ongoing tasks: {ntask_ongoing}\n"
             + f"Total tasks: {len(self.tasks)}"
         )
+
+
+profiler = Profiler()
