@@ -31,6 +31,7 @@ def set_matrix(adata: AnnData, dataset_key: str, X: np.ndarray) -> None:
     X: np.ndarray
         Matrix to write
     """
+    warnings.warn("Using anndata interface is deprecated.")
     if "transmorph" not in adata.uns:
         adata.uns["transmorph"] = {}
     if "matrices" not in adata.uns["transmorph"]:
@@ -54,6 +55,7 @@ def get_matrix(adata: AnnData, dataset_key: str) -> np.ndarray:
     -------
     The required np.ndarray.
     """
+    warnings.warn("Using anndata interface is deprecated.")
     if dataset_key == "":
         return adata.X
     assert isset_matrix(adata, dataset_key)
@@ -72,6 +74,7 @@ def delete_matrix(adata: AnnData, dataset_key: str) -> None:
     dataset_key: str
         Target matrix identifier
     """
+    warnings.warn("Using anndata interface is deprecated.")
     if not isset_matrix(adata, dataset_key):
         return
     del adata.uns["transmorph"]["matrices"][dataset_key]
@@ -89,6 +92,7 @@ def isset_matrix(adata: AnnData, dataset_key: str) -> bool:
     dataset_key: str
         Target matrix identifier
     """
+    warnings.warn("Using anndata interface is deprecated.")
     if dataset_key == "":
         return True
     if "transmorph" not in adata.uns:
@@ -113,6 +117,7 @@ def set_info(adata: AnnData, dataset_key: str, X) -> None:
     X: python object
         Object to write
     """
+    warnings.warn("Using anndata interface is deprecated.")
     if "transmorph" not in adata.uns:
         adata.uns["transmorph"] = {}
     if "infos" not in adata.uns["transmorph"]:
@@ -136,6 +141,7 @@ def get_info(adata: AnnData, dataset_key: str):
     -------
     The required np.ndarray.
     """
+    warnings.warn("Using anndata interface is deprecated.")
     assert isset_info(adata, dataset_key)
     return adata.uns["transmorph"]["infos"][dataset_key]
 
@@ -152,6 +158,7 @@ def delete_info(adata: AnnData, dataset_key: str) -> None:
     dataset_key: str
         Target info identifier
     """
+    warnings.warn("Using anndata interface is deprecated.")
     if not isset_info(adata, dataset_key):
         return
     del adata.uns["transmorph"]["infos"][dataset_key]
@@ -169,6 +176,7 @@ def isset_info(adata: AnnData, dataset_key: str) -> bool:
     dataset_key: str
         Target info identifier
     """
+    warnings.warn("Using anndata interface is deprecated.")
     if "transmorph" not in adata.uns:
         return False
     if "infos" not in adata.uns["transmorph"]:
@@ -180,6 +188,7 @@ def highly_variable_genes(adata: AnnData, n_top_genes: int) -> np.ndarray:
     """
     Substitute for highly variable genes from scanpy.
     """
+    warnings.warn("Using anndata interface is deprecated.")
     if n_top_genes >= adata.n_vars:
         return adata.var_names.to_numpy()
     # Patching a possible error in scanpy pipeline
@@ -197,6 +206,7 @@ def common_genes(
     """
     Returns common genes between datasets.
     """
+    warnings.warn("Using anndata interface is deprecated.")
     if len(datasets) == 0:
         return np.array([])
     adata = datasets[0]

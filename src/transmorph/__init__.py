@@ -2,5 +2,6 @@
 
 from ._logging import logger
 from ._settings import settings
+from .utils.anndata_manager import anndata_manager
 
-__all__ = ["logger", "settings"]
+__all__ = ["anndata_manager", "logger", "settings"]
