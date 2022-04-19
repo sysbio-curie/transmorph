@@ -7,6 +7,8 @@ import logging
 import random
 import string
 
+# Simple function that creates module global logger.
+
 _DEFAULT_LEVEL_CONSOLE = logging.INFO
 _DEFAULT_LEVEL_FILE = logging.DEBUG
 

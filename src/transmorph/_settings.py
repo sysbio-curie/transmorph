@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
+from typing import Literal
 
 from ._logging import logger, _DEFAULT_LEVEL_FILE, _DEFAULT_LEVEL_CONSOLE
 from .utils.type import assert_type
@@ -52,6 +53,30 @@ class TransmorphSettings:
             if type(handler) is logging.StreamHandler:
                 handler.setLevel(value)
         logger.debug(f"Setting console logger level to {value}.")
+
+    @property
+    def verbose(self) -> str:
+        if self.logging_level_console <= logging.DEBUG:
+            return "DEBUG"
+        if self.logging_level_console <= logging.INFO:
+            return "INFO"
+        if self.logging_level_console <= logging.WARNING:
+            return "WARNING"
+        return "ERROR"
+
+    @verbose.setter
+    def verbose(self, level: Literal["DEBUG", "INFO", "WARNING", "ERROR"]) -> None:
+        if level == "DEBUG":
+            int_level = logging.DEBUG
+        elif level == "INFO":
+            int_level = logging.INFO
+        elif level == "WARNING":
+            int_level = logging.WARNING
+        elif level == "ERROR":
+            int_level = logging.ERROR
+        else:
+            raise ValueError(level)
+        self.logging_level_console = int_level
 
 
 settings = TransmorphSettings()
