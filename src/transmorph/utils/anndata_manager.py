@@ -22,10 +22,16 @@ class AnnDataKeyIdentifiers(Enum):
     data storing in AnnData objects.
     """
 
-    AnnDataId = "adm_adata_id"
+    AnnDataId = "adata_id"
+    BaseRepresentation = "base_representation"
+    TransmorphRepresentation = "transmorph"
+    IsReference = "is_reference"
+    DistanceMatrix = "distance_matrix"
+    SimilarityMatrix = "similarity_matrix"
     VertexCoverRefAnchor = "vc_ref_anchor"
     VertexCoverIsAnchor = "vc_is_anchor"
-    KNNGraphEdges = "knn_edges"
+    KNNEdgesBool = "knn_edges_bool"
+    KNNEdgesLength = "knn_edges_length"
 
 
 AnnDataKey = namedtuple("AnnDataKey", ["identifier", "field", "persist"])
@@ -45,6 +51,8 @@ class AnnDataManager:
         Adds a prefix to a given key to decrease collision cases
         with other packages.
         """
+        if base == "transmorph":
+            return "transmorph"
         return f"tr_{base}"
 
     @staticmethod
