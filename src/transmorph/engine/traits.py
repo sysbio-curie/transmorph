@@ -10,9 +10,7 @@ from scipy.sparse import csr_matrix
 from transmorph import logger
 from transmorph.utils import anndata_manager as adm
 from transmorph.utils import AnnDataKeyIdentifiers
-from typing import Any, Dict, Hashable, List, Optional, Tuple, Type, Union
-
-from ..preprocessing.preprocessingABC import PreprocessingABC
+from typing import Any, Dict, Hashable, List, Literal, Optional, Tuple, Type, Union
 
 
 # A trait is a small module of features that can be added
@@ -36,43 +34,6 @@ def assert_trait(obj: Any, traits: Union[Type, Tuple[Type, ...]]):
         f"Object {obj} of type {type(obj)} is not endowed"
         f" with trait(s) {all_traits}."
     )
-
-
-class IsPreprocessable:
-    """
-    A preprocessable object is a layer that can contain internal
-    preprocessing steps.
-    """
-
-    def __init__(self) -> None:
-        self.preprocessings: List[PreprocessingABC] = []
-
-    @property
-    def has_preprocessings(self) -> bool:
-        return len(self.preprocessings) > 0
-
-    def add_preprocessing(self, preprocessing: PreprocessingABC) -> None:
-        """
-        Adds a preprocessing step to the layer, that will be applied
-        before running the internal algorithm.
-        """
-        self.preprocessings.append(preprocessing)
-
-    def preprocess(
-        self, datasets: List[AnnData], representer: IsRepresentable
-    ) -> List[np.ndarray]:
-        """
-        Runs all preprocessings.
-        """
-        IsRepresentable.assert_valid(representer)
-        Xs = [representer.get(adata) for adata in datasets]
-        for preprocessing in self.preprocessings:
-            # If necessary, we let preprocessing retrieve
-            # additional information
-            if isinstance(preprocessing, HasMetadata):
-                preprocessing.retrieve_all_metadata(datasets)
-            Xs = preprocessing.transform(Xs)
-        return Xs
 
 
 class IsRepresentable:
@@ -107,6 +68,7 @@ class HasMetadata(ABC):
     """
     This trait allows a module to retrieve and store metadata
     from an AnnData object.
+    TODO handle subsampling when metadata is related to samples
     """
 
     def __init__(self):
@@ -140,6 +102,116 @@ class HasMetadata(ABC):
         return self.metadata[index].get(key, None)
 
 
+class UsesCommonFeatures:
+    """
+    This trait will allow an object to retrieve feature names from an AnnData
+    object. They will then be used to slice count matrices in order to select
+    pairwise or total common genes intersection.
+    """
+
+    def __init__(self, mode: Literal["pairwise", "total"]):
+        assert mode in ("pairwise", "total")
+        self.mode = mode
+        # TFS is used for mode "total", PFS for mode "pairwise"
+        self.total_feature_slices: List[np.ndarray] = []
+        self.pairwise_feature_slices: Dict[
+            Tuple[int, int], Tuple[np.ndarray, np.ndarray]
+        ]
+        self.fitted = False
+
+    @staticmethod
+    def generate_slice(features: np.ndarray, selected: np.ndarray) -> np.ndarray:
+        """
+        Returns a boolean selector of features so that only features belonging
+        to selected are set to True.
+        """
+        fslice = np.zeros(features.shape).astype(bool)
+        for i, fname in enumerate(features):
+            fslice[i] = fname in selected
+        return fslice
+
+    def retrieve_common_features(self, datasets: List[AnnData]) -> None:
+        """
+        Stores gene names for later use.
+        """
+        assert len(datasets) > 0, "No dataset provided."
+        if self.mode == "pairwise":
+            for i, adata_i in enumerate(datasets):
+                features_i = adata_i.var_names.to_numpy()
+                for j, adata_j in enumerate(datasets):
+                    if j <= i:
+                        continue
+                    features_j = adata_j.var_names.to_numpy()
+                    common_features = np.intersect1d(features_i, features_j)
+                    assert (
+                        common_features.shape[0] > 0
+                    ), f"No common feature found between datasets {i} and {j}."
+                    slice_i = UsesCommonFeatures.generate_slice(
+                        features=features_i,
+                        selected=common_features,
+                    )
+                    slice_j = UsesCommonFeatures.generate_slice(
+                        features=features_j,
+                        selected=common_features,
+                    )
+                    self.pairwise_feature_slices[i, j] = (slice_i, slice_j)
+                    self.pairwise_feature_slices[j, i] = (slice_j, slice_i)
+        elif self.mode == "total":
+            common_features = datasets[0].var_names.to_numpy()
+            for adata in datasets[1:]:
+                common_features = np.intersect1d(
+                    common_features,
+                    adata.var_names.to_numpy(),
+                )
+            for adata in datasets:
+                self.total_feature_slices.append(
+                    UsesCommonFeatures.generate_slice(
+                        adata.var_names.to_numpy(), common_features
+                    )
+                )
+        else:
+            raise ValueError(f"Unknown mode {self.mode}.")
+        self.fitted = True
+
+    def get_common_features(
+        self, idx_1: int, idx_2: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Returns a tuple containing feature slices to use between two datasets
+        identified as their index. Raises a ValueError if idx_1, idx_2 is unknown.
+        """
+        assert self.fitted, "UsesCommonFeatures trait has not retrieved features."
+        if self.mode == "pairwise":
+            slices = self.pairwise_feature_slices.get((idx_1, idx_2), None)
+            if slices is None:
+                raise ValueError(f"No feature slice found for {idx_1}, {idx_2}.")
+        elif self.mode == "total":
+            assert idx_1 < len(self.total_feature_slices), f"{idx_1} out of bounds."
+            assert idx_2 < len(self.total_feature_slices), f"{idx_2} out of bounds."
+            slices = self.total_feature_slices[idx_1], self.total_feature_slices[idx_2]
+        else:
+            raise ValueError(f"Unknown mode {self.mode}.")
+        return slices
+
+    def slice_features(
+        self, X1: np.ndarray, X2: np.ndarray, idx_1: int, idx_2: int
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Returns a sliced view of datasets X1 and X2, indexed by idx_1 and idx_2. Raises
+        a ValueError if indices are not found, or if slice size does not coincidate.
+        """
+        s1, s2 = self.get_common_features(idx_1, idx_2)
+        assert s1.shape[0] == X1.shape[1], (
+            f"Unexpected matrix features number. Expected {s1.shape[0]}, "
+            f"found {X1.shape[1]}."
+        )
+        assert s2.shape[0] == X2.shape[1], (
+            f"Unexpected matrix features number. Expected {s2.shape[0]}, "
+            f"found {X2.shape[1]}."
+        )
+        return X1[:, s1], X2[:, s2]
+
+
 class UsesReference:
     """
     This trait is shared by objects that must use a reference
@@ -149,7 +221,8 @@ class UsesReference:
     def __init__(self):
         pass
 
-    def get_reference_index(self, datasets: List[AnnData]) -> int:
+    @staticmethod
+    def get_reference_index(datasets: List[AnnData]) -> int:
         """
         Returns index of AnnData that has been chosen as a reference. If
         found none or several, returns -1.
@@ -163,12 +236,63 @@ class UsesReference:
                 ref_id = k
         return ref_id
 
-    def get_reference(self, datasets: List[AnnData]) -> Optional[AnnData]:
+    @staticmethod
+    def get_reference(datasets: List[AnnData]) -> Optional[AnnData]:
         """
         Returns AnnData that has been chosen as a reference. If
         found none or several, returns None.
         """
-        ref_id = self.get_reference_index(datasets)
+        ref_id = UsesReference.get_reference_index(datasets)
         if ref_id == -1:
             return None
         return datasets[ref_id]
+
+
+class UsesInternalMetric:
+    """
+    Objects with this trait can set and get internal metrics of
+    AnnData objects.
+    """
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def set_metric(
+        adata: AnnData,
+        metric: str,
+        metric_kwargs: Optional[Dict] = None,
+    ) -> None:
+        """
+        Set AnnData internal metric.
+        """
+        if metric_kwargs is None:
+            metric_kwargs = {}
+        adm.set_value(
+            adata=adata,
+            key=AnnDataKeyIdentifiers.Metric,
+            field="uns",
+            value=metric,
+            persist="output",
+        )
+        adm.set_value(
+            adata=adata,
+            key=AnnDataKeyIdentifiers.MetricKwargs,
+            field="uns",
+            value=metric_kwargs,
+            persist="output",
+        )
+
+    @staticmethod
+    def get_metric(adata: AnnData) -> Optional[Tuple[str, Dict]]:
+        """
+        Returns metric and metric kwargs contained in anndata,
+        or None if not set.
+        """
+        metric = adm.get_value(adata, AnnDataKeyIdentifiers.Metric)
+        metric_kwargs = adm.get_value(adata, AnnDataKeyIdentifiers.MetricKwargs)
+        if metric is None:
+            return None
+        if metric_kwargs is None:
+            metric_kwargs = {}
+        return metric, metric_kwargs
