@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
-from .engine import Layer, TransmorphPipeline
-from .watchers import WatcherMatching, WatcherTiming
-
+from .engine import Layer, LayerInput, LayerOutput, Model
 
 __all__ = [
     "Layer",
-    "TransmorphPipeline",
-    "WatcherMatching",
-    "WatcherTiming",
+    "LayerInput",
+    "LayerOutput",
+    "Model",
 ]

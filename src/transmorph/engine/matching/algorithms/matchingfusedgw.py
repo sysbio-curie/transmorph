@@ -8,9 +8,9 @@ from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
 from typing import Any, Dict, Hashable, Literal, List, Optional, Tuple
 
-from transmorph.engine.matching import Matching
-from transmorph.engine.profiler import profile_method
-from transmorph.engine.traits import HasMetadata, UsesCommonFeatures, UsesMetric
+from ..matching import Matching
+from ...profiler import profile_method
+from ...traits import HasMetadata, UsesCommonFeatures, UsesMetric
 
 
 class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):

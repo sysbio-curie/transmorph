@@ -9,14 +9,14 @@ from abc import ABC, abstractmethod
 from anndata import AnnData
 from typing import List, Optional, Type
 
-from transmorph import settings
-from transmorph.engine.checking import LayerChecking
-from transmorph.engine.traits import CanLog, IsRepresentable, assert_trait
-from transmorph.engine.profiler import Profiler
-from transmorph.engine.watchers import IsWatchable, Watcher
-from transmorph.utils import anndata_manager as adm
-from transmorph.utils import AnnDataKeyIdentifiers
-from transmorph.utils.type import assert_type
+from .checking import LayerChecking
+from .traits import CanLog, IsRepresentable, assert_trait
+from .profiler import Profiler
+from .watchers import IsWatchable, Watcher
+from .. import settings
+from ..utils import anndata_manager as adm
+from ..utils import AnnDataKeyIdentifiers
+from ..utils.type import assert_type
 
 
 class Layer(ABC, CanLog):
@@ -160,20 +160,20 @@ class LayerOutput(Layer, IsRepresentable):
         return []
 
 
-class TransmorphPipeline(CanLog):
+class Model(CanLog):
     """
-    TransmorphPipeline wraps a layers network in order to represent an integration
-    pipeline. It needs at least one LayerInput and one LayerOutput.
+    Model wraps a layers network in order to represent an integration
+    algorithm. It needs at least one LayerInput and one LayerOutput.
 
     Initialization
     --------------
-    Initializing a TransmorphPipeline requires a connected network of
+    Initializing a Model requires a connected network of
     Layers. Network source must be an LayerInput, and finish with one
     or more LayerOutput.
 
     Running
     -------
-    To run the TransmorphPipeline, simply use the .run(List[AnnData]) method. It
+    To run the Model, simply use the .run(List[AnnData]) method. It
     will then recursively apply layers.
 
     Output
@@ -195,7 +195,7 @@ class TransmorphPipeline(CanLog):
     >>> li.connect(l1)
     >>> ...
     >>> ln.connect(lo)
-    >>> tp = TransmorphPipeline()
+    >>> tp = Model()
     >>> tp.initialize(li)
     >>> tp.run([adata1, adata2, adata3])
     >>> adata1.obsm['X_transmorph_0']

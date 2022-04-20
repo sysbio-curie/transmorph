@@ -5,7 +5,7 @@ import numpy as np
 
 from typing import List
 
-from transmorph.engine.transforming import Transformation
+from .. import Transformation
 
 
 class Standardize(Transformation):

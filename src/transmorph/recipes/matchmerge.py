@@ -9,7 +9,7 @@ from ..engine import (
     LayerMerging,
     LayerOutput,
     LayerPreprocessing,
-    TransmorphPipeline,
+    Model,
 )
 
 from ..engine.layers import LayerTransmorph
@@ -60,7 +60,7 @@ class MatchMerge:
             current.connect(nextl)
             current = nextl
 
-        self.pipeline = TransmorphPipeline(verbose=self.verbose)
+        self.pipeline = Model(verbose=self.verbose)
         self.pipeline.initialize(self.layers[0])
 
     def fit(self, datasets: List[AnnData], reference=None):

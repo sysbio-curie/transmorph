@@ -5,11 +5,11 @@ import logging
 from anndata import AnnData
 from typing import List
 
-from transmorph.engine import Layer
-from transmorph.engine.transforming import ContainsTransformations
-from transmorph.engine.profiler import IsProfilable, profile_method
-from transmorph.engine.traits import IsRepresentable
-from transmorph.engine.watchers import IsWatchable, WatcherTiming
+from .. import Layer
+from ..transforming import ContainsTransformations
+from ..profiler import IsProfilable, profile_method
+from ..traits import IsRepresentable
+from ..watchers import IsWatchable, WatcherTiming
 
 
 class LayerTransformation(

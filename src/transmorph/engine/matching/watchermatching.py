@@ -5,10 +5,10 @@ import numpy as np
 from anndata import AnnData
 from typing import Callable, Optional
 
-from transmorph.engine.matching import LayerMatching
-from transmorph.engine.subsampling import IsSubsamplable
-from transmorph.engine.watchers import Watcher
-from transmorph.stats import edge_accuracy
+from .layermatching import LayerMatching
+from ..subsampling import IsSubsamplable
+from ..watchers import Watcher
+from ...stats import edge_accuracy
 
 
 class WatcherMatching(Watcher):

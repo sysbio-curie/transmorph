@@ -4,8 +4,8 @@ from typing import List
 
 import numpy as np
 
-from transmorph.engine.transforming import Transformation
-from transmorph.engine.traits import UsesCommonFeatures
+from .. import Transformation
+from ..traits import UsesCommonFeatures
 
 
 class CommonGenes(Transformation, UsesCommonFeatures):

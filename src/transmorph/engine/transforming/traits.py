@@ -5,14 +5,14 @@ import numpy as np
 from anndata import AnnData
 from typing import List
 
-from transmorph.engine.transforming import Transformation
-from transmorph.engine.traits import (
+from ..transforming import Transformation
+from ..traits import (
     HasMetadata,
     IsRepresentable,
     UsesCommonFeatures,
     assert_trait,
 )
-from transmorph.utils.type import assert_type
+from ...utils.type import assert_type
 
 
 class ContainsTransformations:

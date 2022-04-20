@@ -5,8 +5,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, List, Type
 
-from transmorph.engine.profiler import IsProfilable
-from transmorph.engine.traits import CanLog, assert_trait
+from .profiler import IsProfilable
+from .traits import CanLog, assert_trait
 
 
 class IsWatchable:

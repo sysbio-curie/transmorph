@@ -5,10 +5,10 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from typing import Dict, List, Literal, Optional, Tuple
 
-from transmorph.engine.matching import Matching
-from transmorph.engine.profiler import profile_method
-from transmorph.engine.traits import UsesCommonFeatures
-from transmorph.utils import mutual_nearest_neighbors
+from ..matching import Matching
+from ...profiler import profile_method
+from ...traits import UsesCommonFeatures
+from ....utils import mutual_nearest_neighbors
 
 
 class MatchingMNN(Matching, UsesCommonFeatures):

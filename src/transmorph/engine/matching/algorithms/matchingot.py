@@ -9,10 +9,9 @@ from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
 from typing import Dict, List, Literal, Optional, Tuple
 
-from transmorph import logger
-from transmorph.engine.matching import Matching
-from transmorph.engine.profiler import profile_method
-from transmorph.engine.traits import UsesCommonFeatures
+from ..matching import Matching
+from ...profiler import profile_method
+from ...traits import UsesCommonFeatures
 
 
 class MatchingOT(Matching, UsesCommonFeatures):
@@ -70,13 +69,13 @@ class MatchingOT(Matching, UsesCommonFeatures):
         self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.max_iter = int(max_iter)
         if sinkhorn_epsilon is not None and optimizer != "sinkhorn":
-            logger.warn(
+            self.warn(
                 f"Setting sinkhorn epsilon has no effect for optimizer {optimizer}."
             )
         if (
             partial_n_dummies is not None or partial_transport_mass is not None
         ) and optimizer != "partial":
-            logger.warn(
+            self.warn(
                 "Setting partial_n_dummies or partial_transport_mass "
                 f"has no effect for optimizer {optimizer}."
             )

@@ -5,8 +5,8 @@ from typing import List
 
 import numpy as np
 
-from transmorph.engine.profiler import IsProfilable
-from transmorph.engine.traits import CanLog
+from ..profiler import IsProfilable
+from ..traits import CanLog
 
 
 class Transformation(ABC, CanLog, IsProfilable):

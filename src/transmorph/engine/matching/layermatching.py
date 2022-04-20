@@ -9,11 +9,12 @@ from anndata import AnnData
 from scipy.sparse import csr_matrix
 from typing import Dict, List, Literal, Optional, Tuple
 
-from transmorph.engine import Layer
-from transmorph.engine.matching import Matching, WatcherMatching
-from transmorph.engine.preprocessing import IsPreprocessable
-from transmorph.engine.profiler import IsProfilable, profile_method
-from transmorph.engine.subsampling import (
+from .matching import Matching
+from .watchermatching import WatcherMatching
+from ..engine import Layer
+from ..transforming import ContainsTransformations
+from ..profiler import IsProfilable, profile_method
+from ..subsampling import (
     IsSubsamplable,
     Subsampling,
     SubsamplingKeepAll,
@@ -27,7 +28,9 @@ from transmorph.engine.traits import (
 from transmorph.engine.watchers import IsWatchable, WatcherTiming
 
 
-class LayerMatching(Layer, IsPreprocessable, IsWatchable, IsProfilable, IsSubsamplable):
+class LayerMatching(
+    Layer, ContainsTransformations, IsWatchable, IsProfilable, IsSubsamplable
+):
     """
     This layer performs a matching between two or more datasets.
     It wraps an object derived from MatchingABC.
@@ -59,9 +62,9 @@ class LayerMatching(Layer, IsPreprocessable, IsWatchable, IsProfilable, IsSubsam
         """
         self.datasets = datasets.copy()  # Keeping a copy to preserve order
         # Preprocessing
-        if self.has_preprocessings:
+        if self.has_transformations:
             self.log("Calling preprocessings.", level=logging.INFO)
-        Xs = self.preprocess(datasets, self.embedding_reference)
+        Xs = self.transform(datasets, self.embedding_reference)
         if not isinstance(self.subsampling, SubsamplingKeepAll):
             self.log("Calling subsampling.", level=logging.INFO)
         # Subsampling

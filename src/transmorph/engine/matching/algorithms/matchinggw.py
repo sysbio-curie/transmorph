@@ -8,10 +8,9 @@ from scipy.spatial.distance import cdist
 from typing import Any, Hashable, Dict, List, Literal, Optional, Tuple
 from ot.gromov import gromov_wasserstein, entropic_gromov_wasserstein
 
-from transmorph import logger
-from transmorph.engine.matching import Matching
-from transmorph.engine.profiler import profile_method
-from transmorph.engine.traits import HasMetadata, UsesMetric
+from ..matching import Matching
+from ...profiler import profile_method
+from ...traits import HasMetadata, UsesMetric
 
 
 class MatchingGW(Matching, UsesMetric, HasMetadata):
@@ -82,7 +81,7 @@ class MatchingGW(Matching, UsesMetric, HasMetadata):
         )
         self.GW_loss = GW_loss
         if entropy_epsilon is not None and optimizer == "gw":
-            logger.warn("Epsilon specified has no effect on gw optimizer.")
+            self.warn("Epsilon specified has no effect on gw optimizer.")
         if entropy_epsilon is None:
             entropy_epsilon = 1e-2
         self.entropy_epsilon = entropy_epsilon

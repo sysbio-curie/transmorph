@@ -4,9 +4,9 @@ from typing import Literal, List
 
 import numpy as np
 
-from transmorph.engine.transforming import Transformation
-from transmorph.engine.traits import UsesCommonFeatures
-from transmorph.utils.dimred import pca_multi
+from .. import Transformation
+from ...traits import UsesCommonFeatures
+from ....utils.dimred import pca_multi
 
 
 class PCA(Transformation, UsesCommonFeatures):
