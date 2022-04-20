@@ -64,6 +64,7 @@ class MatchingFusedGW(MatchingABC, UsesCommonFeatures, HasMetadata, UsesInternal
     ):
         MatchingABC.__init__(self, str_type="MATCHING_FUSEDGW")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
+        UsesInternalMetric.__init__(self)
         HasMetadata.__init__(self)
         self.OT_metric = OT_metric
         self.OT_metric_kwargs = {} if OT_metric_kwargs is None else OT_metric_kwargs
@@ -91,9 +92,9 @@ class MatchingFusedGW(MatchingABC, UsesCommonFeatures, HasMetadata, UsesInternal
             metric = self.default_GW_metric_kwargs
         return {"metric": metric, "metric_kwargs": metric_kwargs}
 
-    def check_input(self, adata: AnnData, dataset_key: str = "") -> None:
+    def check_input(self, datasets: List[np.ndarray]) -> None:
         """
-        Adds some default metric information if needed.
+        Does nothing.
         """
         pass
 
