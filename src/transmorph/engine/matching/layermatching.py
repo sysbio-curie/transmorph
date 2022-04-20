@@ -39,8 +39,6 @@ class LayerMatching(Layer, IsPreprocessable, IsWatchable, IsProfilable, IsSubsam
             compatible_inputs=[IsRepresentable],
             str_identifier="MATCHING",
         )
-        IsPreprocessable.__init__(self)
-        IsProfilable.__init__(self)
         if subsampling is None:
             subsampling = SubsamplingKeepAll()
         IsSubsamplable.__init__(self, subsampling)
@@ -61,13 +59,13 @@ class LayerMatching(Layer, IsPreprocessable, IsWatchable, IsProfilable, IsSubsam
         """
         self.datasets = datasets.copy()  # Keeping a copy to preserve order
         if self.has_preprocessings:
-            self._log("Calling preprocessings.", level=logging.INFO)
+            self.log("Calling preprocessings.", level=logging.INFO)
         Xs = self.preprocess(datasets, self.embedding_reference)
         if not isinstance(self.subsampling, SubsamplingKeepAll):
-            self._log("Calling subsampling.", level=logging.INFO)
+            self.log("Calling subsampling.", level=logging.INFO)
         self.subsample(datasets=datasets, matrices=Xs)
         Xs = self.slice_matrices(datasets=datasets, matrices=Xs)
-        self._log("Calling matching.", level=logging.INFO)
+        self.log("Calling matching.", level=logging.INFO)
         if isinstance(self.matching, HasMetadata):
             self.matching.retrieve_all_metadata(datasets)
         if isinstance(self.matching, UsesCommonFeatures):
@@ -77,7 +75,7 @@ class LayerMatching(Layer, IsPreprocessable, IsWatchable, IsProfilable, IsSubsam
         self.matching.check_input(Xs)
         self.matching.fit(Xs, reference_idx=ref_id)
         # Trimming? Extrapolating?
-        self._log("Fitted.", level=logging.INFO)
+        self.log("Fitted.", level=logging.INFO)
         return self.output_layers
 
     def get_adata_index(self, target: AnnData) -> int:
@@ -87,7 +85,7 @@ class LayerMatching(Layer, IsPreprocessable, IsWatchable, IsProfilable, IsSubsam
         for i, adata in enumerate(self.datasets):
             if adata is target:
                 return i
-        raise ValueError(f"{target} is an unknown dataset.")
+        self.raise_error(ValueError, f"{target} is an unknown dataset.")
 
     def get_matching(
         self,
@@ -127,8 +125,9 @@ class LayerMatching(Layer, IsPreprocessable, IsWatchable, IsProfilable, IsSubsam
         if matching is None:
             matching = self.matching_matrices.get((ind_2, ind_1), None)
             if matching is None:
-                raise ValueError(
-                    f"No matching found between indices {ind_1} and {ind_2}."
+                self.raise_error(
+                    ValueError,
+                    f"No matching found between indices {ind_1} and {ind_2}.",
                 )
             matching = csr_matrix(matching.T)
         if mode == "row_normalize":
@@ -140,4 +139,4 @@ class LayerMatching(Layer, IsPreprocessable, IsWatchable, IsProfilable, IsSubsam
         elif mode == "raw":
             return matching
         else:
-            raise ValueError(f"Unrecognized mode {mode}.")
+            self.raise_error(ValueError, f"Unrecognized mode {mode}.")

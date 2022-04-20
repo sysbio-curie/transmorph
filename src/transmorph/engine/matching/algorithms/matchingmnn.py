@@ -59,7 +59,7 @@ class MatchingMNN(Matching, UsesCommonFeatures):
         n_neighbors: int = 10,
         common_features_mode: Literal["pairwise", "total"] = "pairwise",
     ):
-        Matching.__init__(self, str_type="MATCHING_MNN")
+        Matching.__init__(self, str_identifier="MNN")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
         self.metric = metric
         self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
@@ -75,7 +75,7 @@ class MatchingMNN(Matching, UsesCommonFeatures):
         for i in range(ndatasets):
             for j in range(i + 1, ndatasets):
                 Xi, Xj = datasets[i], datasets[j]
-                Xj, Xj = self.slice_features(Xi, Xj, i, j)
+                Xj, Xj = self.slice_features(X1=Xi, X2=Xj, idx_1=i, idx_2=j)
                 Tij = mutual_nearest_neighbors(
                     Xi,
                     Xj,

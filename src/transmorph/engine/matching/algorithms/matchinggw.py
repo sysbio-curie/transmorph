@@ -73,9 +73,7 @@ class MatchingGW(Matching, UsesMetric, HasMetadata):
         entropy_epsilon: Optional[float] = None,
         max_iter: int = int(1e6),
     ):
-        Matching.__init__(self, str_type="MATCHING_FUSEDGW")
-        UsesMetric.__init__(self)
-        HasMetadata.__init__(self)
+        Matching.__init__(self, str_identifier="GW")
         assert optimizer in ("gw", "entropic_gw"), f"Unknown optimizer: {optimizer}."
         self.optimizer = optimizer
         self.default_metric = default_metric

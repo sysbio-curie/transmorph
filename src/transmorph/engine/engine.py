@@ -350,7 +350,7 @@ class TransmorphPipeline(CanLog):
             called = layers_to_run.pop(0)
             output_layers = called.fit(datasets)
             if isinstance(called, IsWatchable):
-                called.update_watchers(datasets)
+                called.update_watchers()
             layers_to_run += [output_layers]
             for adata in datasets:
                 adm.clean(adata, "layer")

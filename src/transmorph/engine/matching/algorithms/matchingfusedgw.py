@@ -63,10 +63,8 @@ class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         GW_loss: str = "square_loss",
         common_features_mode: Literal["pairwise", "total"] = "pairwise",
     ):
-        Matching.__init__(self, str_type="MATCHING_FUSEDGW")
+        Matching.__init__(self, str_identifier="FUSEDGW")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
-        UsesMetric.__init__(self)
-        HasMetadata.__init__(self)
         self.OT_metric = OT_metric
         self.OT_metric_kwargs = {} if OT_metric_kwargs is None else OT_metric_kwargs
         self.default_GW_metric = (
@@ -120,7 +118,9 @@ class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         result: Dict[Tuple[int, int], csr_matrix] = {}
         for i, Xi in enumerate(datasets):
             for j, Xj in enumerate(datasets):
-                Xi_common, Xj_common = self.slice_features(Xi, Xj, i, j)
+                Xi_common, Xj_common = self.slice_features(
+                    X1=Xi, X2=Xj, idx_1=i, idx_2=j
+                )
                 M = cdist(
                     Xi_common,
                     Xj_common,

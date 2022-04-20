@@ -43,10 +43,9 @@ class Matching(ABC, IsProfilable, CanLog):
 
     def __init__(
         self,
-        str_identifier: str = "DEFAULT_MATCHING",
+        str_identifier: str = "DEFAULT",
     ):
-        CanLog.__init__(self, str_identifier=str_identifier)
-        IsProfilable.__init__(self)
+        CanLog.__init__(self, str_identifier=f"MATCHING_{str_identifier}")
         self.matchings: Dict[Tuple[int, int], csr_matrix] = {}
 
     def check_input(self, datasets: List[np.ndarray]) -> None:

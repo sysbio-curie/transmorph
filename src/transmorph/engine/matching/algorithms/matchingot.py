@@ -58,7 +58,7 @@ class MatchingOT(Matching, UsesCommonFeatures):
         partial_n_dummies: Optional[int] = None,
         max_iter: int = int(1e6),
     ):
-        Matching.__init__(self, str_type="MATCHING_OT")
+        Matching.__init__(self, str_identifier="OT")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
         assert optimizer in (
             "emd",
@@ -116,7 +116,7 @@ class MatchingOT(Matching, UsesCommonFeatures):
                 Xi, Xj = datasets[i], datasets[j]
                 ni, nj = Xi.shape[0], Xj.shape[0]
                 wi, wj = np.ones(ni) / ni, np.ones(nj) / nj
-                Xj, Xj = self.slice_features(Xi, Xj, i, j)
+                Xj, Xj = self.slice_features(X1=Xi, X2=Xj, idx_1=i, idx_2=j)
                 M = cdist(Xi, Xj, metric=self.metric, **self.metric_kwargs)
                 M /= M.max()
                 Tij = optimizer(a=wi, b=wj, M=M, numItermax=self.max_iter, **kwargs)

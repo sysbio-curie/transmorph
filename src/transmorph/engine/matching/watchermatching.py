@@ -44,15 +44,12 @@ class WatcherMatching(Watcher):
         ignore_unmatched: bool = False,
         callback: Optional[Callable] = None,
     ):
-        super().__init__(target)
+        super().__init__(target, str_identifier="MATCHING")
         if callback is None:
             callback = edge_accuracy
         self.callback = callback
         self.label = label
         self.ignore_unmatched = ignore_unmatched
-
-    def __str__(self) -> str:
-        return f"{super().__str__()} - MAT"
 
     def compute(self) -> None:
         """
@@ -62,7 +59,7 @@ class WatcherMatching(Watcher):
         - Matching accuracy (or any other specified metric), accessible via
           self.get_accuracy(adata1: AnnData, adata2: AnnData)
         """
-        self._log("Computing matching metrics...")
+        self.log("Computing matching metrics...")
         assert type(self.target) is LayerMatching
         self.readable = False
         for i, src in enumerate(self.target.datasets):
