@@ -4,12 +4,12 @@ from typing import Literal, List
 
 import numpy as np
 
-from transmorph.engine.preprocessing import Preprocessing
+from transmorph.engine.transforming import Transformation
 from transmorph.engine.traits import UsesCommonFeatures
 from transmorph.utils.dimred import pca_multi
 
 
-class PCA(Preprocessing, UsesCommonFeatures):
+class PCA(Transformation, UsesCommonFeatures):
     """
     Embeds a set of datasets in a common PC space, following one of the following
     strategies:
@@ -42,7 +42,7 @@ class PCA(Preprocessing, UsesCommonFeatures):
         n_components: int = 2,
         strategy: Literal["concatenate", "composite", "independent"] = "concatenate",
     ):
-        Preprocessing.__init__(self, str_identifier="PCA", preserves_space=False)
+        Transformation.__init__(self, str_identifier="PCA", preserves_space=False)
         UsesCommonFeatures.__init__(self, mode="total")
         self.n_components = n_components
         self.strategy = strategy

@@ -156,7 +156,7 @@ class LayerOutput(Layer, IsRepresentable):
         """
         for adata in datasets:
             X = self.embedding_reference.get(adata)
-            self.write(adata, X)
+            self.write(adata, X, self.embedding_reference.is_feature_space)
         return []
 
 
@@ -325,8 +325,10 @@ class TransmorphPipeline(CanLog):
         for adata in datasets:
             if use_rep is not None:
                 base_rep = adata.obsm[use_rep]
+                self.input_layer.is_feature_space = False
             else:
                 base_rep = adata.X
+                self.input_layer.is_feature_space = True
             adm.set_value(
                 adata=adata,
                 key=AnnDataKeyIdentifiers.BaseRepresentation,

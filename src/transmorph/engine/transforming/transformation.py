@@ -9,7 +9,7 @@ from transmorph.engine.profiler import IsProfilable
 from transmorph.engine.traits import CanLog
 
 
-class Preprocessing(ABC, CanLog, IsProfilable):
+class Transformation(ABC, CanLog, IsProfilable):
     """
     Abstract class for Preprocessing objects. Implements a method
     transform(List[np.ndarray]) that computes the preprocessing.
@@ -17,7 +17,7 @@ class Preprocessing(ABC, CanLog, IsProfilable):
     """
 
     def __init__(self, preserves_space: bool = False, str_identifier: str = "DEFAULT"):
-        CanLog.__init__(self, str_identifier=f"PREPROCESSING_{str_identifier}")
+        CanLog.__init__(self, str_identifier=f"TRANSFORMATION_{str_identifier}")
         self.preserves_space = preserves_space
 
     @abstractmethod

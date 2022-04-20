@@ -6,14 +6,14 @@ from anndata import AnnData
 from typing import List
 
 from transmorph.engine import Layer
-from transmorph.engine.preprocessing import IsPreprocessable
+from transmorph.engine.transforming import ContainsTransformations
 from transmorph.engine.profiler import IsProfilable, profile_method
 from transmorph.engine.traits import IsRepresentable
 from transmorph.engine.watchers import IsWatchable, WatcherTiming
 
 
-class LayerPreprocessing(
-    Layer, IsPreprocessable, IsWatchable, IsProfilable, IsRepresentable
+class LayerTransformation(
+    Layer, ContainsTransformations, IsWatchable, IsProfilable, IsRepresentable
 ):
     """
     This layer encapsulates a series of preprocessing algorithms derived
@@ -34,10 +34,13 @@ class LayerPreprocessing(
         """
         Simply runs preprocessing algorithms and returns the result.
         """
-        if self.has_preprocessings:
-            self.log("Calling preprocessings.", level=logging.INFO)
-        Xs = self.preprocess(datasets, self.embedding_reference)
+        if self.has_transformations:
+            self.log("Calling transformations.", level=logging.INFO)
+        Xs = self.transform(datasets, self.embedding_reference)
+        is_feature_space = (
+            self.embedding_reference.is_feature_space and self.preserves_space
+        )
         for adata, X_after in zip(datasets, Xs):
-            self.write(adata, X_after)
+            self.write(adata, X_after, is_feature_space=is_feature_space)
         self.log("Done.", level=logging.INFO)
         return self.output_layers

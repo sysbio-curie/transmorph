@@ -4,18 +4,18 @@ from typing import List
 
 import numpy as np
 
-from transmorph.engine.preprocessing import Preprocessing
+from transmorph.engine.transforming import Transformation
 from transmorph.engine.traits import UsesCommonFeatures
 
 
-class CommonGenes(Preprocessing, UsesCommonFeatures):
+class CommonGenes(Transformation, UsesCommonFeatures):
     """
     Puts anndata objects in their larger common gene space. Only acts
     on AnnData.X matrix, so this must be done very early in a pipeline.
     """
 
     def __init__(self):
-        Preprocessing.__init__(
+        Transformation.__init__(
             self,
             str_identifier="COMMON_GENES",
             preserves_space=False,

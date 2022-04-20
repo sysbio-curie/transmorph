@@ -88,17 +88,21 @@ class CanLog:
 class IsRepresentable:
     """
     A representable object is able to provide a matrix
-    representation of an AnnData object.
+    representation of an AnnData object. It keeps track whether
+    its representation is in the initial feature space.
     """
 
     def __init__(self, repr_key: Union[str, AnnDataKeyIdentifiers]):
         self.repr_key = repr_key
-        self.is_feature_space = repr_key == AnnDataKeyIdentifiers.BaseRepresentation
+        self.is_feature_space = True
 
-    def write(self, adata: AnnData, X: Union[np.ndarray, csr_matrix]) -> None:
+    def write(
+        self, adata: AnnData, X: Union[np.ndarray, csr_matrix], is_feature_space: bool
+    ) -> None:
         """
         Inserts a new AnnData representation.
         """
+        self.is_feature_space = is_feature_space
         adm.set_value(
             adata=adata, key=self.repr_key, field="obsm", value=X, persist="pipeline"
         )

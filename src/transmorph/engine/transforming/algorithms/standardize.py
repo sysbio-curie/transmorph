@@ -5,10 +5,10 @@ import numpy as np
 
 from typing import List
 
-from transmorph.engine.preprocessing import Preprocessing
+from transmorph.engine.transforming import Transformation
 
 
-class Standardize(Preprocessing):
+class Standardize(Transformation):
     """
     Centers (substracts mean) and scales (divides by STD) datasets.
 
@@ -22,7 +22,9 @@ class Standardize(Preprocessing):
     """
 
     def __init__(self, center: bool = True, scale: bool = True):
-        Preprocessing.__init__(self, str_identifier="STANDARDIZE", preserves_space=True)
+        Transformation.__init__(
+            self, str_identifier="STANDARDIZE", preserves_space=True
+        )
         self.center = center
         self.scale = scale
 
