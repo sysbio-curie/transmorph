@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 
-from anndata import AnnData
+import numpy as np
+
 from scipy.sparse import csr_matrix
-from typing import Dict, Literal, Optional
+from typing import Dict, List, Literal, Optional, Tuple
 
-from .matchingABC import MatchingABC
-from ..subsampling.subsamplingABC import SubsamplingABC
-from ..utils import mutual_nearest_neighbors
+from transmorph.engine.matching import Matching
+from transmorph.engine.profiler import profile_method
+from transmorph.engine.traits import UsesCommonFeatures
+from transmorph.utils import mutual_nearest_neighbors
 
 
-class MatchingMNN(MatchingABC):
+class MatchingMNN(Matching, UsesCommonFeatures):
     """
     Mutual Nearest Neighbors (MNN) matching. Two samples xi and yj
     are matched if xi belongs to the k-nearest neighbors (kNNs) of yj
@@ -55,23 +57,32 @@ class MatchingMNN(MatchingABC):
         metric: str = "sqeuclidean",
         metric_kwargs: Optional[Dict] = None,
         n_neighbors: int = 10,
-        algorithm: Literal["auto", "exact", "nndescent"] = "auto",
-        subsampling: Optional[SubsamplingABC] = None,
+        common_features_mode: Literal["pairwise", "total"] = "pairwise",
     ):
-        super().__init__(metadata_keys=[], subsampling=subsampling)
+        Matching.__init__(self, str_type="MATCHING_MNN")
+        UsesCommonFeatures.__init__(self, mode=common_features_mode)
         self.metric = metric
         self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.n_neighbors = n_neighbors
-        self.algorithm = algorithm
 
-    def _match2(self, adata1: AnnData, adata2: AnnData) -> csr_matrix:
-        X = MatchingABC.to_match(adata1)
-        Y = MatchingABC.to_match(adata2)
-        T = mutual_nearest_neighbors(
-            X,
-            Y,
-            metric=self.metric,
-            metric_kwargs=self.metric_kwargs,
-            n_neighbors=self.n_neighbors,
-        )
-        return T
+    @profile_method
+    def fit(self, datasets: List[np.ndarray]) -> Dict[Tuple[int, int], csr_matrix]:
+        """
+        Computes MNN between pairs of datasets.
+        """
+        ndatasets = len(datasets)
+        results = {}
+        for i in range(ndatasets):
+            for j in range(i + 1, ndatasets):
+                Xi, Xj = datasets[i], datasets[j]
+                Xj, Xj = self.slice_features(Xi, Xj, i, j)
+                Tij = mutual_nearest_neighbors(
+                    Xi,
+                    Xj,
+                    metric=self.metric,
+                    metric_kwargs=self.metric_kwargs,
+                    n_neighbors=self.n_neighbors,
+                )
+                results[i, j] = csr_matrix(Tij)
+                results[j, i] = csr_matrix(Tij.T)
+        return results

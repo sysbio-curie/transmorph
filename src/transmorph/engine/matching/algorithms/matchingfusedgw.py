@@ -8,11 +8,12 @@ from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
 from typing import Any, Dict, Hashable, Literal, List, Optional, Tuple
 
-from transmorph.engine.matching import MatchingABC
-from transmorph.engine.traits import HasMetadata, UsesCommonFeatures, UsesInternalMetric
+from transmorph.engine.matching import Matching
+from transmorph.engine.profiler import profile_method
+from transmorph.engine.traits import HasMetadata, UsesCommonFeatures, UsesMetric
 
 
-class MatchingFusedGW(MatchingABC, UsesCommonFeatures, HasMetadata, UsesInternalMetric):
+class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
     """
     Fused Gromov-Wasserstein-based matching. Embeds the
     ot.gromov.fused_gromov_wasserstein method from POT:
@@ -62,9 +63,9 @@ class MatchingFusedGW(MatchingABC, UsesCommonFeatures, HasMetadata, UsesInternal
         GW_loss: str = "square_loss",
         common_features_mode: Literal["pairwise", "total"] = "pairwise",
     ):
-        MatchingABC.__init__(self, str_type="MATCHING_FUSEDGW")
+        Matching.__init__(self, str_type="MATCHING_FUSEDGW")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
-        UsesInternalMetric.__init__(self)
+        UsesMetric.__init__(self)
         HasMetadata.__init__(self)
         self.OT_metric = OT_metric
         self.OT_metric_kwargs = {} if OT_metric_kwargs is None else OT_metric_kwargs
@@ -92,12 +93,7 @@ class MatchingFusedGW(MatchingABC, UsesCommonFeatures, HasMetadata, UsesInternal
             metric = self.default_GW_metric_kwargs
         return {"metric": metric, "metric_kwargs": metric_kwargs}
 
-    def check_input(self, datasets: List[np.ndarray]) -> None:
-        """
-        Does nothing.
-        """
-        pass
-
+    @profile_method
     def fit(
         self,
         datasets: List[np.ndarray],

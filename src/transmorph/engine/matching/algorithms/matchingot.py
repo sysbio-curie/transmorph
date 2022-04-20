@@ -3,15 +3,19 @@
 import numpy as np
 
 from ot import emd
+from ot.bregman import sinkhorn_stabilized
+from ot.partial import partial_wasserstein
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
 from typing import Dict, List, Literal, Optional, Tuple
 
-from transmorph.engine.matching import MatchingABC
+from transmorph import logger
+from transmorph.engine.matching import Matching
+from transmorph.engine.profiler import profile_method
 from transmorph.engine.traits import UsesCommonFeatures
 
 
-class MatchingEMD(MatchingABC, UsesCommonFeatures):
+class MatchingOT(Matching, UsesCommonFeatures):
     """
     Earth Mover's Distance-based matching. Embeds the ot.emd
     method from POT:
@@ -45,28 +49,67 @@ class MatchingEMD(MatchingABC, UsesCommonFeatures):
 
     def __init__(
         self,
+        optimizer: Literal["emd", "sinkhorn", "partial"] = "emd",
         metric: str = "sqeuclidean",
         metric_kwargs: Optional[Dict] = None,
-        max_iter: int = int(1e6),
         common_features_mode: Literal["pairwise", "total"] = "pairwise",
+        sinkhorn_epsilon: Optional[float] = None,
+        partial_transport_mass: Optional[float] = None,
+        partial_n_dummies: Optional[int] = None,
+        max_iter: int = int(1e6),
     ):
-        MatchingABC.__init__(self, str_type="MATCHING_EMD")
+        Matching.__init__(self, str_type="MATCHING_OT")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
+        assert optimizer in (
+            "emd",
+            "sinkhorn",
+            "partial",
+        ), f"Unknown optimizer: {optimizer}."
+        self.optimizer = optimizer
         self.metric = metric
         self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.max_iter = int(max_iter)
+        if sinkhorn_epsilon is not None and optimizer != "sinkhorn":
+            logger.warn(
+                f"Setting sinkhorn epsilon has no effect for optimizer {optimizer}."
+            )
+        if (
+            partial_n_dummies is not None or partial_transport_mass is not None
+        ) and optimizer != "partial":
+            logger.warn(
+                "Setting partial_n_dummies or partial_transport_mass "
+                f"has no effect for optimizer {optimizer}."
+            )
+        if sinkhorn_epsilon is None:
+            sinkhorn_epsilon = 1e-2
+        if partial_transport_mass is None:
+            partial_transport_mass = 1.0
+        if partial_n_dummies is None:
+            partial_n_dummies = 1
+        self.sinkhorn_epsilon = sinkhorn_epsilon
+        self.partial_transport_mass = partial_transport_mass
+        self.partial_n_dummies = partial_n_dummies
 
-    def check_input(self, datasets: List[np.ndarray]) -> None:
-        """
-        Does nothing.
-        """
-        pass
-
+    @profile_method
     def fit(self, datasets: List[np.ndarray]) -> Dict[Tuple[int, int], csr_matrix]:
         """
-        Simply gathers datasets and compute exact optimal transport.
+        Computes OT between pairs of datasets with the right optimizer.
         """
         ndatasets = len(datasets)
+        kwargs = {}
+        if self.optimizer == "emd":
+            optimizer = emd
+        elif self.optimizer == "sinkhorn":
+            optimizer = sinkhorn_stabilized
+            kwargs = {"reg": self.sinkhorn_epsilon}
+        elif self.optimizer == "partial":
+            optimizer = partial_wasserstein
+            kwargs = {
+                "m": self.partial_transport_mass,
+                "nb_dummies": self.partial_n_dummies,
+            }
+        else:
+            raise ValueError(f"Unknown optimizer: {self.optimizer}")
         results = {}
         for i in range(ndatasets):
             for j in range(i + 1, ndatasets):
@@ -76,7 +119,7 @@ class MatchingEMD(MatchingABC, UsesCommonFeatures):
                 Xj, Xj = self.slice_features(Xi, Xj, i, j)
                 M = cdist(Xi, Xj, metric=self.metric, **self.metric_kwargs)
                 M /= M.max()
-                Tij = emd(wi, wj, M, numItermax=self.max_iter)
+                Tij = optimizer(a=wi, b=wj, M=M, numItermax=self.max_iter, **kwargs)
                 results[i, j] = csr_matrix(Tij)
                 results[j, i] = csr_matrix(Tij.T)
         return results
