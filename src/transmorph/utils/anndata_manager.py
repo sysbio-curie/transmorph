@@ -22,14 +22,21 @@ class AnnDataKeyIdentifiers(Enum):
     data storing in AnnData objects.
     """
 
-    AnnDataId = "adata_id"
+    # Default representation keys
     BaseRepresentation = "base_representation"
     TransmorphRepresentation = "transmorph"
+
+    # AnnData metadata
+    AnnDataId = "adata_id"
     IsReference = "is_reference"
+    Metric = "default_metric"
+    MetricKwargs = "default_metric_kwargs"
+
+    # Structural keys
     DistanceMatrix = "distance_matrix"
     SimilarityMatrix = "similarity_matrix"
-    VertexCoverRefAnchor = "vc_ref_anchor"
-    VertexCoverIsAnchor = "vc_is_anchor"
+    SubsamplingAnchors = "ssp_anchors"
+    SubsamplingReferences = "ssp_references"
     KNNEdgesBool = "knn_edges_bool"
     KNNEdgesLength = "knn_edges_length"
 

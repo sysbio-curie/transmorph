@@ -15,8 +15,8 @@ from transmorph.engine.preprocessing import IsPreprocessable
 from transmorph.engine.profiler import IsProfilable, profile_method
 from transmorph.engine.subsampling import (
     IsSubsamplable,
+    Subsampling,
     SubsamplingKeepAll,
-    SubsamplingABC,
 )
 from transmorph.engine.traits import (
     HasMetadata,
@@ -33,13 +33,11 @@ class LayerMatching(Layer, IsPreprocessable, IsWatchable, IsProfilable, IsSubsam
     It wraps an object derived from MatchingABC.
     """
 
-    def __init__(
-        self, matching: Matching, subsampling: Optional[SubsamplingABC]
-    ) -> None:
+    def __init__(self, matching: Matching, subsampling: Optional[Subsampling]) -> None:
         Layer.__init__(
             self,
             compatible_inputs=[IsRepresentable],
-            str_type="MATCHING",
+            str_identifier="MATCHING",
         )
         IsPreprocessable.__init__(self)
         IsProfilable.__init__(self)

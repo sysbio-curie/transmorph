@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-import logging
 from scipy.sparse import csr_matrix
-from transmorph import logger
 from transmorph.engine.profiler import IsProfilable, profile_method
+from transmorph.engine.traits import CanLog
 
 import numpy as np
 from typing import Dict, List, Literal, Tuple
 
 
-class Matching(ABC, IsProfilable):
+class Matching(ABC, IsProfilable, CanLog):
     """
     A matching is a class containing a function match(x1, ..., xn), able
     to predict matching between dataset samples (possibly fuzzy). Any class
@@ -29,9 +28,9 @@ class Matching(ABC, IsProfilable):
         Subsampling scheme to apply before computing the matching,
         can be very helpful when dealing with large datasets.
 
-    str_type: str
+    str_identifier: str
         String representation of the matching algorithm. Will
-        typically be the matching algorithm name.
+        typically be the matching algorithm name. For logging purposes.
 
     Attributes
     ----------
@@ -44,28 +43,11 @@ class Matching(ABC, IsProfilable):
 
     def __init__(
         self,
-        str_type: str = "DEFAULT_MATCHING",
+        str_identifier: str = "DEFAULT_MATCHING",
     ):
+        CanLog.__init__(self, str_identifier=str_identifier)
         IsProfilable.__init__(self)
         self.matchings: Dict[Tuple[int, int], csr_matrix] = {}
-        self.str_type = str_type
-
-    def _log(self, msg: str, level: int = logging.DEBUG):
-        """
-        Transmits a message to the logging module.
-
-        Parameters
-        ----------
-        msg: str
-            Message to print
-
-        leve: int, default = logging.DEBUG
-            Message priority. Set it higher to make it pass filters.
-        """
-        logger.log(level, f"{self} > {msg}")
-
-    def __str__(self) -> str:
-        return self.str_type
 
     def check_input(self, datasets: List[np.ndarray]) -> None:
         """
@@ -113,8 +95,9 @@ class Matching(ABC, IsProfilable):
         if matching is None:
             matching = self.matchings.get((ind_2, ind_1), None)
             if matching is None:
-                raise ValueError(
-                    f"No matching found between indices {ind_1} and {ind_2}."
+                self.raise_error(
+                    ValueError,
+                    f"No matching found between indices {ind_1} and {ind_2}.",
                 )
             matching = csr_matrix(matching.T)
         if mode == "row_normalize":
@@ -126,7 +109,7 @@ class Matching(ABC, IsProfilable):
         elif mode == "raw":
             return matching
         else:
-            raise ValueError(f"Unrecognized mode {mode}.")
+            self.raise_error(ValueError, f"Unrecognized mode {mode}.")
 
     @abstractmethod
     @profile_method
