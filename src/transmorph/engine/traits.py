@@ -93,6 +93,7 @@ class IsRepresentable:
 
     def __init__(self, repr_key: Union[str, AnnDataKeyIdentifiers]):
         self.repr_key = repr_key
+        self.is_feature_space = repr_key == AnnDataKeyIdentifiers.BaseRepresentation
 
     def write(self, adata: AnnData, X: Union[np.ndarray, csr_matrix]) -> None:
         """
@@ -168,6 +169,7 @@ class UsesCommonFeatures:
             Tuple[int, int], Tuple[np.ndarray, np.ndarray]
         ]
         self.fitted = False
+        self.is_feature_space = False
 
     @staticmethod
     def generate_slice(features: np.ndarray, selected: np.ndarray) -> np.ndarray:
@@ -180,10 +182,15 @@ class UsesCommonFeatures:
             fslice[i] = fname in selected
         return fslice
 
-    def retrieve_common_features(self, datasets: List[AnnData]) -> None:
+    def retrieve_common_features(
+        self, datasets: List[AnnData], is_feature_space: bool
+    ) -> None:
         """
         Stores gene names for later use.
         """
+        self.is_feature_space = is_feature_space
+        if not is_feature_space:
+            return
         assert len(datasets) > 0, "No dataset provided."
         if self.mode == "pairwise":
             for i, adata_i in enumerate(datasets):
@@ -249,18 +256,23 @@ class UsesCommonFeatures:
         idx_1: int,
         X2: Optional[np.ndarray] = None,
         idx_2: Optional[int] = None,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
         """
         Returns a sliced view of datasets X1 and X2, indexed by idx_1 and idx_2. Raises
         a ValueError if indices are not found, or if slice size does not coincidate.
         """
-        if X2 is None and idx_2 is None:
+        assert not ((X2 is None) ^ (idx_2 is None))
+        # If we are not in feature space, we must skip the processing.
+        if not self.is_feature_space:
+            if X2 is None:
+                return X1
+            return X1, X2
+        if X2 is None:
             assert (
                 self.mode == "total"
             ), "Calling slice_features with one dataset is only"
             " valid for mode == 'total'."
             return X1[self.total_feature_slices[idx_1]]
-        assert X2 is not None and idx_2 is not None
         s1, s2 = self.get_common_features(idx_1, idx_2)
         assert s1.shape[0] == X1.shape[1], (
             f"Unexpected matrix features number. Expected {s1.shape[0]}, "
