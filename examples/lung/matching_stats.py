@@ -9,7 +9,7 @@ from transmorph.engine import (
     LayerMatching,
     WatcherMatching,
     WatcherTiming,
-    TransmorphPipeline,
+    Model,
 )
 from transmorph.matching import MatchingEMD, MatchingMNN
 from transmorph.preprocessing import PPCommonGenes, PPStandardize, PPPCA
@@ -67,7 +67,7 @@ for methname, method in zip(method_names, methods):
         watch2 = WatcherMatching(target=lmatch, label=LABEL, ignore_unmatched=True)
         watch3 = WatcherTiming(lmatch)
 
-        pipeline = TransmorphPipeline(verbose=False)
+        pipeline = Model(verbose=False)
         pipeline.initialize(linput)
 
         # Running the pipeline

@@ -6,7 +6,7 @@ from transmorph.engine import (
     LayerMatching,
     LayerMerging,
     LayerOutput,
-    TransmorphPipeline,
+    Model,
 )
 from transmorph.matching import MatchingMNN
 from transmorph.merging import MergingBarycenter
@@ -30,7 +30,7 @@ lmerge.connect(lout)
 # Merge uses input values
 lmerge.set_embedding_reference(linput)
 
-pipeline = TransmorphPipeline(verbose=VERBOSE)
+pipeline = Model(verbose=VERBOSE)
 pipeline.initialize(linput)
 
 # Running the pipeline

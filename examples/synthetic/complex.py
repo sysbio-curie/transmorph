@@ -7,7 +7,7 @@ from transmorph.engine import (
     LayerMatching,
     LayerMerging,
     LayerOutput,
-    TransmorphPipeline,
+    Model,
 )
 
 from transmorph.checking import CheckingEntropy
@@ -41,7 +41,7 @@ lcheck.connect_yes(lmatch_final)
 lmatch_final.connect(lmerge_final)
 lmerge_final.connect(lout)
 
-pipeline = TransmorphPipeline(verbose=VERBOSE)
+pipeline = Model(verbose=VERBOSE)
 pipeline.initialize(linput)
 
 # Running the pipeline

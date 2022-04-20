@@ -7,7 +7,7 @@ from transmorph.engine import (
     LayerMerging,
     LayerOutput,
     LayerPreprocessing,
-    TransmorphPipeline,
+    Model,
 )
 from transmorph.matching import MatchingMNN
 from transmorph.merging import MergingMDI
@@ -37,7 +37,7 @@ lpppca.connect(lmatch)
 lmatch.connect(lmerge)
 lmerge.connect(lout)
 
-pipeline = TransmorphPipeline(verbose=True)
+pipeline = Model(verbose=True)
 pipeline.initialize(linput)
 
 # Running the pipeline

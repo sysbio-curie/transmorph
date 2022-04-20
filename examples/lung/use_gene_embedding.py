@@ -7,7 +7,7 @@ from transmorph.engine import (
     LayerMerging,
     LayerOutput,
     LayerPreprocessing,
-    TransmorphPipeline,
+    Model,
 )
 from transmorph.matching import MatchingMNN
 from transmorph.merging import MergingLinearCorrection
@@ -40,7 +40,7 @@ lmerge.connect(lout)
 # merge in gene space
 lmerge.set_embedding_reference(lppstd)
 
-pipeline = TransmorphPipeline(verbose=True)
+pipeline = Model(verbose=True)
 pipeline.initialize(linput)
 
 # Running the pipeline

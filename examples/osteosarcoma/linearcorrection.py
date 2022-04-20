@@ -9,7 +9,7 @@ from transmorph.engine import (
     LayerMerging,
     LayerOutput,
     LayerPreprocessing,
-    TransmorphPipeline,
+    Model,
 )
 from transmorph.matching import MatchingMNN
 from transmorph.merging import MergingLinearCorrection
@@ -59,7 +59,7 @@ lmergelc2.connect(lout)
 
 lmergelc2.set_embedding_reference(lppstd)
 
-pipeline = TransmorphPipeline(verbose=VERBOSE)
+pipeline = Model(verbose=VERBOSE)
 pipeline.initialize(linput)
 
 # Running the pipeline

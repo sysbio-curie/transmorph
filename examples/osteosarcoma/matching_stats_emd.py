@@ -9,7 +9,7 @@ from transmorph.engine import (
     LayerMatching,
     WatcherMatching,
     WatcherTiming,
-    TransmorphPipeline,
+    Model,
 )
 from transmorph.matching import MatchingEMD
 from transmorph.preprocessing import PPCommonGenes, PPStandardize, PPPCA
@@ -38,7 +38,7 @@ for n_top_genes in [10000]:
     watch1 = WatcherMatching(lmatch, "cell_type")
     watch2 = WatcherTiming(lmatch)
 
-    pipeline = TransmorphPipeline(verbose=False)
+    pipeline = Model(verbose=False)
     pipeline.initialize(linput)
 
     # Running the pipeline
