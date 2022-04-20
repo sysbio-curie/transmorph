@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 
 from typing import Literal, List
-from anndata import AnnData
 
 import numpy as np
 
-from .preprocessingABC import PreprocessingABC
-from ..utils.anndata_interface import get_matrix
-from ..utils.dimred import pca_multi
+from transmorph.engine.preprocessing import Preprocessing
+from transmorph.engine.traits import UsesCommonFeatures
+from transmorph.utils.dimred import pca_multi
 
 
-class PPPCA(PreprocessingABC):
+class PCA(Preprocessing, UsesCommonFeatures):
     """
     Embeds a set of datasets in a common PC space, following one of the following
     strategies:
@@ -43,16 +42,19 @@ class PPPCA(PreprocessingABC):
         n_components: int = 2,
         strategy: Literal["concatenate", "composite", "independent"] = "concatenate",
     ):
-        super().__init__()
+        Preprocessing.__init__(self, str_identifier="PCA", preserves_space=False)
+        UsesCommonFeatures.__init__(self, mode="total")
         self.n_components = n_components
         self.strategy = strategy
 
-    def transform(self, datasets: List[AnnData], X_kw: str = "") -> List[np.ndarray]:
+    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+        """
+        Slices datasets in the same space if necessary, then carries out the
+        information.
+        """
         to_reduce = []
-        for adata in datasets:
-            to_reduce.append(get_matrix(adata, X_kw))
-        if self.verbose:
-            print(f"PPPCA > Running PCA with {self.n_components} components...")
+        for i, X in enumerate(datasets):
+            to_reduce.append(self.slice_features(X1=X, idx_1=i))
         return pca_multi(
             to_reduce,
             n_components=self.n_components,

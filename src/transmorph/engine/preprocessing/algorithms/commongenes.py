@@ -15,7 +15,11 @@ class CommonGenes(Preprocessing, UsesCommonFeatures):
     """
 
     def __init__(self):
-        Preprocessing.__init__(self, str_identifier="COMMON_GENES")
+        Preprocessing.__init__(
+            self,
+            str_identifier="COMMON_GENES",
+            preserves_space=False,
+        )
         UsesCommonFeatures.__init__(self, mode="total")
 
     def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:

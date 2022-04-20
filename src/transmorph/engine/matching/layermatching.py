@@ -58,18 +58,27 @@ class LayerMatching(Layer, IsPreprocessable, IsWatchable, IsProfilable, IsSubsam
         preprocessings.
         """
         self.datasets = datasets.copy()  # Keeping a copy to preserve order
+        # Preprocessing
         if self.has_preprocessings:
             self.log("Calling preprocessings.", level=logging.INFO)
         Xs = self.preprocess(datasets, self.embedding_reference)
         if not isinstance(self.subsampling, SubsamplingKeepAll):
             self.log("Calling subsampling.", level=logging.INFO)
+        # Subsampling
         self.subsample(datasets=datasets, matrices=Xs)
         Xs = self.slice_matrices(datasets=datasets, matrices=Xs)
+        # Matching
         self.log("Calling matching.", level=logging.INFO)
-        if isinstance(self.matching, HasMetadata):
+        if isinstance(self.matching, HasMetadata):  # Metadata gathering
             self.matching.retrieve_all_metadata(datasets)
-        if isinstance(self.matching, UsesCommonFeatures):
-            self.matching.retrieve_common_features(datasets)
+        if isinstance(self.matching, UsesCommonFeatures):  # Common features slicing
+            is_feature_space = (
+                self.embedding_reference.is_feature_space and self.preserves_space
+            )
+            self.matching.retrieve_common_features(
+                datasets,
+                is_feature_space=is_feature_space,
+            )
         # Checks if there is a reference dataset
         ref_id = UsesReference.get_reference_index(datasets)
         self.matching.check_input(Xs)

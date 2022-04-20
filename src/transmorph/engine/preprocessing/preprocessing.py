@@ -16,8 +16,9 @@ class Preprocessing(ABC, CanLog, IsProfilable):
     Child classes can be enriched by traits.
     """
 
-    def __init__(self, str_identifier: str = "DEFAULT"):
+    def __init__(self, preserves_space: bool = False, str_identifier: str = "DEFAULT"):
         CanLog.__init__(self, str_identifier=f"PREPROCESSING_{str_identifier}")
+        self.preserves_space = preserves_space
 
     @abstractmethod
     def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:

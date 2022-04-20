@@ -28,6 +28,10 @@ class IsPreprocessable:
     def has_preprocessings(self) -> bool:
         return len(self.preprocessings) > 0
 
+    @property
+    def preserves_space(self) -> bool:
+        return all(pp.preserves_space for pp in self.preprocessings)
+
     def add_preprocessing(self, preprocessing: Preprocessing) -> None:
         """
         Adds a preprocessing step to the layer, that will be applied
@@ -43,6 +47,7 @@ class IsPreprocessable:
         """
         Runs all preprocessings.
         """
+        is_feature_space = representer.is_feature_space
         assert_trait(representer, IsRepresentable)
         Xs = [representer.get(adata) for adata in datasets]
         for preprocessing in self.preprocessings:
@@ -51,6 +56,7 @@ class IsPreprocessable:
             if isinstance(preprocessing, HasMetadata):
                 preprocessing.retrieve_all_metadata(datasets)
             if isinstance(preprocessing, UsesCommonFeatures):
-                preprocessing.retrieve_common_features(datasets)
+                preprocessing.retrieve_common_features(datasets, is_feature_space)
             Xs = preprocessing.transform(Xs)
+            is_feature_space = preprocessing.preserves_space
         return Xs

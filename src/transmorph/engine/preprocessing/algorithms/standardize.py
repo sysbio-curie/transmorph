@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
-from typing import List
-from anndata import AnnData
 
 import numpy as np
 
-from .preprocessingABC import PreprocessingABC
-from ..utils.anndata_interface import get_matrix
+from typing import List
+
+from transmorph.engine.preprocessing import Preprocessing
 
 
-class PPStandardize(PreprocessingABC):
+class Standardize(Preprocessing):
     """
     Centers (substracts mean) and scales (divides by STD) datasets.
 
@@ -23,16 +22,14 @@ class PPStandardize(PreprocessingABC):
     """
 
     def __init__(self, center: bool = True, scale: bool = True):
-        super().__init__()
+        Preprocessing.__init__(self, str_identifier="STANDARDIZE", preserves_space=True)
         self.center = center
         self.scale = scale
 
-    def transform(self, datasets: List[AnnData], X_kw: str = "") -> List[np.ndarray]:
-        if self.verbose:
-            print("PPSTD > Standardizing datasets...")
+    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
         results = []
-        for adata in datasets:
-            X = get_matrix(adata, X_kw).copy()
+        for X in datasets:
+            X = X.copy()
             if self.center:
                 X -= X.mean(axis=0)
             if self.scale:
