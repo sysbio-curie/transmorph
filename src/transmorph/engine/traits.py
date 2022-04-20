@@ -38,6 +38,53 @@ def assert_trait(obj: Any, traits: Union[Type, Tuple[Type, ...]]):
     )
 
 
+class CanLog:
+    """
+    This trait allows a class to send messages to the logging system.
+    """
+
+    def __init__(self, str_identifier: str):
+        self.str_identifier = str_identifier
+
+    def log(self, msg: str, level: int = logging.DEBUG) -> None:
+        """
+        Transmits a message to the logging module.
+
+        Parameters
+        ----------
+        msg: str
+            Message to print
+
+        leve: int, default = logging.DEBUG
+            Message priority. Set it higher to make it pass filters.
+        """
+        logger.log(level, f"{self.str_identifier} > {msg}")
+
+    def warn(self, msg: str) -> None:
+        """
+        Emits a warning message that will both reach the logger and the warning
+        console stream.
+
+        Parameters
+        ----------
+        msg: str
+            Message to print
+        """
+        warnings.warn(msg)
+        self.log(msg, level=logging.WARNING)
+
+    def raise_error(self, error_type: Type, msg: str = "") -> None:
+        """
+        Raises an error of the specified type, and prints the message both in
+        the console and in the logging stream.
+        """
+        self.log(f"{error_type.__name__} -- {msg}")
+        raise error_type(msg)
+
+    def __str__(self) -> str:
+        return self.str_identifier
+
+
 class IsRepresentable:
     """
     A representable object is able to provide a matrix
@@ -66,7 +113,7 @@ class IsRepresentable:
         return X
 
 
-class HasMetadata(ABC):
+class HasMetadata(ABC, CanLog):
     """
     This trait allows a module to retrieve and store metadata
     from an AnnData object.
@@ -74,6 +121,7 @@ class HasMetadata(ABC):
     """
 
     def __init__(self):
+        CanLog.__init__(self, "TraitHasMetadata")
         self.metadata: List[Dict[Hashable, Any]] = []
 
     def retrieve_all_metadata(self, datasets: List[AnnData]) -> None:
@@ -96,7 +144,7 @@ class HasMetadata(ABC):
         registered.
         """
         if index >= len(self.metadata):
-            logger.warn(
+            self.warn(
                 f"List index {index} out of range for list "
                 f"of size {len(self.metadata)}."
             )
@@ -196,12 +244,23 @@ class UsesCommonFeatures:
         return slices
 
     def slice_features(
-        self, X1: np.ndarray, X2: np.ndarray, idx_1: int, idx_2: int
+        self,
+        X1: np.ndarray,
+        idx_1: int,
+        X2: Optional[np.ndarray] = None,
+        idx_2: Optional[int] = None,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Returns a sliced view of datasets X1 and X2, indexed by idx_1 and idx_2. Raises
         a ValueError if indices are not found, or if slice size does not coincidate.
         """
+        if X2 is None and idx_2 is None:
+            assert (
+                self.mode == "total"
+            ), "Calling slice_features with one dataset is only"
+            " valid for mode == 'total'."
+            return X1[self.total_feature_slices[idx_1]]
+        assert X2 is not None and idx_2 is not None
         s1, s2 = self.get_common_features(idx_1, idx_2)
         assert s1.shape[0] == X1.shape[1], (
             f"Unexpected matrix features number. Expected {s1.shape[0]}, "
@@ -298,50 +357,3 @@ class UsesMetric:
         if metric_kwargs is None:
             metric_kwargs = {}
         return metric, metric_kwargs
-
-
-class CanLog:
-    """
-    This trait allows a class to send messages to the logging system.
-    """
-
-    def __init__(self, str_identifier: str):
-        self.str_identifier = str_identifier
-
-    def log(self, msg: str, level: int = logging.DEBUG) -> None:
-        """
-        Transmits a message to the logging module.
-
-        Parameters
-        ----------
-        msg: str
-            Message to print
-
-        leve: int, default = logging.DEBUG
-            Message priority. Set it higher to make it pass filters.
-        """
-        logger.log(level, f"{self.str_identifier} > {msg}")
-
-    def warn(self, msg: str) -> None:
-        """
-        Emits a warning message that will both reach the logger and the warning
-        console stream.
-
-        Parameters
-        ----------
-        msg: str
-            Message to print
-        """
-        warnings.warn(msg)
-        self.log(msg, level=logging.WARNING)
-
-    def raise_error(self, error_type: Type, msg: str = "") -> None:
-        """
-        Raises an error of the specified type, and prints the message both in
-        the console and in the logging stream.
-        """
-        self.log(f"{error_type.__name__} -- {msg}")
-        raise error_type(msg)
-
-    def __str__(self) -> str:
-        return self.str_identifier

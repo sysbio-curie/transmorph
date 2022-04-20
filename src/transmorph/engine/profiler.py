@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import Dict
 
-from transmorph import logger
+from transmorph.engine.traits import CanLog
 
 
 def profile_method(method):
@@ -29,7 +29,9 @@ def profile_method(method):
 class IsProfilable:
     """
     A profilable object can be monitored by the Profiler. Methods
-    to profile must be decorated by @profile_method
+    to profile must be decorated by @profile_method.
+    TODO: add a self.set_stop() allowing to monitor particular
+    function parts
     """
 
     def __init__(self):
@@ -73,12 +75,13 @@ class Task:
         self.state = "ended"
 
 
-class Profiler:
+class Profiler(CanLog):
     """
     Manages tasks to profile.
     """
 
     def __init__(self):
+        CanLog.__init__(self, str_identifier="PROFILER")
         self.tasks = []
         self.n_tasks_ongoing = 0
         self.tstart = -1
@@ -90,7 +93,7 @@ class Profiler:
             self.tstart = time.time()
         self.tasks.append(Task(task_id, time.time(), task_label))
         self.n_tasks_ongoing += 1
-        logger.debug(f"Profiler > Starting task {task_label} [{task_id}]")
+        self.log(f"Starting task {task_label} [{task_id}]")
         return task_id
 
     def task_end(self, task_id: int) -> float:
@@ -100,7 +103,7 @@ class Profiler:
             self.tend = time.time()
         self.tasks[task_id].end()
         elapsed = self.tasks[task_id].elapsed()
-        logger.debug(f"Profiler > Ending task [{task_id}], elapsed: {elapsed}s")
+        self.log(f"Ending task [{task_id}], elapsed: {elapsed}s")
         return elapsed
 
     def elapsed(self) -> float:
