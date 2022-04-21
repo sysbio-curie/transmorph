@@ -15,6 +15,9 @@ from sklearn.neighbors import NearestNeighbors
 
 from typing import Dict, List, Literal, Optional, Tuple
 
+from .. import settings
+from transmorph.utils.dimred import pca
+
 
 def fsymmetrize(A: csr_matrix) -> csr_matrix:
     # Symmetrizes a probabilistic matching matrix, given
@@ -130,15 +133,15 @@ def mutual_nearest_neighbors(
 
 def nearest_neighbors(
     X: np.ndarray,
-    metric: str = "sqeuclidean",
-    metric_kwargs: dict = {},
-    n_neighbors: int = 10,
-    include_self_loops: bool = False,
-    symmetrize: bool = False,
-    algorithm: str = "auto",
-    random_seed: int = 42,
-    n_jobs: int = -1,
-    use_nndescent: Optional[bool] = None,
+    n_neighbors: int = settings.n_neighbors,
+    metric: str = settings.neighbors_metric,
+    metric_kwargs: Optional[Dict] = settings.neighbors_metric_kwargs,
+    algorithm: Literal["auto", "sklearn", "nndescent"] = settings.neighbors_algorithm,
+    use_pcs: Optional[int] = settings.neighbors_n_pcs,
+    mode: Literal["distances", "edges"] = "distances",
+    include_self_loops: bool = settings.neighbors_include_self_loops,
+    symmetrize: bool = settings.neighbors_symmetrize,
+    random_seed: int = settings.neighbors_random_seed,
 ) -> csr_matrix:
     """
     Encapsulates k-nearest neighbors algorithms.
@@ -157,6 +160,13 @@ def nearest_neighbors(
     n_neighbors: int, default = 10
         Number of neighbors to use between datasets.
 
+    mode: Literal["distances", "edges"], default = "distances"
+        Type of data contained in the returned matrix.
+
+    use_pcs: int, default = 30
+        If X.shape[1] > use_pcs, a PC view will be used instead of X.
+        Set it to None to disable this functionality.
+
     include_self_loops: bool, default = False
         Whether points are neighbors of themselves.
 
@@ -171,26 +181,26 @@ def nearest_neighbors(
 
     """
     nx = X.shape[0]
-    if use_nndescent is not None:
-        warnings.warn(
-            "use_nndescent is deprecated and will be removed in the future. "
-            "Please use 'algorithm' instead."
-        )
-    elif algorithm == "nndescent":
+    if algorithm == "nndescent":
         use_nndescent = True
     elif algorithm == "sklearn":
         use_nndescent = False
     elif algorithm == "auto":
-        use_nndescent = nx > 4096
+        use_nndescent = nx > settings.large_dataset_threshold
     else:
         raise ValueError(
             f"Unrecognized algorithm: {algorithm}. Valid options are 'auto',"
             " 'nndescent', 'sklearn'."
         )
+    assert mode in ("edges", "distances"), f"Unknown mode: {mode}."
+    assert use_pcs is None or use_pcs > 0, f"Invalid PC number: {use_pcs}"
 
     if nx < n_neighbors:
         warnings.warn("X.shape[0] < n_neighbors. " "Setting n_neighbors to X.shape[0].")
         n_neighbors = nx
+
+    if use_pcs is not None and use_pcs < X.shape[1]:
+        X = pca(X, n_components=use_pcs)
 
     # Nearest neighbors
     connectivity = None
@@ -223,7 +233,6 @@ def nearest_neighbors(
             n_neighbors=n_neighbors,
             metric=metric,
             metric_params=metric_kwargs,
-            n_jobs=n_jobs,
         )
         nn.fit(X)
         if include_self_loops:

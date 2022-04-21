@@ -37,8 +37,6 @@ class AnnDataKeyIdentifiers(Enum):
     SimilarityMatrix = "similarity_matrix"
     SubsamplingAnchors = "ssp_anchors"
     SubsamplingReferences = "ssp_references"
-    KNNEdgesBool = "knn_edges_bool"
-    KNNEdgesLength = "knn_edges_length"
 
 
 AnnDataKey = namedtuple("AnnDataKey", ["identifier", "field", "persist"])
@@ -88,7 +86,9 @@ class AnnDataManager:
         field[str_key] = value
 
     @staticmethod
-    def get(field: Union[pd.DataFrame, Dict], str_key: str) -> Any:
+    def get(
+        field: Union[pd.DataFrame, Dict], str_key: Union[str, AnnDataKeyIdentifiers]
+    ) -> Any:
         """
         Retrieves information for an AnnData field, returns None if
         not present.
@@ -198,16 +198,26 @@ class AnnDataManager:
             raise ValueError(f"Unrecognized field: {field}.")
 
     def get_value(
-        self, adata: AnnData, key: Union[str, AnnDataKeyIdentifiers]
+        self,
+        adata: AnnData,
+        key: Union[str, AnnDataKeyIdentifiers],
+        transmorph_key: bool = True,
+        field: Optional[
+            Literal["obs", "var", "obsm", "varm", "obsp", "varp", "uns"]
+        ] = None,
     ) -> Optional[Any]:
         """
         Retrieves value previously stored. Returns None if nothing is found.
         """
-        str_key = AnnDataManager.gen_keystring(key)
-        ad_key = self.keys.get(key, None)
-        if ad_key is None:
-            return None
-        field = ad_key.field
+        if transmorph_key:
+            str_key = AnnDataManager.gen_keystring(key)
+            ad_key = self.keys.get(key, None)
+            if ad_key is None:
+                return None
+            field = ad_key.field
+        else:
+            assert field is not None, "Field must be specified for non-transmorph keys."
+            str_key = key
         if field == "obs":
             return AnnDataManager.get(adata.obs, str_key)
         if field == "var":

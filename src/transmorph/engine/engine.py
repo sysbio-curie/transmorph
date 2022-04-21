@@ -9,8 +9,10 @@ from abc import ABC, abstractmethod
 from anndata import AnnData
 from typing import List, Optional, Type
 
+from transmorph.engine.checking.traits import CanCatchChecking
+
 from .checking import LayerChecking
-from .traits import CanLog, IsRepresentable, assert_trait
+from .traits import CanLog, IsRepresentable, UsesNeighbors, assert_trait
 from .profiler import Profiler
 from .watchers import IsWatchable, Watcher
 from .. import settings
@@ -236,6 +238,7 @@ class Model(CanLog):
                 isinstance(current_layer, LayerChecking)
                 and current_layer.rejected_layer is not None
             ):
+                assert isinstance(current_layer.rejected_layer, Layer)
                 output_layers = current_layer.output_layers + [
                     current_layer.rejected_layer
                 ]
@@ -294,9 +297,11 @@ class Model(CanLog):
         -> np.ndarray(shape=(n,d))
         """
         # Initializing
+        assert len(datasets) > 0, "No dataset provided."
         assert self.input_layer is not None, "Pipeline must be initialized first."
 
         # Check datasets are of the right type, casting them if necessary
+        # TODO: raise hard error if obs/var names needed.
         for i, adata in enumerate(datasets):
             if type(adata) is not AnnData:
                 assert type(adata) is np.ndarray, (
@@ -310,16 +315,15 @@ class Model(CanLog):
                 )
                 datasets[i] = AnnData(adata)
 
-        # Sets reference if necessary
-        if reference is not None:
-            for adata in datasets:
-                adm.set_value(
-                    adata=adata,
-                    key=AnnDataKeyIdentifiers.IsReference,
-                    field="uns",
-                    value=adata is reference,
-                    persist="pipeline",
-                )
+        # Flags reference dataset if any
+        for adata in datasets:
+            adm.set_value(
+                adata=adata,
+                key=AnnDataKeyIdentifiers.IsReference,
+                field="uns",
+                value=adata is reference,
+                persist="pipeline",
+            )
 
         # Setting base representation
         for adata in datasets:
@@ -337,6 +341,15 @@ class Model(CanLog):
                 persist="pipeline",
             )
 
+        # Computes NN graph if needed
+        if UsesNeighbors.Used:
+            if settings.neighbors_use_scanpy:
+                UsesNeighbors.set_settings_to_scanpy(datasets[0])
+            UsesNeighbors.compute_neighbors_graphs(
+                datasets,
+                representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
+            )
+
         # Logging some info
         ndatasets = len(datasets)
         nsamples = sum([adata.n_obs for adata in datasets])
@@ -351,6 +364,8 @@ class Model(CanLog):
         while len(layers_to_run) > 0:
             called = layers_to_run.pop(0)
             output_layers = called.fit(datasets)
+            if isinstance(called, CanCatchChecking) and called.called_by_checking:
+                called.restore_previous_mapping()
             if isinstance(called, IsWatchable):
                 called.update_watchers()
             layers_to_run += [output_layers]

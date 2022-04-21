@@ -2,41 +2,18 @@
 
 import numpy as np
 
-from anndata import AnnData
-from math import log
-from numba import njit
 from typing import List
 
-
-from .checkingABC import CheckingABC
-from ..utils.anndata_interface import get_matrix
-from ..utils.graph import nearest_neighbors
+from transmorph.engine.traits import UsesNeighbors
 
 
-@njit(fastmath=True)
-def entropy(dataset_counts: np.ndarray, labels: np.ndarray):
-    """Computes entropy of a discrete label distribution."""
-    (npoints, k), nlabels = dataset_counts.shape, len(labels)
-    entropies = np.zeros(npoints)
-    if nlabels <= 1:
-        return entropies
-    probs = np.zeros((npoints, nlabels))
-    for i in range(npoints):
-        for lb in range(nlabels):
-            probs[i, lb] = np.sum(dataset_counts[i] == lb + 1)
-    probs /= k
-    for i in range(npoints):
-        n_classes = np.count_nonzero(probs[i])
-        if n_classes <= 1:
-            continue
-        for p in probs[i]:
-            if p == 0.0:
-                continue
-            entropies[i] -= p * log(p)
-    return entropies
+from .. import Checking
+from ...profiler import profile_method
+from ....stats.entropy import label_entropy
+from ....utils.graph import nearest_neighbors
 
 
-class CheckingEntropy(CheckingABC):
+class NeighborEntropy(Checking, UsesNeighbors):
     """
     Uses a neighborhood criterion to provide a numerical estimation
     of neighborhood sanity after integration. It is computed as follows,
@@ -59,32 +36,33 @@ class CheckingEntropy(CheckingABC):
     """
 
     def __init__(
-        self, threshold: float = 0.5, n_neighbors: int = 20, verbose: bool = False
+        self,
+        threshold: float = 0.5,
+        n_neighbors: int = 20,
     ):
-        super().__init__(threshold=threshold, accept_if_lower=False, verbose=verbose)
+        Checking.__init__(self, str_identifier="NEIGHBOR_ENTROPY")
+        self.threshold = threshold
         self.n_neighbors = n_neighbors
 
-    def evaluate_metric(self, datasets: List[AnnData], X_kw: str = "") -> float:
-        Xs_before = [get_matrix(adata, "") for adata in datasets]
-        Xs_after = [get_matrix(adata, X_kw) for adata in datasets]
+    def check_input(self, datasets: List[np.ndarray]) -> None:
+        """
+        Checks correct common dimensionality.
+        """
+        assert len(datasets) > 0
+        dimensionality = datasets[0].shape[1]
+        assert all(X.shape[1] == dimensionality for X in datasets)
 
+    @profile_method
+    def check(self, datasets: List[np.ndarray]) -> bool:
+        """
+        Computes label entropy, and return true if it is above threshold.
+        """
         # Fraction of neighborhood conserved
+        ndatasets = len(datasets)
         inner_nn_before = [
-            nearest_neighbors(
-                X,
-                n_neighbors=self.n_neighbors,
-                symmetrize=False,
-            )
-            for X in Xs_before
+            self.get_neighbors_graph(i, mode="edges") for i in range(ndatasets)
         ]
-        inner_nn_after = [
-            nearest_neighbors(
-                X,
-                n_neighbors=self.n_neighbors,
-                symmetrize=False,
-            )
-            for X in Xs_after
-        ]
+        inner_nn_after = [nearest_neighbors(X, mode="edges") for X in datasets]
         nn_conserved = np.concatenate(  # For each point, ratio of kept neighbors
             [
                 np.array(nnb.multiply(nna).sum(axis=1)) / self.n_neighbors
@@ -94,7 +72,7 @@ class CheckingEntropy(CheckingABC):
         )[:, 0]
 
         # Neighborhood entropy
-        X_all = np.concatenate(Xs_after, axis=0)
+        X_all = np.concatenate(datasets, axis=0)
         N = X_all.shape[0]
         T_all = nearest_neighbors(
             X_all,
@@ -103,8 +81,8 @@ class CheckingEntropy(CheckingABC):
         )
         belongs = np.zeros(N)
         offset = 0
-        for i, adata in enumerate(datasets, 1):
-            n_obs = adata.n_obs
+        for i, X in enumerate(datasets, 1):
+            n_obs = X.shape[0]
             belongs[offset : offset + n_obs] = i
             offset += n_obs
         T_all = T_all @ np.diag(belongs)
@@ -119,7 +97,8 @@ class CheckingEntropy(CheckingABC):
             origins[i] = oi
 
         labels = list(set(origins.flatten()))
-        entropies = entropy(origins, np.array(labels).astype(int))
+        entropies = label_entropy(origins, np.array(labels).astype(int))
 
-        # Combining
-        return (nn_conserved @ entropies) / N
+        # Combining (n,) @ (n,)
+        entropy = (nn_conserved @ entropies) / N
+        return entropy >= self.threshold

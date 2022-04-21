@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import logging
-from typing import Literal
+from typing import Any, Dict, Literal, Optional
 
 from ._logging import logger, _DEFAULT_LEVEL_FILE, _DEFAULT_LEVEL_CONSOLE
 from .utils.type import assert_type
@@ -13,8 +13,22 @@ class TransmorphSettings:
     """
 
     def __init__(self):
-        self._logging_level_file = _DEFAULT_LEVEL_FILE
-        self._logging_level_console = _DEFAULT_LEVEL_CONSOLE
+        # Logging
+        self._logging_level_file: int = _DEFAULT_LEVEL_FILE
+        self._logging_level_console: int = _DEFAULT_LEVEL_CONSOLE
+        # Neighbors
+        self._n_neighbors: int = 15
+        self._neighbors_algorithm: Literal["auto", "sklearn", "nndescent"] = "auto"
+        self.neighbors_include_self_loops: bool = False
+        self.neighbors_metric: str = "sqeuclidean"
+        self._neighbors_metric_kwargs: Dict[str, Any] = {}
+        self._neighbors_n_pcs: Optional[int] = 30
+        self.neighbors_random_seed: int = 42
+        self.neighbors_symmetrize: bool = False
+        self.neighbors_use_scanpy: bool = True
+        # Scale
+        self.large_dataset_threshold: int = 2048
+        # End
         logger.debug("Transmorph settings initialized.")
 
     @property
@@ -77,6 +91,51 @@ class TransmorphSettings:
         else:
             raise ValueError(level)
         self.logging_level_console = int_level
+
+    @property
+    def n_neighbors(self) -> int:
+        return self._n_neighbors
+
+    @n_neighbors.setter
+    def n_neighbors(self, n: int) -> None:
+        n = int(n)
+        assert n > 0, f"Invalid number of neighbors {n}"
+        self._n_neighbors = n
+
+    @property
+    def neighbors_algorithm(self) -> Literal["auto", "sklearn", "nndescent"]:
+        return self._neighbors_algorithm
+
+    @neighbors_algorithm.setter
+    def neighbors_algorithm(
+        self, algorithm: Literal["auto", "sklearn", "nndescent"]
+    ) -> None:
+        assert algorithm in ("auto", "sklearn", "nndescent")
+        self._neighbors_algorithm = algorithm
+
+    @property
+    def neighbors_metric_kwargs(self) -> Dict:
+        return self._neighbors_metric_kwargs
+
+    @neighbors_metric_kwargs.setter
+    def neighbors_metric_kwargs(self, kwargs: Optional[Dict]) -> None:
+        if kwargs is None:
+            kwargs = {}
+        assert isinstance(kwargs, Dict)
+        self._neighbors_metric_kwargs = kwargs
+
+    @property
+    def neighbors_n_pcs(self) -> Optional[int]:
+        return self._neighbors_n_pcs
+
+    @neighbors_n_pcs.setter
+    def neighbors_n_pcs(self, n: Optional[int]) -> None:
+        if n is None:
+            self._neighbors_n_pcs = n
+            return
+        n = int(n)
+        assert n > 0, f"Invalid number of pcs {n}."
+        self._neighbors_n_pcs = n
 
 
 settings = TransmorphSettings()
