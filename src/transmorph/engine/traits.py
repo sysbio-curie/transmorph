@@ -457,8 +457,8 @@ class UsesNeighbors:
             assert isinstance(matrix, csr_matrix)
             UsesNeighbors.NeighborsGraphs.append(matrix)
 
+    @staticmethod
     def get_neighbors_graph(
-        self,
         idx: int,
         mode: Literal["edges", "distances"] = "edges",
     ) -> csr_matrix:
