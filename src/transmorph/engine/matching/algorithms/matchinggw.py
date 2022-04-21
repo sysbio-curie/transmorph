@@ -5,10 +5,10 @@ import numpy as np
 from anndata import AnnData
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
-from typing import Any, Hashable, Dict, List, Literal, Optional, Tuple
+from typing import Any, Hashable, Dict, List, Literal, Optional
 from ot.gromov import gromov_wasserstein, entropic_gromov_wasserstein
 
-from ..matching import Matching
+from .. import Matching, _TypeMatchingSet
 from ...profiler import profile_method
 from ...traits import HasMetadata, UsesMetric
 
@@ -103,11 +103,7 @@ class MatchingGW(Matching, UsesMetric, HasMetadata):
         return {"metric": metric, "metric_kwargs": metric_kwargs}
 
     @profile_method
-    def fit(
-        self,
-        datasets: List[np.ndarray],
-        reference_idx: int = -1,
-    ) -> Dict[Tuple[int, int], csr_matrix]:
+    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Compute optimal transport plan for the FGW problem.
         TODO: specific strategy if reference is set
@@ -135,7 +131,7 @@ class MatchingGW(Matching, UsesMetric, HasMetadata):
             raise ValueError(f"Unknown optimizer: {self.optimizer}.")
         # Compute pairwise GW
         ndatasets = len(datasets)
-        result: Dict[Tuple[int, int], csr_matrix] = {}
+        result: _TypeMatchingSet = {}
         for i in range(ndatasets):
             for j in range(ndatasets):
                 if j <= i:

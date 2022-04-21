@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import logging
-import numpy as np
 
 from anndata import AnnData
-from scipy.sparse import csr_matrix
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import List, Optional
 
-from .matching import Matching
+from . import Matching, _TypeMatchingSet
 from .watchermatching import WatcherMatching
 from ..engine import Layer
 from ..transforming import ContainsTransformations
@@ -17,7 +15,7 @@ from ..profiler import IsProfilable, profile_method
 from ..subsampling import (
     IsSubsamplable,
     Subsampling,
-    SubsamplingKeepAll,
+    KeepAll,
 )
 from transmorph.engine.traits import (
     HasMetadata,
@@ -43,16 +41,11 @@ class LayerMatching(
             str_identifier="MATCHING",
         )
         if subsampling is None:
-            subsampling = SubsamplingKeepAll()
+            subsampling = KeepAll()
         IsSubsamplable.__init__(self, subsampling)
         IsWatchable.__init__(self, compatible_watchers=[WatcherMatching, WatcherTiming])
         self.matching = matching
-        self.matching_matrices: Dict[Tuple[int, int], csr_matrix] = {}
-        self.datasets: List[AnnData] = []
-
-    @property
-    def n_datasets(self) -> int:
-        return len(self.datasets)
+        self.matching_matrices: Optional[_TypeMatchingSet] = None
 
     @profile_method
     def fit(self, datasets: List[AnnData]) -> List[Layer]:
@@ -63,15 +56,15 @@ class LayerMatching(
         self.datasets = datasets.copy()  # Keeping a copy to preserve order
         # Preprocessing
         if self.has_transformations:
-            self.log("Calling preprocessings.", level=logging.INFO)
+            self.info("Calling preprocessings.")
         Xs = self.transform(datasets, self.embedding_reference)
-        if not isinstance(self.subsampling, SubsamplingKeepAll):
-            self.log("Calling subsampling.", level=logging.INFO)
+        if not isinstance(self.subsampling, KeepAll):
+            self.info("Calling subsampling.")
         # Subsampling
         self.subsample(datasets=datasets, matrices=Xs)
         Xs = self.slice_matrices(datasets=datasets, matrices=Xs)
         # Matching
-        self.log("Calling matching.", level=logging.INFO)
+        self.info("Calling matching.")
         if isinstance(self.matching, HasMetadata):  # Metadata gathering
             self.matching.retrieve_all_metadata(datasets)
         if isinstance(self.matching, UsesCommonFeatures):  # Common features slicing
@@ -83,72 +76,17 @@ class LayerMatching(
                 is_feature_space=is_feature_space,
             )
         # Checks if there is a reference dataset
-        ref_id = UsesReference.get_reference_index(datasets)
+        if isinstance(self.matching, UsesReference):
+            self.matching.get_reference_index(datasets)
         self.matching.check_input(Xs)
-        self.matching.fit(Xs, reference_idx=ref_id)
+        self.matching_matrices = self.matching.fit(Xs)
         # Trimming? Extrapolating?
         self.log("Fitted.", level=logging.INFO)
         return self.output_layers
 
-    def get_adata_index(self, target: AnnData) -> int:
+    def get_matchings(self) -> _TypeMatchingSet:
         """
-        Returns the index of AnnData object passed as parameter.
+        Returns computed matchings for read-only purposes.
         """
-        for i, adata in enumerate(self.datasets):
-            if adata is target:
-                return i
-        self.raise_error(ValueError, f"{target} is an unknown dataset.")
-
-    def get_matching(
-        self,
-        adata_1: int,
-        adata_2: int,
-        mode: Literal["raw", "boolean", "row_normalized"] = "row_normalized",
-    ) -> csr_matrix:
-        """
-        Return the matching between two datasets. Throws an error
-        if matching is not fitted, or if the required matching does not exist.
-
-        Parameters
-        ----------
-        ind_1: ind
-            Index of the first dataset
-
-        ind_2: ind
-            Index of the second dataset
-
-        mode: Literal["raw", "boolean", "row_normalized"],
-              default = "row_normalized"
-            Transformation to apply to the matching matrix
-            - "raw": Return the matching without modifications
-            - "boolean": Return a boolean version of the matching,
-              where all nonzero entries are set to True
-            - "raw_normalized": Return a row normalized version of
-              the matching, where all nonzero rows marginalize to 1.
-
-        Returns
-        -------
-        T = (n_ind1, n_ind2) CSR sparse matrix, where Tkl is the
-        matching strength between X_ind1_k and X_ind2_l.
-        """
-        ind_1 = self.get_adata_index(adata_1)
-        ind_2 = self.get_adata_index(adata_2)
-        matching = self.matching_matrices.get((ind_1, ind_2), None)
-        if matching is None:
-            matching = self.matching_matrices.get((ind_2, ind_1), None)
-            if matching is None:
-                self.raise_error(
-                    ValueError,
-                    f"No matching found between indices {ind_1} and {ind_2}.",
-                )
-            matching = csr_matrix(matching.T)
-        if mode == "row_normalize":
-            coefs = np.array(matching.sum(axis=1))
-            coefs[coefs == 0.0] = 1.0
-            return csr_matrix(matching / coefs)
-        elif mode == "boolean":
-            return matching.astype(bool)
-        elif mode == "raw":
-            return matching
-        else:
-            self.raise_error(ValueError, f"Unrecognized mode {mode}.")
+        assert self.matching_matrices is not None, "Layer is not fit."
+        return self.matching_matrices

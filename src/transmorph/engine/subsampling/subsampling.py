@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from typing import List, Tuple
 
 from transmorph.engine.traits import CanLog
 
 
-class Subsampling(CanLog):
+class Subsampling(ABC, CanLog):
     """
     A subsampling scheme choses a subset of representers from a large collection
     of points. These representers are then used during heavy computational parts

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 import logging
+
+from numpy.random.mtrand import RandomState
+from sklearn.utils import check_random_state
 from typing import Any, Dict, Literal, Optional
 
 from ._logging import logger, _DEFAULT_LEVEL_FILE, _DEFAULT_LEVEL_CONSOLE
@@ -10,6 +13,7 @@ from .utils.type import assert_type
 class TransmorphSettings:
     """
     Settings manager.
+    TODO check all settings that are at risk
     """
 
     def __init__(self):
@@ -26,6 +30,22 @@ class TransmorphSettings:
         self.neighbors_random_seed: int = 42
         self.neighbors_symmetrize: bool = False
         self.neighbors_use_scanpy: bool = True
+        # UMAP
+        self.umap_metric: str = "euclidean"
+        self.umap_metric_kwargs: Dict[str, Any] = {}
+        self.umap_min_dist: float = 0.5
+        self.umap_spread: float = 1.0
+        self.umap_maxiter: Optional[int] = None
+        self.umap_alpha: float = 1.0
+        self.umap_gamma: float = 1.0
+        self.umap_negative_sample_rate: int = 5
+        self.umap_a: Optional[float] = None
+        self.umap_b: Optional[float] = None
+        self.umap_random_state: RandomState = check_random_state(42)
+        # MDE
+        self.mde_initialization: str = "quadratic"
+        self.mde_repulsive_fraction: float = 1.0
+        self.mde_device: Literal["cpu", "cuda"] = "cpu"
         # Scale
         self.large_dataset_threshold: int = 2048
         # End

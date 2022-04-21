@@ -7,9 +7,9 @@ from ot.bregman import sinkhorn_stabilized
 from ot.partial import partial_wasserstein
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional
 
-from ..matching import Matching
+from .. import Matching, _TypeMatchingSet
 from ...profiler import profile_method
 from ...traits import UsesCommonFeatures
 
@@ -90,7 +90,7 @@ class MatchingOT(Matching, UsesCommonFeatures):
         self.partial_n_dummies = partial_n_dummies
 
     @profile_method
-    def fit(self, datasets: List[np.ndarray]) -> Dict[Tuple[int, int], csr_matrix]:
+    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Computes OT between pairs of datasets with the right optimizer.
         """
@@ -109,7 +109,7 @@ class MatchingOT(Matching, UsesCommonFeatures):
             }
         else:
             raise ValueError(f"Unknown optimizer: {self.optimizer}")
-        results = {}
+        results: _TypeMatchingSet = {}
         for i in range(ndatasets):
             for j in range(i + 1, ndatasets):
                 Xi, Xj = datasets[i], datasets[j]

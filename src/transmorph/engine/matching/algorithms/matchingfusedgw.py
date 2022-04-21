@@ -6,9 +6,9 @@ from anndata import AnnData
 from ot.gromov import fused_gromov_wasserstein
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
-from typing import Any, Dict, Hashable, Literal, List, Optional, Tuple
+from typing import Any, Dict, Hashable, Literal, List, Optional
 
-from ..matching import Matching
+from .. import Matching, _TypeMatchingSet
 from ...profiler import profile_method
 from ...traits import HasMetadata, UsesCommonFeatures, UsesMetric
 
@@ -92,11 +92,7 @@ class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         return {"metric": metric, "metric_kwargs": metric_kwargs}
 
     @profile_method
-    def fit(
-        self,
-        datasets: List[np.ndarray],
-        reference_idx: int = -1,
-    ) -> Dict[Tuple[int, int], csr_matrix]:
+    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Compute optimal transport plan for the FGW problem.
         TODO: specific strategy if reference is set
@@ -115,7 +111,7 @@ class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         all_C = [C / C.max() for C in all_C]
 
         # Compute pairwise FGW
-        result: Dict[Tuple[int, int], csr_matrix] = {}
+        result: _TypeMatchingSet = {}
         for i, Xi in enumerate(datasets):
             for j, Xj in enumerate(datasets):
                 Xi_common, Xj_common = self.slice_features(

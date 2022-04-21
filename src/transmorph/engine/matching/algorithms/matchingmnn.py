@@ -3,9 +3,9 @@
 import numpy as np
 
 from scipy.sparse import csr_matrix
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional
 
-from ..matching import Matching
+from .. import Matching, _TypeMatchingSet
 from ...profiler import profile_method
 from ...traits import UsesCommonFeatures
 from ....utils import mutual_nearest_neighbors
@@ -66,12 +66,12 @@ class MatchingMNN(Matching, UsesCommonFeatures):
         self.n_neighbors = n_neighbors
 
     @profile_method
-    def fit(self, datasets: List[np.ndarray]) -> Dict[Tuple[int, int], csr_matrix]:
+    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Computes MNN between pairs of datasets.
         """
         ndatasets = len(datasets)
-        results = {}
+        results: _TypeMatchingSet = {}
         for i in range(ndatasets):
             for j in range(i + 1, ndatasets):
                 Xi, Xj = datasets[i], datasets[j]

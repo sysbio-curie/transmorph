@@ -12,10 +12,22 @@ from scipy.sparse import csr_matrix
 from transmorph import logger, settings
 from transmorph.utils import anndata_manager as adm
 from transmorph.utils import AnnDataKeyIdentifiers
-from typing import Any, Dict, Hashable, List, Literal, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Dict,
+    Hashable,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from ..utils.graph import nearest_neighbors
 
+T = TypeVar("T")
 
 # A trait is a small module of features that can be added
 # to a class using inheritance. It allows code factorization,
@@ -61,6 +73,17 @@ class CanLog:
             Message priority. Set it higher to make it pass filters.
         """
         logger.log(level, f"{self.str_identifier} > {msg}")
+
+    def info(self, msg: str) -> None:
+        """
+        Transmits a message to the logging module with INFO priority.
+
+        Parameters
+        ----------
+        msg: str
+            Message to print
+        """
+        self.log(msg, level=logging.INFO)
 
     def warn(self, msg: str) -> None:
         """
@@ -305,10 +328,9 @@ class UsesReference:
     """
 
     def __init__(self):
-        pass
+        self.reference_index: Optional[int] = None
 
-    @staticmethod
-    def get_reference_index(datasets: List[AnnData]) -> int:
+    def get_reference_index(self, datasets: List[AnnData]) -> None:
         """
         Returns index of AnnData that has been chosen as a reference. If
         found none or several, returns -1.
@@ -318,18 +340,19 @@ class UsesReference:
             is_ref = adm.get_value(adata, AnnDataKeyIdentifiers.IsReference)
             if is_ref is not None:
                 if ref_id != -1:
-                    return -1  # Several found
+                    raise AttributeError("More than one reference.")
                 ref_id = k
-        return ref_id
+        if ref_id == -1:
+            return None
+        self.reference_index = ref_id
 
-    @staticmethod
-    def get_reference(datasets: List[AnnData]) -> Optional[AnnData]:
+    def get_reference_item(self, datasets: List[T]) -> Optional[T]:
         """
-        Returns AnnData that has been chosen as a reference. If
+        Returns object that has been chosen as a reference from a list. If
         found none or several, returns None.
         """
-        ref_id = UsesReference.get_reference_index(datasets)
-        if ref_id == -1:
+        ref_id = self.reference_index
+        if ref_id is None:
             return None
         return datasets[ref_id]
 

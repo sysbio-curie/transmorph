@@ -41,6 +41,6 @@ class LayerTransformation(
             self.embedding_reference.is_feature_space and self.preserves_space
         )
         for adata, X_after in zip(datasets, Xs):
-            self.write(adata, X_after, is_feature_space=is_feature_space)
+            self.write_representation(adata, X_after, is_feature_space=is_feature_space)
         self.log("Done.", level=logging.INFO)
         return self.output_layers

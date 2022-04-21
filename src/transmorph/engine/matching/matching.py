@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from scipy.sparse import csr_matrix
-from transmorph.engine.profiler import IsProfilable, profile_method
-from transmorph.engine.traits import CanLog
-
 import numpy as np
-from typing import Dict, List, Literal, Tuple
+
+from abc import ABC, abstractmethod
+from typing import List
+
+from . import _TypeMatchingSet
+from ..profiler import IsProfilable, profile_method
+from ..traits import CanLog
 
 
 class Matching(ABC, IsProfilable, CanLog):
@@ -46,7 +47,6 @@ class Matching(ABC, IsProfilable, CanLog):
         str_identifier: str = "DEFAULT",
     ):
         CanLog.__init__(self, str_identifier=f"MATCHING_{str_identifier}")
-        self.matchings: Dict[Tuple[int, int], csr_matrix] = {}
 
     def check_input(self, datasets: List[np.ndarray]) -> None:
         """
@@ -58,65 +58,13 @@ class Matching(ABC, IsProfilable, CanLog):
         """
         pass
 
-    def get_matching(
-        self,
-        ind_1: int,
-        ind_2: int,
-        mode: Literal["raw", "boolean", "row_normalized"] = "row_normalized",
-    ) -> csr_matrix:
-        """
-        Return the matching between two datasets. Throws an error
-        if matching is not fitted, or if the required matching does not exist.
-
-        Parameters
-        ----------
-        ind_1: ind
-            Index of the first dataset
-
-        ind_2: ind
-            Index of the second dataset
-
-        mode: Literal["raw", "boolean", "row_normalized"],
-              default = "row_normalized"
-            Transformation to apply to the matching matrix
-            - "raw": Return the matching without modifications
-            - "boolean": Return a boolean version of the matching,
-              where all nonzero entries are set to True
-            - "raw_normalized": Return a row normalized version of
-              the matching, where all nonzero rows marginalize to 1.
-
-        Returns
-        -------
-        T = (n_ind1, n_ind2) CSR sparse matrix, where Tkl is the
-        matching strength between X_ind1_k and X_ind2_l.
-        """
-        matching = self.matchings.get((ind_1, ind_2), None)
-        if matching is None:
-            matching = self.matchings.get((ind_2, ind_1), None)
-            if matching is None:
-                self.raise_error(
-                    ValueError,
-                    f"No matching found between indices {ind_1} and {ind_2}.",
-                )
-            matching = csr_matrix(matching.T)
-        if mode == "row_normalize":
-            coefs = np.array(matching.sum(axis=1))
-            coefs[coefs == 0.0] = 1.0
-            return csr_matrix(matching / coefs)
-        elif mode == "boolean":
-            return matching.astype(bool)
-        elif mode == "raw":
-            return matching
-        else:
-            self.raise_error(ValueError, f"Unrecognized mode {mode}.")
-
     @abstractmethod
     @profile_method
     def fit(
         self,
         datasets: List[np.ndarray],
         reference_idx: int = -1,
-    ) -> None:
+    ) -> _TypeMatchingSet:
         """
         Computes the matching between a set of AnnData. Should not be overriden in
         the implementation in order to ensure compatibility between Matching and

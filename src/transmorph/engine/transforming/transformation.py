@@ -20,6 +20,13 @@ class Transformation(ABC, CanLog, IsProfilable):
         CanLog.__init__(self, str_identifier=f"TRANSFORMATION_{str_identifier}")
         self.preserves_space = preserves_space
 
+    def check_input(self, datasets: List[np.ndarray]) -> None:
+        """
+        Can be implemented to perform checks on datasets, and raise warnings
+        or exceptions in case of issues.
+        """
+        pass
+
     @abstractmethod
     def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
         """

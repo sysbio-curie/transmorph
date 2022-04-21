@@ -50,7 +50,7 @@ class ContainsTransformations:
         """
         is_feature_space = representer.is_feature_space
         assert_trait(representer, IsRepresentable)
-        Xs = [representer.get(adata) for adata in datasets]
+        Xs = [representer.get_representation(adata) for adata in datasets]
         for transformation in self.transformations:
             # If necessary, we let transformation retrieve
             # additional information
@@ -58,6 +58,7 @@ class ContainsTransformations:
                 transformation.retrieve_all_metadata(datasets)
             if isinstance(transformation, UsesCommonFeatures):
                 transformation.retrieve_common_features(datasets, is_feature_space)
+            transformation.check_input(Xs)
             Xs = transformation.transform(Xs)
             is_feature_space = transformation.preserves_space
         return Xs
