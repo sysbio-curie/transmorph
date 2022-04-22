@@ -10,10 +10,81 @@ from enum import Enum
 from scipy.sparse import csr_matrix
 from transmorph import logger
 from .type import assert_type
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
-ANNDATA_FIELDS = Literal["obs", "var", "obsm", "varm", "obsp", "varp", "uns"]
-PERSIST_LEVELS = Literal["layer", "pipeline", "output"]
+_TypeAnnDataFields = Literal["obs", "var", "obsm", "varm", "obsp", "varp", "uns"]
+_TypePairwiseSlice = Dict[Tuple[int, int], Tuple[np.ndarray, np.ndarray]]
+_TypeTotalSlice = List[np.ndarray]
+_TypePersistLevels = Literal["layer", "pipeline", "output"]
+
+
+def generate_features_slice(features: np.ndarray, selected: np.ndarray) -> np.ndarray:
+    """
+    Returns a boolean selector of features so that only features belonging
+    to selected are set to True.
+    """
+    fslice = np.zeros(features.shape).astype(bool)
+    for i, fname in enumerate(features):
+        fslice[i] = fname in selected
+    return fslice
+
+
+def get_pairwise_feature_slices(datasets: List[AnnData]) -> _TypePairwiseSlice:
+    """
+    Returns a dictionary where index (i, j) corresponds to boolean
+    slices to use to put datasets i and j to the same feature space.
+    """
+    assert len(datasets) > 0, "No dataset provided."
+    result: _TypePairwiseSlice = {}
+    for i, adata_i in enumerate(datasets):
+        features_i = adata_i.var_names.to_numpy()
+        for j, adata_j in enumerate(datasets):
+            if j <= i:
+                continue
+            features_j = adata_j.var_names.to_numpy()
+            common_features = np.intersect1d(features_i, features_j)
+            assert (
+                common_features.shape[0] > 0
+            ), f"No common feature found between datasets {i} and {j}."
+            slice_i = generate_features_slice(
+                features=features_i,
+                selected=common_features,
+            )
+            slice_j = generate_features_slice(
+                features=features_j,
+                selected=common_features,
+            )
+            result[i, j] = (slice_i, slice_j)
+            result[j, i] = (slice_j, slice_i)
+    return result
+
+
+def get_total_feature_slices(datasets: List[AnnData]) -> _TypeTotalSlice:
+    """
+    Returns a dictionary where index (i, j) corresponds to boolean
+    slices to use to put datasets i and j to the same feature space.
+    """
+    assert len(datasets) > 0, "No dataset provided."
+    result: _TypeTotalSlice = []
+    common_features = datasets[0].var_names.to_numpy()
+    for adata in datasets[1:]:
+        common_features = np.intersect1d(
+            common_features,
+            adata.var_names.to_numpy(),
+        )
+    for adata in datasets:
+        result.append(
+            generate_features_slice(adata.var_names.to_numpy(), common_features)
+        )
+    return result
+
+
+def slice_common_features(datasets: List[AnnData]) -> List[np.ndarray]:
+    """
+    Returns a list of AnnData objects in a common features space.
+    """
+    slices = get_total_feature_slices(datasets)
+    return [adata.X[:, sl] for adata, sl in zip(datasets, slices)]
 
 
 class AnnDataKeyIdentifiers(Enum):
@@ -38,6 +109,9 @@ class AnnDataKeyIdentifiers(Enum):
     SubsamplingAnchors = "ssp_anchors"
     SubsamplingReferences = "ssp_references"
 
+    # Plotting keys
+    PlotRepresentation = "plot_representation"
+
 
 AnnDataKey = namedtuple("AnnDataKey", ["identifier", "field", "persist"])
 
@@ -61,7 +135,7 @@ class AnnDataManager:
         return f"tr_{base}"
 
     @staticmethod
-    def to_delete(query: PERSIST_LEVELS, target: PERSIST_LEVELS) -> bool:
+    def to_delete(query: _TypePersistLevels, target: _TypePersistLevels) -> bool:
         """
         Returns true if query level <= target level.
         """
@@ -127,9 +201,9 @@ class AnnDataManager:
         self,
         adata: AnnData,
         key: Union[str, AnnDataKeyIdentifiers],
-        field: ANNDATA_FIELDS,
+        field: _TypeAnnDataFields,
         value: Any,
-        persist: PERSIST_LEVELS = "pipeline",
+        persist: _TypePersistLevels = "pipeline",
     ) -> None:
         """
         Stores information in an AnnData object, with a few sanity
@@ -197,6 +271,20 @@ class AnnDataManager:
         else:
             raise ValueError(f"Unrecognized field: {field}.")
 
+    def isset_value(
+        self,
+        adata: AnnData,
+        key: Union[str, AnnDataKeyIdentifiers],
+        transmorph_key: bool = True,
+        field: Optional[
+            Literal["obs", "var", "obsm", "varm", "obsp", "varp", "uns"]
+        ] = None,
+    ) -> bool:
+        """
+        Detects if the desired key is contained in an AnnData object.
+        """
+        return self.get_value(adata, key, transmorph_key, field) is not None
+
     def get_value(
         self,
         adata: AnnData,
@@ -238,7 +326,7 @@ class AnnDataManager:
         logger.warning(f"WARNING - Unrecognized field {field}.")
         return None
 
-    def clean(self, adata: AnnData, level: PERSIST_LEVELS) -> None:
+    def clean(self, adata: AnnData, level: _TypePersistLevels) -> None:
         """
         Deletes transmorph keys of the given persist level and below.
         """

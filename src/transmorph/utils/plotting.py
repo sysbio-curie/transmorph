@@ -13,7 +13,11 @@ from scipy.sparse import csr_matrix
 from sklearn.decomposition import PCA
 from typing import List, Optional, Union
 
-from ..utils.anndata_interface import get_matrix, set_matrix, isset_matrix, common_genes
+from ..utils.anndata_manager import (
+    anndata_manager as adm,
+    AnnDataKeyIdentifiers,
+    slice_common_features,
+)
 
 MARKERS = "osv^<>pP*hHXDd"
 
@@ -134,16 +138,21 @@ def plot_result(
         continuous = (n_labels > 20) and all(isinstance(y, Number) for y in all_labels)
 
     # Reducing dimension if necessary
-    if all(isset_matrix(adata, "transmorph_plotting") for adata in datasets):
+    if all(
+        adm.isset_value(adata, AnnDataKeyIdentifiers.PlotRepresentation)
+        for adata in datasets
+    ):
         representations = [
-            get_matrix(adata, "transmorph_plotting") for adata in datasets
+            adm.get_value(adata, AnnDataKeyIdentifiers.PlotRepresentation)
+            for adata in datasets
         ]
     elif all("transmorph" in adata.obsm for adata in datasets):
         representations = [adata.obsm["transmorph"] for adata in datasets]
     else:
-        cgenes = common_genes(datasets)
-        assert cgenes.shape[0] > 1, "No common gene space found for datasets."
-        representations = [adata[:, cgenes].X.copy() for adata in datasets]
+        representations = slice_common_features(datasets)
+        assert (
+            representations[0].shape[1] > 0
+        ), "No common gene space found for datasets."
     for i, X in enumerate(representations):
         if type(X) is csr_matrix:
             representations[i] = X.toarray()
@@ -175,7 +184,12 @@ def plot_result(
             nobs = adata.n_obs
             representations[i] = all_X[offset : offset + nobs]
             if use_cache:
-                set_matrix(adata, "transmorph_plotting", representations[i])
+                adm.set_value(
+                    adata=adata,
+                    key=AnnDataKeyIdentifiers.PlotRepresentation,
+                    value=representations[i],
+                    persist="output",
+                )
             offset += nobs
 
     # Guess plotting parameters

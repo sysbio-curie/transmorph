@@ -8,18 +8,15 @@ from ..merging import Merging
 from ..traits import (
     ContainsTransformations,
     IsProfilable,
+    profile_method,
     IsRepresentable,
-    IsWatchable,
     HasMetadata,
 )
-from ..watchers import WatcherTiming
-from ... import profile_method
 
 
 class LayerMerging(
     Layer,
     ContainsTransformations,
-    IsWatchable,
     IsProfilable,
     IsRepresentable,
 ):
@@ -33,7 +30,6 @@ class LayerMerging(
             self, compatible_inputs=[LayerMatching], str_identifier="MERGING"
         )
         ContainsTransformations.__init__(self)
-        IsWatchable.__init__(self, compatible_watchers=[WatcherTiming])
         IsProfilable.__init__(self)
         IsRepresentable.__init__(self, repr_key=f"{self}_{self.layer_id}")
         self.merging = merging

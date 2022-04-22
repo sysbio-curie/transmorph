@@ -5,7 +5,8 @@ from typing import List
 
 import numpy as np
 
-from ..traits import CanLog, IsProfilable
+from ..traits.canlog import CanLog
+from ..traits.isprofilable import IsProfilable
 
 
 class Transformation(ABC, CanLog, IsProfilable):

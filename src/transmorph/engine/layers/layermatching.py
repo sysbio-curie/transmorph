@@ -17,20 +17,17 @@ from ..traits import (
     ContainsTransformations,
     HasMetadata,
     IsProfilable,
+    profile_method,
     IsSubsamplable,
     IsRepresentable,
-    IsWatchable,
     UsesCommonFeatures,
     UsesReference,
 )
-from ..watchers import WatcherMatching, WatcherTiming
-from ... import profile_method
 
 
 class LayerMatching(
     Layer,
     ContainsTransformations,
-    IsWatchable,
     IsProfilable,
     IsSubsamplable,
 ):
@@ -48,7 +45,6 @@ class LayerMatching(
         if subsampling is None:
             subsampling = KeepAll()
         IsSubsamplable.__init__(self, subsampling)
-        IsWatchable.__init__(self, compatible_watchers=[WatcherMatching, WatcherTiming])
         self.matching = matching
         self.matching_matrices: Optional[_TypeMatchingSet] = None
 

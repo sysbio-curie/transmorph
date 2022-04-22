@@ -12,17 +12,15 @@ from ..subsampling import KeepAll
 from ..traits import (
     HasMetadata,
     IsProfilable,
+    profile_method,
     IsRepresentable,
     UsesCommonFeatures,
     assert_trait,
 )
-from ..watchers import IsWatchable, WatcherTiming
-from ... import profile_method
 
 
 class LayerChecking(
     Layer,
-    IsWatchable,
     IsProfilable,
     IsRepresentable,
     IsSubsamplable,
@@ -48,7 +46,6 @@ class LayerChecking(
             compatible_inputs=[IsRepresentable],
             str_identifier="CHECKING",
         )
-        IsWatchable.__init__(self, compatible_watchers=[WatcherTiming])
         IsProfilable.__init__(self)
         IsRepresentable.__init__(self, repr_key=f"{self}#{self.layer_id}")
         self.checking = checking

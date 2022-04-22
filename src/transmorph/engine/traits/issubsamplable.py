@@ -5,7 +5,7 @@ import numpy as np
 from anndata import AnnData
 from typing import List
 
-from . import HasMetadata
+from .hasmetadata import HasMetadata
 from ..subsampling import Subsampling
 from ...utils import anndata_manager as adm, AnnDataKeyIdentifiers
 

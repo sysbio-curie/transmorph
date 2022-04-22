@@ -2,26 +2,6 @@
 
 import time
 
-from .engine.traits import CanLog, IsProfilable, assert_trait
-
-
-def profile_method(method):
-    # Profiling decorator for class methods that
-    # allows to measure time elapsed in a profilable
-    # object.
-    def wrapper(*args):
-        self = args[0]
-        assert self is not None
-        assert_trait(self, IsProfilable)
-        tstr = f"{str(self)}.{method.__name__}"
-        tid = profiler.task_start(tstr)
-        result = method(*args)
-        elapsed = profiler.task_end(tid)
-        self.elapsed[tstr] = elapsed
-        return result
-
-    return wrapper
-
 
 class Task:
     """
@@ -54,13 +34,12 @@ class Task:
         self.state = "ended"
 
 
-class Profiler(CanLog):
+class Profiler:
     """
     Manages tasks to profile.
     """
 
     def __init__(self):
-        CanLog.__init__(self, str_identifier="PROFILER")
         self.tasks = []
         self.n_tasks_ongoing = 0
         self.tstart = -1
@@ -72,7 +51,6 @@ class Profiler(CanLog):
             self.tstart = time.time()
         self.tasks.append(Task(task_id, time.time(), task_label))
         self.n_tasks_ongoing += 1
-        self.log(f"Starting task {task_label} [{task_id}]")
         return task_id
 
     def task_end(self, task_id: int) -> float:
@@ -82,7 +60,6 @@ class Profiler(CanLog):
             self.tend = time.time()
         self.tasks[task_id].end()
         elapsed = self.tasks[task_id].elapsed()
-        self.log(f"Ending task [{task_id}], elapsed: {elapsed}s")
         return elapsed
 
     def elapsed(self) -> float:

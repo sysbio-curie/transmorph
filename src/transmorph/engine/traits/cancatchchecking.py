@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
-from typing import Optional
+from __future__ import annotations
 
+from typing import Optional, TYPE_CHECKING
 
-from . import IsRepresentable
-from ..layers import Layer, LayerChecking
-from ...utils.type import assert_type
+from .isrepresentable import IsRepresentable
+
+if TYPE_CHECKING:
+    from ..layers import Layer, LayerChecking
 
 
 class CanCatchChecking:
@@ -15,7 +17,6 @@ class CanCatchChecking:
     """
 
     def __init__(self):
-        assert isinstance(self, Layer)
         self.layer_checking: Optional[LayerChecking] = None
         self._called_by_checking = False
         self.previous_embedding_reference: Optional[IsRepresentable] = None
@@ -39,5 +40,4 @@ class CanCatchChecking:
         """
         Registers a CheckingLayer.
         """
-        assert_type(layer, LayerChecking)
         self.layer_checking = layer

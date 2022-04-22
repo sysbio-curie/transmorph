@@ -7,9 +7,8 @@ from anndata import AnnData
 from typing import List, Optional
 
 from .layers import Layer, LayerChecking, LayerInput, LayerOutput
-from .traits import CanLog, CanCatchChecking, IsWatchable, UsesNeighbors
+from .traits import CanLog, CanCatchChecking, UsesNeighbors
 from .. import profiler
-from .watchers import Watcher
 from .. import settings
 from ..utils import anndata_manager as adm, AnnDataKeyIdentifiers
 
@@ -61,7 +60,6 @@ class Model(CanLog):
         self.input_layer = None
         self.output_layers = []
         self.layers: List[Layer] = []
-        self.watchers: List[Watcher] = []
         self.verbose = verbose
         if verbose:
             settings.verbose = "INFO"
@@ -111,8 +109,7 @@ class Model(CanLog):
             raise NotImplementedError("No more than one output allowed.")
         self.log(
             f"Pipeline initialized -- {len(self.layers)} layers, "
-            f"{len(self.output_layers)} outputs, "
-            f"{len(self.watchers)} watchers found.",
+            f"{len(self.output_layers)} outputs, ",
             level=logging.INFO,
         )
 
@@ -217,8 +214,6 @@ class Model(CanLog):
             output_layers = called.fit(datasets)
             if isinstance(called, CanCatchChecking) and called.called_by_checking:
                 called.restore_previous_mapping()
-            if isinstance(called, IsWatchable):
-                called.update_watchers()
             layers_to_run += [output_layers]
             for adata in datasets:
                 adm.clean(adata, "layer")

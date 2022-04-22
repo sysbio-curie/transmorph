@@ -5,10 +5,10 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from typing import Dict, List, Literal, Optional
 
-from .. import Matching, _TypeMatchingSet
-from ...traits import UsesCommonFeatures
+from ..matching import Matching, _TypeMatchingSet
+from ...traits.isprofilable import profile_method
+from ...traits.usescommonfeatures import UsesCommonFeatures
 from ....utils import mutual_nearest_neighbors
-from .... import profile_method
 
 
 class MatchingMNN(Matching, UsesCommonFeatures):

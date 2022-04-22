@@ -4,9 +4,9 @@ import numpy as np
 
 from typing import List
 
-from .. import Checking
-from ...traits import UsesNeighbors
-from .... import profile_method
+from ..checking import Checking
+from ...traits.usesneighbors import UsesNeighbors
+from ...traits.isprofilable import profile_method
 from ....stats.entropy import label_entropy
 from ....utils.graph import nearest_neighbors
 

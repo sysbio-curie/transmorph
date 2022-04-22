@@ -6,7 +6,6 @@ from anndata import AnnData
 from scipy.sparse import csr_matrix
 from typing import Dict, List, Literal
 
-from ... import settings
 from ...utils import (
     anndata_manager as adm,
     AnnDataKeyIdentifiers,
@@ -34,6 +33,8 @@ class UsesNeighbors:
         accordingly. If parameters are not found, transmorph parameters are
         left untouched.
         """
+        from ..._settings import settings
+
         parameters = adm.get_value(
             adata=adata,
             key="neighbors",
@@ -64,6 +65,8 @@ class UsesNeighbors:
         """
         Computes a neighbors graph, and stores it in adata.
         """
+        from ..._settings import settings
+
         use_scanpy = settings.neighbors_use_scanpy
         for adata in datasets:
             if not use_scanpy:

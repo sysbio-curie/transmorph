@@ -9,8 +9,7 @@ from typing import List, Literal
 
 from ..merging import Merging
 from ...matching import _TypeMatchingSet
-from ...traits import UsesNeighbors
-from .... import settings
+from ...traits.usesneighbors import UsesNeighbors
 from ....utils.graph import combine_matchings
 from ....utils.matrix import extract_chunks
 
@@ -92,6 +91,8 @@ class GraphEmbedding(Merging, UsesNeighbors):
         """
         Builds a joint graph of datasets, then run the optimizer.
         """
+        from .... import settings
+
         ndatasets = len(datasets)
         inner_graphs = [
             self.get_neighbors_graph(i, mode="distances") for i in range(ndatasets)

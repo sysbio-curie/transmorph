@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from ..traits import UsesMatching, _TypeMatchingModes
+from ..traits.usesmatching import UsesMatching, _TypeMatchingModes
 from ..transforming import Transformation
 
 

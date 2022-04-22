@@ -6,13 +6,16 @@ from anndata import AnnData
 from typing import List
 
 from . import Layer
-from ..traits import ContainsTransformations, IsProfilable, IsRepresentable, IsWatchable
-from ..watchers import WatcherTiming
-from ... import profile_method
+from ..traits import (
+    ContainsTransformations,
+    IsProfilable,
+    profile_method,
+    IsRepresentable,
+)
 
 
 class LayerTransformation(
-    Layer, ContainsTransformations, IsWatchable, IsProfilable, IsRepresentable
+    Layer, ContainsTransformations, IsProfilable, IsRepresentable
 ):
     """
     This layer encapsulates a series of preprocessing algorithms derived
@@ -25,7 +28,6 @@ class LayerTransformation(
             compatible_inputs=[IsRepresentable],
             str_identifier="PREPROCESSING",
         )
-        IsWatchable.__init__(self, compatible_watchers=[WatcherTiming])
         IsRepresentable.__init__(self, repr_key=f"{self}_{self.layer_id}")
 
     @profile_method

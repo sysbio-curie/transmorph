@@ -5,13 +5,11 @@ import numpy as np
 from anndata import AnnData
 from typing import List
 
-from . import (
-    HasMetadata,
-    IsRepresentable,
-    UsesCommonFeatures,
-    assert_trait,
-)
-from ..transforming import Transformation
+from .utils import assert_trait
+from .hasmetadata import HasMetadata
+from .isrepresentable import IsRepresentable
+from .usescommonfeatures import UsesCommonFeatures
+from ..transforming.transformation import Transformation
 from ...utils.type import assert_type
 
 

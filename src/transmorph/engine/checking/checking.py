@@ -5,7 +5,8 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import List
 
-from ..traits import CanLog, IsProfilable
+from ..traits.canlog import CanLog
+from ..traits.isprofilable import IsProfilable
 
 
 class Checking(ABC, CanLog, IsProfilable):

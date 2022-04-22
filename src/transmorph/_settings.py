@@ -4,10 +4,21 @@ import logging
 
 from numpy.random.mtrand import RandomState
 from sklearn.utils import check_random_state
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, Literal, Optional, TypeVar
 
 from ._logging import logger, _DEFAULT_LEVEL_FILE, _DEFAULT_LEVEL_CONSOLE
 from .utils.type import assert_type
+
+T = TypeVar("T")
+
+
+def use_setting(value: Optional[T], setting: T) -> T:
+    """
+    If value is None, returns setting, otherwise returns value.
+    """
+    if value is None:
+        return setting
+    return value
 
 
 class TransmorphSettings:

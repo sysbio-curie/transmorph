@@ -8,9 +8,10 @@ from scipy.spatial.distance import cdist
 from typing import Any, Hashable, Dict, List, Literal, Optional
 from ot.gromov import gromov_wasserstein, entropic_gromov_wasserstein
 
-from .. import Matching, _TypeMatchingSet
-from ...traits import HasMetadata, UsesMetric
-from .... import profile_method
+from ..matching import Matching, _TypeMatchingSet
+from ...traits.hasmetadata import HasMetadata
+from ...traits.isprofilable import profile_method
+from ...traits.usesmetric import UsesMetric
 
 
 class MatchingGW(Matching, UsesMetric, HasMetadata):

@@ -4,8 +4,8 @@ import numpy as np
 
 from typing import List
 
-from .. import Merging
-from ...traits import UsesReference
+from ..merging import Merging
+from ...traits.usesreference import UsesReference
 
 
 class Barycenter(Merging, UsesReference):

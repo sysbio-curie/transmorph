@@ -9,9 +9,9 @@ from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
 from typing import Dict, List, Literal, Optional
 
-from .. import Matching, _TypeMatchingSet
-from ...traits import UsesCommonFeatures
-from .... import profile_method
+from ..matching import Matching, _TypeMatchingSet
+from ...traits.isprofilable import profile_method
+from ...traits.usescommonfeatures import UsesCommonFeatures
 
 
 class MatchingOT(Matching, UsesCommonFeatures):

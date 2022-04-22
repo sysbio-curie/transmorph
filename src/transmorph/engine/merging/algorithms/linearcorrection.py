@@ -6,9 +6,9 @@ from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix
 from typing import List
 
-from .. import Merging
-from ...traits import UsesNeighbors, UsesReference
-from .... import settings
+from ..merging import Merging
+from ...traits.usesneighbors import UsesNeighbors
+from ...traits.usesreference import UsesReference
 
 
 class LinearCorrection(Merging, UsesNeighbors, UsesReference):
@@ -70,6 +70,8 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
         """
         Returns the projected view of X onto Y given the matching T
         """
+        from ...._settings import settings
+
         ref_locations = T @ X_ref
         corr_vectors = ref_locations - X_src
 

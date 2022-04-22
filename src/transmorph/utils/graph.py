@@ -15,7 +15,6 @@ from sklearn.neighbors import NearestNeighbors
 
 from typing import Dict, List, Literal, Optional, Tuple
 
-from .. import settings
 from transmorph.utils.dimred import pca
 
 
@@ -133,15 +132,15 @@ def mutual_nearest_neighbors(
 
 def nearest_neighbors(
     X: np.ndarray,
-    n_neighbors: int = settings.n_neighbors,
-    metric: str = settings.neighbors_metric,
-    metric_kwargs: Optional[Dict] = settings.neighbors_metric_kwargs,
-    algorithm: Literal["auto", "sklearn", "nndescent"] = settings.neighbors_algorithm,
-    use_pcs: Optional[int] = settings.neighbors_n_pcs,
     mode: Literal["distances", "edges"] = "distances",
-    include_self_loops: bool = settings.neighbors_include_self_loops,
-    symmetrize: bool = settings.neighbors_symmetrize,
-    random_seed: int = settings.neighbors_random_seed,
+    algorithm: Literal["auto", "sklearn", "nndescent"] = "auto",
+    n_neighbors: Optional[int] = None,
+    metric: Optional[str] = None,
+    metric_kwargs: Optional[Dict] = None,
+    use_pcs: Optional[int] = None,
+    include_self_loops: Optional[bool] = None,
+    symmetrize: Optional[bool] = None,
+    random_seed: Optional[int] = None,
 ) -> csr_matrix:
     """
     Encapsulates k-nearest neighbors algorithms.
@@ -180,6 +179,19 @@ def nearest_neighbors(
         the function will adapt to dataset size.
 
     """
+    # Retrieves default parameters if needed
+    from .. import settings, use_setting
+
+    n_neighbors = use_setting(n_neighbors, settings.n_neighbors)
+    metric = use_setting(metric, settings.neighbors_metric)
+    metric_kwargs = use_setting(metric_kwargs, settings.neighbors_metric_kwargs)
+    use_pcs = use_setting(use_pcs, settings.neighbors_n_pcs)
+    include_self_loops = use_setting(
+        include_self_loops, settings.neighbors_include_self_loops
+    )
+    symmetrize = use_setting(symmetrize, settings.neighbors_symmetrize)
+    random_seed = use_setting(random_seed, settings.neighbors_random_seed)
+    # Checks parameters
     nx = X.shape[0]
     if algorithm == "nndescent":
         use_nndescent = True

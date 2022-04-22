@@ -5,10 +5,16 @@ from __future__ import annotations
 import numpy as np
 
 from abc import ABC, abstractmethod
-from typing import List
+from scipy.sparse import csr_matrix
+from typing import Dict, List, Tuple
 
-from . import _TypeMatchingSet
-from ..traits import CanLog, IsProfilable
+from ..traits.canlog import CanLog
+from ..traits.isprofilable import IsProfilable
+
+# This is the low-level type of a matching set
+# between datasets, we shortcut it as it is quite
+# often used.
+_TypeMatchingSet = Dict[Tuple[int, int], csr_matrix]
 
 
 class Matching(ABC, IsProfilable, CanLog):
@@ -46,6 +52,7 @@ class Matching(ABC, IsProfilable, CanLog):
         str_identifier: str = "DEFAULT",
     ):
         CanLog.__init__(self, str_identifier=f"MATCHING_{str_identifier}")
+        IsProfilable.__init__(self)
 
     def check_input(self, datasets: List[np.ndarray]) -> None:
         """
