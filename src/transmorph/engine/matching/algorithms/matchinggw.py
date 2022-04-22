@@ -9,8 +9,8 @@ from typing import Any, Hashable, Dict, List, Literal, Optional
 from ot.gromov import gromov_wasserstein, entropic_gromov_wasserstein
 
 from .. import Matching, _TypeMatchingSet
-from ...profiler import profile_method
 from ...traits import HasMetadata, UsesMetric
+from .... import profile_method
 
 
 class MatchingGW(Matching, UsesMetric, HasMetadata):

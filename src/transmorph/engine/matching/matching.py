@@ -8,8 +8,7 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from . import _TypeMatchingSet
-from ..profiler import IsProfilable, profile_method
-from ..traits import CanLog
+from ..traits import CanLog, IsProfilable
 
 
 class Matching(ABC, IsProfilable, CanLog):
@@ -59,7 +58,6 @@ class Matching(ABC, IsProfilable, CanLog):
         pass
 
     @abstractmethod
-    @profile_method
     def fit(
         self,
         datasets: List[np.ndarray],

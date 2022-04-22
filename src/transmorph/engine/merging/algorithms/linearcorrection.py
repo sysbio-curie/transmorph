@@ -6,10 +6,9 @@ from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix
 from typing import List
 
-from .... import settings
-from transmorph.engine.traits import UsesNeighbors, UsesReference
-
 from .. import Merging
+from ...traits import UsesNeighbors, UsesReference
+from .... import settings
 
 
 class LinearCorrection(Merging, UsesNeighbors, UsesReference):

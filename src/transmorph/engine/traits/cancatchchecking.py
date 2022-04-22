@@ -2,10 +2,9 @@
 
 from typing import Optional
 
-from transmorph.engine.traits import IsRepresentable
 
-from .layerchecking import LayerChecking
-from ..engine import Layer
+from . import IsRepresentable
+from ..layers import Layer, LayerChecking
 from ...utils.type import assert_type
 
 

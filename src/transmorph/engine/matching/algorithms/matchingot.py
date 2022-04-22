@@ -10,8 +10,8 @@ from scipy.spatial.distance import cdist
 from typing import Dict, List, Literal, Optional
 
 from .. import Matching, _TypeMatchingSet
-from ...profiler import profile_method
 from ...traits import UsesCommonFeatures
+from .... import profile_method
 
 
 class MatchingOT(Matching, UsesCommonFeatures):

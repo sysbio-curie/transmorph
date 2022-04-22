@@ -5,7 +5,7 @@ import numpy as np
 from scipy.sparse import csr_matrix, diags
 from typing import Dict, Literal, Optional
 
-from . import _TypeMatchingSet
+from ..matching import _TypeMatchingSet
 
 _TypeMatchingModes = Literal["raw", "bool", "normalized"]
 

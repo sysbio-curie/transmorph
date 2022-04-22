@@ -7,7 +7,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 
-from transmorph.engine.traits import CanLog
+from ..traits import CanLog
 
 
 class Subsampling(ABC, CanLog):

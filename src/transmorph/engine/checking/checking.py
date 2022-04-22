@@ -5,9 +5,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import List
 
-from transmorph.engine.profiler import IsProfilable
-
-from ..traits import CanLog
+from ..traits import CanLog, IsProfilable
 
 
 class Checking(ABC, CanLog, IsProfilable):

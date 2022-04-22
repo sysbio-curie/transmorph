@@ -5,16 +5,19 @@ import logging
 from anndata import AnnData
 from typing import List, Optional
 
-from transmorph.engine.transforming.traits import ContainsTransformations
-
-
-from .traits import CanCatchChecking
-from .checking import Checking
-from ..engine import Layer
-from ..profiler import IsProfilable, profile_method
-from ..subsampling import IsSubsamplable, SubsamplingKeepAll
-from ..traits import HasMetadata, IsRepresentable, UsesCommonFeatures, assert_trait
+from . import Layer
+from ..checking import Checking
+from ..traits import CanCatchChecking, IsSubsamplable, ContainsTransformations
+from ..subsampling import KeepAll
+from ..traits import (
+    HasMetadata,
+    IsProfilable,
+    IsRepresentable,
+    UsesCommonFeatures,
+    assert_trait,
+)
 from ..watchers import IsWatchable, WatcherTiming
+from ... import profile_method
 
 
 class LayerChecking(
@@ -72,10 +75,10 @@ class LayerChecking(
         """
         assert self.rejected_layer is not None, "A rejected layer must be specified."
         # Writing previous output for next layers
-        Xs = [self.embedding_reference.get(adata) for adata in datasets]
+        Xs = [self.embedding_reference.get_representation(adata) for adata in datasets]
         is_feature_space = self.embedding_reference.is_feature_space
         for adata, X in zip(datasets, Xs):
-            self.write(
+            self.write_representation(
                 adata,
                 X,
                 is_feature_space,
@@ -85,7 +88,7 @@ class LayerChecking(
             self.log("Calling preprocessings.", level=logging.INFO)
         Xs = self.transform(datasets, self.embedding_reference)
         # Subsampling if necessary
-        if not isinstance(self.subsampling, SubsamplingKeepAll):
+        if not isinstance(self.subsampling, KeepAll):
             self.log("Calling subsampling.", level=logging.INFO)
         self.subsample(datasets=datasets, matrices=Xs)
         Xs = self.slice_matrices(datasets=datasets, matrices=Xs)

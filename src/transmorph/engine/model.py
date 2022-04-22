@@ -1,165 +1,17 @@
 #!/usr/bin/env python3
 
-from __future__ import annotations
-
 import logging
 import numpy as np
 
-from abc import ABC, abstractmethod
 from anndata import AnnData
-from typing import List, Optional, Type
+from typing import List, Optional
 
-from transmorph.engine.checking.traits import CanCatchChecking
-
-from .checking import LayerChecking
-from .traits import CanLog, IsRepresentable, UsesNeighbors, assert_trait
-from .profiler import Profiler
-from .watchers import IsWatchable, Watcher
+from .layers import Layer, LayerChecking, LayerInput, LayerOutput
+from .traits import CanLog, CanCatchChecking, IsWatchable, UsesNeighbors
+from .. import profiler
+from .watchers import Watcher
 from .. import settings
-from ..utils import anndata_manager as adm
-from ..utils import AnnDataKeyIdentifiers
-from ..utils.type import assert_type
-
-
-class Layer(ABC, CanLog):
-    """
-    A Layer wraps an integration module, and manage its connections
-    with other modules. All Layers derive from this class, and can be
-    enriched using traits.
-    """
-
-    # Provides a unique ID to each layer
-    LayerID = 0
-
-    def __init__(
-        self,
-        compatible_inputs: List[Type] = [],
-        str_identifier: str = "BASE",
-    ) -> None:
-        CanLog.__init__(self, str_identifier=f"LAYER_{str_identifier}#{Layer.LayerID}")
-        self.layer_id = Layer.LayerID
-        Layer.LayerID += 1
-        self.compatible_inputs = compatible_inputs
-        self.input_layer: Optional[Layer] = None
-        self.output_layers: List[Layer] = []
-        self.profiler = None
-        self._embedding_reference = None
-        self.time_elapsed = -1
-        self.log("Initialized.")
-
-    def connect(self, layer: Layer) -> None:
-        """
-        Connects the current layer to an output layer, if compatible.
-
-        Parameters
-        ----------
-        layer: Layer
-            Output layer of compatible type.
-        """
-        assert_type(layer, Layer)
-        assert_type(self, tuple(layer.compatible_inputs))
-        assert layer not in self.output_layers, f"{self} already connected to {layer}."
-        assert layer.input_layer is None, f"{layer} has already a predecessor."
-        layer.input_layer = self
-        self.output_layers.append(layer)
-        self.log(f"Connected to layer {layer}.")
-        if layer.embedding_reference is None:
-            if not isinstance(self, IsRepresentable):
-                reference = self.embedding_reference
-            else:
-                reference = self
-            self.log(f"{reference} chosen as default embedding reference for {self}.")
-            layer.embedding_reference = reference
-
-    @abstractmethod
-    def fit(self, datasets: List[AnnData]) -> List[Layer]:
-        """
-        This is the computational method, running an internal module.
-        It returns a list of downstream layers, to call next.
-
-        Parameters
-        ----------
-        datasets: List[AnnData]
-            List of AnnData datasets to process.
-        """
-        pass
-
-    @property
-    def embedding_reference(self) -> IsRepresentable:
-        """
-        Retrieves closest Representable object upstream from current layer.
-        """
-        if self.embedding_reference is None:
-            if self.input_layer is None:
-                self.raise_error(
-                    ValueError,
-                    "Input layer is None. Please make sure the "
-                    "pipeline contains at least an input layer.",
-                )
-            self._embedding_reference = self.input_layer.embedding_reference
-        return self.embedding_reference
-
-    @embedding_reference.setter
-    def embedding_reference(self, reference: IsRepresentable) -> None:
-        """
-        Sets a Representable object to be the one providing matrix
-        representations of datasets.
-        """
-        assert_trait(reference, IsRepresentable)
-        self._embedding_reference = reference
-
-
-class LayerInput(Layer, IsRepresentable):
-    """
-    Every pipeline must contain exactly one input layer, followed by an
-    arbitrary network structure. Every pipeline is initialized using this
-    input layer.
-    """
-
-    def __init__(self) -> None:
-        Layer.__init__(self, compatible_inputs=[], str_identifier="INPUT")
-        IsRepresentable.__init__(
-            self, repr_key=AnnDataKeyIdentifiers.BaseRepresentation
-        )
-
-    def fit(self, datasets: List[AnnData]) -> List[Layer]:
-        """
-        Simply calls the downstream layers.
-        """
-        self.log("Checking all representations are present.")
-        for adata in datasets:
-            assert (
-                adm.get_value(adata, self.repr_key) is not None
-            ), f"Representation {self.repr_key} missing in {adata}."
-        self.log("All representations found. Continuing.")
-        return self.output_layers
-
-
-class LayerOutput(Layer, IsRepresentable):
-    """
-    Simple layer to manage network outputs. There cannot be several output layers.
-    for now, but it is a TODO
-    """
-
-    def __init__(self) -> None:
-        Layer.__init__(
-            self,
-            compatible_inputs=[IsRepresentable],
-            str_identifier="OUTPUT",
-        )
-        IsRepresentable.__init__(
-            self, repr_key=AnnDataKeyIdentifiers.BaseRepresentation
-        )
-
-    def fit(self, datasets: List[AnnData]) -> List[Layer]:
-        """
-        Simply retrieves latest data representation, and stores it
-        under obsm["transmorph"] key.
-        """
-        for adata in datasets:
-            X = self.embedding_reference.get(adata)
-            self.write(adata, X, self.embedding_reference.is_feature_space)
-        return []
+from ..utils import anndata_manager as adm, AnnDataKeyIdentifiers
 
 
 class Model(CanLog):
@@ -210,7 +62,6 @@ class Model(CanLog):
         self.output_layers = []
         self.layers: List[Layer] = []
         self.watchers: List[Watcher] = []
-        self.profiler = Profiler()
         self.verbose = verbose
         if verbose:
             settings.verbose = "INFO"
@@ -385,8 +236,8 @@ class Model(CanLog):
             )
         self.log(
             "### REPORT_START ###\n"
-            + self.profiler.log_stats()
+            + profiler.log_stats()
             + "\n"
-            + self.profiler.log_tasks()
+            + profiler.log_tasks()
         )
         self.log("### REPORT_END ###")

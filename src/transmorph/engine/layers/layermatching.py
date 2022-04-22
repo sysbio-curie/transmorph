@@ -7,27 +7,32 @@ import logging
 from anndata import AnnData
 from typing import List, Optional
 
-from . import Matching, _TypeMatchingSet
-from .watchermatching import WatcherMatching
-from ..engine import Layer
-from ..transforming import ContainsTransformations
-from ..profiler import IsProfilable, profile_method
+from . import Layer
+from ..matching import Matching, _TypeMatchingSet
 from ..subsampling import (
-    IsSubsamplable,
     Subsampling,
     KeepAll,
 )
-from transmorph.engine.traits import (
+from ..traits import (
+    ContainsTransformations,
     HasMetadata,
+    IsProfilable,
+    IsSubsamplable,
     IsRepresentable,
+    IsWatchable,
     UsesCommonFeatures,
     UsesReference,
 )
-from transmorph.engine.watchers import IsWatchable, WatcherTiming
+from ..watchers import WatcherMatching, WatcherTiming
+from ... import profile_method
 
 
 class LayerMatching(
-    Layer, ContainsTransformations, IsWatchable, IsProfilable, IsSubsamplable
+    Layer,
+    ContainsTransformations,
+    IsWatchable,
+    IsProfilable,
+    IsSubsamplable,
 ):
     """
     This layer performs a matching between two or more datasets.

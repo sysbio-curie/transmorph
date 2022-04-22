@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 
 from .. import Transformation
-from ..traits import UsesCommonFeatures
+from ...traits import UsesCommonFeatures
 
 
 class CommonGenes(Transformation, UsesCommonFeatures):

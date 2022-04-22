@@ -3,13 +3,17 @@
 from anndata import AnnData
 from typing import List
 
-from .merging import Merging
-from ..engine import Layer
-from ..matching import LayerMatching
-from ..profiler import IsProfilable, profile_method
-from ..traits import IsRepresentable, HasMetadata
-from ..transforming import ContainsTransformations
-from ..watchers import IsWatchable, WatcherTiming
+from . import Layer, LayerMatching
+from ..merging import Merging
+from ..traits import (
+    ContainsTransformations,
+    IsProfilable,
+    IsRepresentable,
+    IsWatchable,
+    HasMetadata,
+)
+from ..watchers import WatcherTiming
+from ... import profile_method
 
 
 class LayerMerging(

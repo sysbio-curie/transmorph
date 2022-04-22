@@ -5,11 +5,10 @@ import logging
 from anndata import AnnData
 from typing import List
 
-from .. import Layer
-from ..transforming import ContainsTransformations
-from ..profiler import IsProfilable, profile_method
-from ..traits import IsRepresentable
-from ..watchers import IsWatchable, WatcherTiming
+from . import Layer
+from ..traits import ContainsTransformations, IsProfilable, IsRepresentable, IsWatchable
+from ..watchers import WatcherTiming
+from ... import profile_method
 
 
 class LayerTransformation(

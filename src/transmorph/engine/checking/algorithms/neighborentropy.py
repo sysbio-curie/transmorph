@@ -4,11 +4,9 @@ import numpy as np
 
 from typing import List
 
-from transmorph.engine.traits import UsesNeighbors
-
-
 from .. import Checking
-from ...profiler import profile_method
+from ...traits import UsesNeighbors
+from .... import profile_method
 from ....stats.entropy import label_entropy
 from ....utils.graph import nearest_neighbors
 

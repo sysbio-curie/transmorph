@@ -9,8 +9,8 @@ from scipy.spatial.distance import cdist
 from typing import Any, Dict, Hashable, Literal, List, Optional
 
 from .. import Matching, _TypeMatchingSet
-from ...profiler import profile_method
 from ...traits import HasMetadata, UsesCommonFeatures, UsesMetric
+from .... import profile_method
 
 
 class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):

@@ -1,38 +1,9 @@
 #!/usr/bin/env python3
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
-from typing import Any, List, Type
+from typing import Any
 
-from .profiler import IsProfilable
-from .traits import CanLog, assert_trait
-
-
-class IsWatchable:
-    """
-    A watchable object is an object that can be observed by a Watcher.
-    """
-
-    def __init__(self, compatible_watchers: List[Type]):
-        self.compatible_watchers = compatible_watchers
-        self.watchers: List[Watcher] = []
-
-    def add_watcher(self, watcher: Watcher) -> None:
-        """
-        Adds a watcher to the layer to monitor it. Only the Watcher
-        class should call this function, and is trusted to do so.
-        """
-        assert watcher not in self.watchers
-        assert isinstance(watcher, tuple(self.compatible_watchers))
-        self.watchers.append(watcher)
-
-    def update_watchers(self) -> None:
-        """
-        Calls the different watchers of the object.
-        """
-        for watcher in self.watchers:
-            watcher.compute()
+from ..traits import CanLog, IsWatchable
 
 
 class Watcher(ABC, CanLog):
@@ -58,6 +29,8 @@ class Watcher(ABC, CanLog):
     readable: bool
         Indicates if the watcher is ready to be read, meaning it has
         computed and formatted its data.
+
+    TODO update all this
     """
 
     WatcherID = 0
@@ -94,27 +67,3 @@ class Watcher(ABC, CanLog):
             )
             return None
         return self.data[key]
-
-
-class WatcherTiming(Watcher):
-    """
-    Watches a Layer, and measures the time it takes to execute.
-
-    Parameters
-    ----------
-    target: Layer
-        Layer to watch.
-    """
-
-    def __init__(
-        self,
-        target: IsWatchable,
-    ):
-        super().__init__(target, str_identifier="TIMING")
-
-    def compute(self) -> None:
-        self.log("Retrieving time elapsed...")
-        self.readable = False
-        assert_trait(self.target, IsProfilable)
-        self.data["time"] = self.target.get_time_spent()
-        self.readable = True

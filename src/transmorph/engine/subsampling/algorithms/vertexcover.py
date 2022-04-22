@@ -4,8 +4,8 @@ import numpy as np
 
 from typing import List, Tuple
 
-from ...traits import UsesNeighbors
 from ..subsampling import Subsampling
+from ...traits import UsesNeighbors
 from ....utils.graph import vertex_cover
 
 
