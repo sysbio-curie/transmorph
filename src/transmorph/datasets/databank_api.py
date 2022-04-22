@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+import logging
 import os
 import time
 import urllib.request
@@ -11,6 +12,8 @@ from posixpath import dirname
 from socket import error as SocketError
 from typing import Dict, Optional
 from warnings import warn
+
+from .._logging import logger
 
 CALLBACK = 30
 DATASETS_JSON = "datasets.json"
@@ -25,9 +28,9 @@ def check_md5_file(file_path: str, target_hash: str) -> bool:
 
 def remove_dataset(dataset_name: str) -> None:
     # Removes all files from data/$dataset_name
-    print(f"databank_api > Removing dataset {dataset_name}...")
+    logger.log(logging.DEBUG, f"databank_api > Removing dataset {dataset_name}...")
     if not path.exists(f"{DATA_PATH}{dataset_name}"):
-        print("databank_api > Nothing to do.")
+        logger.log(logging.DEBUG, "databank_api > Nothing to do.")
         return
     for fname in os.listdir(f"{DATA_PATH}{dataset_name}/"):
         os.remove(f"{DATA_PATH}{dataset_name}/{fname}")
@@ -36,7 +39,7 @@ def remove_dataset(dataset_name: str) -> None:
 
 def unzip_file(zip_path: str, dataset_name: str) -> None:
     # Unzips $zip_path at data/$dataset_name/
-    print(f"databank_api > Unzipping file {zip_path}...")
+    logger.log(logging.DEBUG, f"databank_api > Unzipping file {zip_path}...")
     with zipfile.ZipFile(zip_path, "r") as fzip:
         fzip.extractall(f"{DATA_PATH}{dataset_name}/")
     os.remove(zip_path)
@@ -44,7 +47,7 @@ def unzip_file(zip_path: str, dataset_name: str) -> None:
 
 def check_files(dataset_name: str) -> bool:
     # Check if all files from a dataset are present
-    print(f"databank_api > Checking files from {dataset_name}...")
+    logger.log(logging.DEBUG, f"databank_api > Checking files from {dataset_name}...")
     with open(f"{dirname(__file__)}/{DATASETS_JSON}", "r") as f:
         all_datasets = json.load(f)
         dataset: Optional[Dict] = None
@@ -96,18 +99,21 @@ def download_dataset(dataset_name: str) -> str:
             dataset = ds
             break
     assert dataset is not None, f"databank_api > Unknown dataset: {dataset_name}."
-    print(f"databank_api > Loading dataset {dataset_name}...")
-    print(f"databank_api > Reference: {dataset['reference']}")
-    print(f"databank_api > Type: {dataset['type']}")
-    print(f"databank_api > Number of files: {dataset['n_files']}")
+    logger.log(logging.INFO, f"databank_api > Loading dataset {dataset_name}...")
+    logger.log(logging.INFO, f"databank_api > Reference: {dataset['reference']}")
+    logger.log(logging.INFO, f"databank_api > Type: {dataset['type']}")
+    logger.log(logging.INFO, f"databank_api > Number of files: {dataset['n_files']}")
 
     # Preparing dir structure
     if not path.exists(f"{datasets_root}data/"):
-        print("databank_api > data/ not found, creating it.")
+        logger.log(logging.DEBUG, "databank_api > data/ not found, creating it.")
         os.mkdir(f"{datasets_root}data/")
     data_path = f"{datasets_root}data/{dataset_name}/"
     if not path.exists(data_path):
-        print(f"databank_api > data/{dataset_name}/ not found, creating it.")
+        logger.log(
+            logging.DEBUG,
+            f"databank_api > data/{dataset_name}/ not found, creating it.",
+        )
         os.mkdir(data_path)
 
     # Loading dataset
@@ -115,28 +121,33 @@ def download_dataset(dataset_name: str) -> str:
     zip_path = f"{data_path}{dataset['zip_name']}"
     try:
         urllib.request.urlretrieve(dl_url, zip_path, print_download_state)
-        print("")
+        logger.log(logging.DEBUG, "")
     except SocketError as e:
         f.close()
-        print("")
-        print(f"databank_api > # ERROR # {e}")
-        print(f"databank_api > Retrying in {CALLBACK} seconds.")
-        print(
+        logger.log(logging.DEBUG, "")
+        logger.log(logging.INFO, f"databank_api > # ERROR # {e}")
+        logger.log(logging.INFO, f"databank_api > Retrying in {CALLBACK} seconds.")
+        logger.log(
+            logging.INFO,
             "databank_api > Please make sure you're running the"
-            "latest package version."
+            "latest package version.",
         )
         time.sleep(CALLBACK)
         return download_dataset(dataset_name)
 
-    print("databank_api > Checking md5 sums...")
+    logger.log(logging.DEBUG, "databank_api > Checking md5 sums...")
     if not check_md5_file(zip_path, dataset["md5_hash"]):
         f.close()
         os.remove(zip_path)
-        print("databank_api > # ERROR # Errors detected in the file.")
-        print(f"databank_api > Retrying in {CALLBACK} seconds.")
+        logger.log(
+            logging.DEBUG, "databank_api > # ERROR # Errors detected in the file."
+        )
+        logger.log(logging.INFO, f"databank_api > Retrying in {CALLBACK} seconds.")
         time.sleep(CALLBACK)
         return download_dataset(dataset_name)
 
     f.close()
-    print(f"databank_api > Dataset {dataset_name} successfully downloaded.")
+    logger.log(
+        logging.INFO, f"databank_api > Dataset {dataset_name} successfully downloaded."
+    )
     return zip_path

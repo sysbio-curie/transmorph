@@ -67,14 +67,17 @@ class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
     ):
         Matching.__init__(self, str_identifier="FUSEDGW")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
-        self.OT_metric = OT_metric
-        self.OT_metric_kwargs = {} if OT_metric_kwargs is None else OT_metric_kwargs
-        self.default_GW_metric = (
-            OT_metric if default_GW_metric is None else default_GW_metric
-        )
-        self.default_GW_metric_kwargs = (
+        UsesMetric.__init__(self)
+        default_metric_kwargs = (
             {} if default_GW_metric_kwargs is None else default_GW_metric_kwargs
         )
+        default_metadata = {
+            "metric": default_GW_metric,
+            "metric_kwargs": default_metric_kwargs,
+        }
+        HasMetadata.__init__(self, default_metadata)
+        self.OT_metric = OT_metric
+        self.OT_metric_kwargs = {} if OT_metric_kwargs is None else OT_metric_kwargs
         self.alpha = alpha
         self.GW_loss = GW_loss
 
@@ -82,16 +85,17 @@ class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         """
         Retrieves custom metric contained in AnnData if any.
         """
-        metric_and_kwargs = self.get_metric(adata)
+        metric_and_kwargs = UsesMetric.get_metric(adata)
         if metric_and_kwargs is None:
-            metric, metric_kwargs = None, None
+            return {}
         else:
             metric, metric_kwargs = metric_and_kwargs
-        if metric is None:
-            metric = self.default_GW_metric
-        if metric_kwargs is None:
-            metric = self.default_GW_metric_kwargs
-        return {"metric": metric, "metric_kwargs": metric_kwargs}
+        metadata = {}
+        if metric is not None:
+            metadata["metric"] = metric
+        if metric_kwargs is not None:
+            metadata["metric_kwargs"] = metric_kwargs
+        return metadata
 
     @profile_method
     def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:

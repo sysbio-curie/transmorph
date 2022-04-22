@@ -90,7 +90,7 @@ class UsesCommonFeatures:
                 self.mode == "total"
             ), "Calling slice_features with one dataset is only"
             " valid for mode == 'total'."
-            return X1[self.total_feature_slices[idx_1]]
+            return X1[:, self.total_feature_slices[idx_1]]
         s1, s2 = self.get_common_features(idx_1, idx_2)
         assert s1.shape[0] == X1.shape[1], (
             f"Unexpected matrix features number. Expected {s1.shape[0]}, "

@@ -2,16 +2,17 @@
 # Contains high level functions to load datasets.
 
 import anndata as ad
-import scanpy as sc
+import logging
 import numpy as np
 import os
+import scanpy as sc
 
 from os.path import dirname
 from scipy.sparse import load_npz
 from typing import Dict
 
 from .databank_api import check_files, download_dataset, remove_dataset, unzip_file
-
+from .._logging import logger
 
 # GIT: small datasets, can be hosted on Git
 # ONLINE: bigger datasets, are downloaded if necessary
@@ -174,7 +175,7 @@ def load_bank(dataset_name: str, keep_sparse: bool = False):
     keep_sparse: bool, default = False
         Prevents AnnData.X to be converted to ndarray.
     """
-    # TODO: print information about dataset here
+    logger.log(logging.INFO, f"databank_api > Loading bank {dataset_name}.")
     download_needed = not check_files(dataset_name)
     if download_needed:
         zip_path = download_dataset(dataset_name)
@@ -185,6 +186,10 @@ def load_bank(dataset_name: str, keep_sparse: bool = False):
     for fname in os.listdir(dataset_root):
         adata = sc.read_h5ad(dataset_root + fname)
         if not keep_sparse:
+            logger.log(
+                logging.DEBUG,
+                f"databank_api > Removing sparsity of {dataset_name}.",
+            )
             adata.X = adata.X.toarray()
         pid = fname.split(".")[0]
         data[pid] = adata
