@@ -140,9 +140,7 @@ class MatchingGW(Matching, UsesMetric, HasMetadata):
         ndatasets = len(datasets)
         result: _TypeMatchingSet = {}
         for i in range(ndatasets):
-            for j in range(ndatasets):
-                if j <= i:
-                    continue
+            for j in range(i + 1, ndatasets):
                 Tij = optimizer(
                     C1=all_C[i],
                     C2=all_C[j],

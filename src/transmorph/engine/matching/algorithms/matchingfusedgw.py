@@ -59,7 +59,7 @@ class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         self,
         OT_metric: str = "sqeuclidean",
         OT_metric_kwargs: Optional[Dict] = None,
-        default_GW_metric: Optional[str] = None,
+        default_GW_metric: str = "sqeuclidean",
         default_GW_metric_kwargs: Optional[Dict] = None,
         alpha: float = 0.5,
         GW_loss: str = "square_loss",
@@ -120,6 +120,8 @@ class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         result: _TypeMatchingSet = {}
         for i, Xi in enumerate(datasets):
             for j, Xj in enumerate(datasets):
+                if j >= i:
+                    continue
                 Xi_common, Xj_common = self.slice_features(
                     X1=Xi, X2=Xj, idx_1=i, idx_2=j
                 )
