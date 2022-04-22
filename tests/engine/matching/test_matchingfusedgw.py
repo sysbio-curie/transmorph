@@ -29,7 +29,7 @@ def test_matching_fusedgw_accuracy():
         datasets=[src, ref],
         matching_mtx=T,
         color_by="class",
-        title="Gromov-Wasserstein matching\n"
+        title="Fused Gromov-Wasserstein matching\n"
         f"[acc={'{:.2f}'.format(accuracy)}, "
         f"time={'{:.2f}'.format(time)}ms]",
         xlabel="Feature 1",
@@ -59,7 +59,7 @@ def test_matching_fusedgw_accuracy():
         datasets=[src, ref],
         matching_mtx=T,
         color_by="class",
-        title="Gromov-Wasserstein matching\n"
+        title="Fused Gromov-Wasserstein matching\n"
         f"[acc={'{:.2f}'.format(accuracy)}, "
         f"time={'{:.2f}'.format(time)}ms]",
         xlabel="Feature 1",
@@ -93,7 +93,16 @@ def test_matching_fusedgw_commongenes():
         )
         for i in range(len(datasets))
     ]
-    assert all(X.shape[1] == sliced[0].shape[1] for X in sliced)
+    slice_size = sliced[0].shape[1]
+    assert all(X.shape[1] == slice_size for X in sliced)
+    for i, j in [(0, 1), (0, 2), (1, 2)]:
+        Xi, Xj = mt.slice_features(
+            X1=datasets[i].X,
+            idx_1=i,
+            X2=datasets[j].X,
+            idx_2=j,
+        )
+        assert Xi.shape[1] == Xj.shape[1] == slice_size
 
 
 if __name__ == "__main__":

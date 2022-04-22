@@ -59,7 +59,16 @@ def test_matching_ot_commongenes():
         )
         for i in range(len(datasets))
     ]
-    assert all(X.shape[1] == sliced[0].shape[1] for X in sliced)
+    slice_size = sliced[0].shape[1]
+    assert all(X.shape[1] == slice_size for X in sliced)
+    for i, j in [(0, 1), (0, 2), (1, 2)]:
+        Xi, Xj = mt.slice_features(
+            X1=datasets[i].X,
+            idx_1=i,
+            X2=datasets[j].X,
+            idx_2=j,
+        )
+        assert Xi.shape[1] == Xj.shape[1] == slice_size
 
 
 if __name__ == "__main__":
