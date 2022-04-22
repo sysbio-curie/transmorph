@@ -5,7 +5,7 @@ import numpy as np
 from anndata import AnnData
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
-from typing import Any, Hashable, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 from ot.gromov import gromov_wasserstein, entropic_gromov_wasserstein
 
 from ..matching import Matching, _TypeMatchingSet
@@ -74,12 +74,17 @@ class MatchingGW(Matching, UsesMetric, HasMetadata):
         max_iter: int = int(1e6),
     ):
         Matching.__init__(self, str_identifier="GW")
-        assert optimizer in ("gw", "entropic_gw"), f"Unknown optimizer: {optimizer}."
-        self.optimizer = optimizer
-        self.default_metric = default_metric
-        self.default_metric_kwargs = (
+        UsesMetric.__init__(self)
+        default_metric_kwargs = (
             {} if default_metric_kwargs is None else default_metric_kwargs
         )
+        default_metadata = {
+            "metric": default_metric,
+            "metric_kwargs": default_metric_kwargs,
+        }
+        HasMetadata.__init__(self, default_metadata)
+        assert optimizer in ("gw", "entropic_gw"), f"Unknown optimizer: {optimizer}."
+        self.optimizer = optimizer
         self.GW_loss = GW_loss
         if entropy_epsilon is not None and optimizer == "gw":
             self.warn("Epsilon specified has no effect on gw optimizer.")
@@ -88,20 +93,21 @@ class MatchingGW(Matching, UsesMetric, HasMetadata):
         self.entropy_epsilon = entropy_epsilon
         self.max_iter = int(max_iter)
 
-    def retrieve_metadatata(self, adata: AnnData) -> Dict[Hashable, Any]:
+    def retrieve_metadatata(self, adata: AnnData) -> Dict[str, Any]:
         """
         Retrieves custom metric contained in AnnData if any.
         """
-        metric_and_kwargs = self.get_metric(adata)
+        metric_and_kwargs = UsesMetric.get_metric(adata)
         if metric_and_kwargs is None:
-            metric, metric_kwargs = None, None
+            return {}
         else:
             metric, metric_kwargs = metric_and_kwargs
-        if metric is None:
-            metric = self.default_metric
-        if metric_kwargs is None:
-            metric = self.default_metric_kwargs
-        return {"metric": metric, "metric_kwargs": metric_kwargs}
+        metadata = {}
+        if metric is not None:
+            metadata["metric"] = metric
+        if metric_kwargs is not None:
+            metadata["metric_kwargs"] = metric_kwargs
+        return metadata
 
     @profile_method
     def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
@@ -122,12 +128,12 @@ class MatchingGW(Matching, UsesMetric, HasMetadata):
         ]
         all_C = [C / C.max() for C in all_C]
         # Selects optimizer
-        kwargs = {}
         if self.optimizer == "gw":
             optimizer = gromov_wasserstein
+            kwargs = {"numItermax": self.max_iter}
         elif self.optimizer == "entropic_gw":
             optimizer = entropic_gromov_wasserstein
-            kwargs = {"epsilon": self.entropy_epsilon}
+            kwargs = {"epsilon": self.entropy_epsilon, "max_iter": self.max_iter}
         else:
             raise ValueError(f"Unknown optimizer: {self.optimizer}.")
         # Compute pairwise GW
@@ -143,7 +149,6 @@ class MatchingGW(Matching, UsesMetric, HasMetadata):
                     p=all_w[i],
                     q=all_w[j],
                     loss_fun=self.GW_loss,
-                    numItermax=self.max_iter,
                     **kwargs,
                 )
                 result[i, j] = csr_matrix(Tij)

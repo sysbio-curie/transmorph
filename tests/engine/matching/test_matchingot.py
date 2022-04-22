@@ -31,7 +31,7 @@ def test_matching_ot_accuracy():
             ylabel="Feature 2",
             show=False,
             save=True,
-            caller_path=f"{__file__}",
+            caller_path=__file__,
             suffix=optimizer,
         )
 

@@ -154,8 +154,6 @@ class AnnDataManager:
         """
         Inserts an entry to an AnnData component, and logs it.
         """
-        if str_key not in field:
-            return
         AnnDataManager._log(f"Inserting {field_str} {str_key}.")
         field[str_key] = value
 
