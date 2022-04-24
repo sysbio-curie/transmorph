@@ -82,6 +82,7 @@ class GraphEmbedding(Merging, UsesNeighbors):
             str_identifier="GRAPH_EMBEDDING",
             matching_mode="normalized",
         )
+        UsesNeighbors.__init__(self)
         assert optimizer in ("umap", "mde"), f"Unknown optimizer {optimizer}."
         self.optimizer = optimizer
         self.embedding_dimension = embedding_dimension

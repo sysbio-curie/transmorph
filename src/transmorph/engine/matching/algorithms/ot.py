@@ -90,9 +90,7 @@ class OT(Matching, UsesCommonFeatures):
         self.partial_n_dummies = partial_n_dummies
 
     @profile_method
-    def fit(
-        self, datasets: List[np.ndarray], reference_idx: int = -1
-    ) -> _TypeMatchingSet:
+    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Computes OT between pairs of datasets with the right optimizer.
         """

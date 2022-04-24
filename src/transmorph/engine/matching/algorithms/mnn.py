@@ -66,9 +66,7 @@ class MNN(Matching, UsesCommonFeatures):
         self.n_neighbors = n_neighbors
 
     @profile_method
-    def fit(
-        self, datasets: List[np.ndarray], reference_idx: int = -1
-    ) -> _TypeMatchingSet:
+    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Computes MNN between pairs of datasets.
         """

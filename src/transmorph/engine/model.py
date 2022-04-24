@@ -7,7 +7,7 @@ from anndata import AnnData
 from typing import List, Optional
 
 from .layers import Layer, LayerChecking, LayerInput, LayerOutput
-from .traits import CanLog, CanCatchChecking, UsesNeighbors
+from .traits import CanLog, CanCatchChecking, UsesNeighbors, UsesReference
 from .. import profiler
 from .. import settings
 from ..utils import anndata_manager as adm, AnnDataKeyIdentifiers
@@ -166,13 +166,10 @@ class Model(CanLog):
 
         # Flags reference dataset if any
         for adata in datasets:
-            adm.set_value(
-                adata=adata,
-                key=AnnDataKeyIdentifiers.IsReference,
-                field="uns",
-                value=adata is reference,
-                persist="pipeline",
-            )
+            if adata is not reference:
+                pass
+            UsesReference.write_is_reference(adata)
+            break
 
         # Setting base representation
         for adata in datasets:

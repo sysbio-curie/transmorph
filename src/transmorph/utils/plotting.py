@@ -146,8 +146,14 @@ def plot_result(
             adm.get_value(adata, AnnDataKeyIdentifiers.PlotRepresentation)
             for adata in datasets
         ]
-    elif all("transmorph" in adata.obsm for adata in datasets):
-        representations = [adata.obsm["transmorph"] for adata in datasets]
+    elif all(
+        adm.isset_value(adata, AnnDataKeyIdentifiers.TransmorphRepresentation)
+        for adata in datasets
+    ):
+        representations = [
+            adm.get_value(adata, AnnDataKeyIdentifiers.TransmorphRepresentation)
+            for adata in datasets
+        ]
     else:
         representations = slice_common_features(datasets)
         assert (

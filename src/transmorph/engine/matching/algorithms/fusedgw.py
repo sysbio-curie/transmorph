@@ -98,9 +98,7 @@ class FusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         return metadata
 
     @profile_method
-    def fit(
-        self, datasets: List[np.ndarray], reference_idx: int = -1
-    ) -> _TypeMatchingSet:
+    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Compute optimal transport plan for the FGW problem.
         TODO: specific strategy if reference is set

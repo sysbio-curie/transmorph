@@ -30,6 +30,7 @@ class Barycenter(Merging, UsesReference):
             str_identifier="BARYCENTER",
             matching_mode="normalized",
         )
+        UsesReference.__init__(self)
 
     def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
         """
@@ -38,12 +39,12 @@ class Barycenter(Merging, UsesReference):
         """
         k_ref = self.reference_index
         assert k_ref is not None, "Reference dataset must be set."
-        X_ref = self.get_reference_index(datasets)
+        X_ref = self.get_reference_item(datasets)
         result = []
         for k, X in enumerate(datasets):
-            if X == X_ref:
+            if X is X_ref:
                 result.append(X_ref)
                 continue
             T = self.get_matching(k, k_ref)
-            result.append(T @ X)
+            result.append(T @ X_ref)
         return result

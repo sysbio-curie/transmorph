@@ -3,6 +3,8 @@
 from anndata import AnnData
 from typing import List
 
+from transmorph.engine.traits import UsesReference
+
 from . import Layer, LayerMatching
 from ..merging import Merging
 from ..traits import (
@@ -46,6 +48,8 @@ class LayerMerging(
         self.info("Running merging...")
         if isinstance(self.merging, HasMetadata):
             self.merging.retrieve_all_metadata(datasets)
+        if isinstance(self.merging, UsesReference):
+            self.merging.retrieve_reference_index(datasets)
         assert isinstance(self.input_layer, LayerMatching)
         self.merging.set_matchings(self.input_layer.get_matchings())
         Xs_transform = self.merging.transform(Xs)

@@ -69,7 +69,15 @@ class UsesNeighbors:
 
         use_scanpy = settings.neighbors_use_scanpy
         for adata in datasets:
-            if not use_scanpy:
+            matrix = None
+            if use_scanpy:  # Scanpy mode
+                matrix = adm.get_value(
+                    adata=adata,
+                    key="distances",
+                    transmorph_key=False,
+                    field="obsp",
+                )
+            if not use_scanpy or matrix is None:
                 X = adm.get_value(adata, representation_key)
                 # Settings parameters are used as default
                 matrix = nearest_neighbors(
@@ -78,15 +86,6 @@ class UsesNeighbors:
                     symmetrize=False,
                     mode="distances",
                 )
-            else:  # Scanpy mode
-                matrix = adm.get_value(
-                    adata=adata,
-                    key="distances",
-                    transmorph_key=False,
-                    field="obsp",
-                )
-                if matrix is None:
-                    raise ValueError("Scanpy neighbors not found.")
             assert isinstance(matrix, csr_matrix)
             UsesNeighbors.NeighborsGraphs.append(matrix)
 
@@ -104,6 +103,10 @@ class UsesNeighbors:
             Dataset indice when called compute_neighbor_graphs.
         """
         assert mode in ("edges", "distances")
+        assert len(UsesNeighbors.NeighborsGraphs) > 0, (
+            "UsesNeighbors must be initialized via"
+            " UsesNeighbors.compute_neighbors_graphs."
+        )
         nn_matrix = UsesNeighbors.NeighborsGraphs[idx]
         if mode == "edges":
             nn_matrix = nn_matrix.astype(bool)

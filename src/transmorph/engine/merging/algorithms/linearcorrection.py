@@ -33,23 +33,6 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
     point are associated with a smoothed correction vector. To
     finish, we set for all uncorrected points a correction vector
     equal to the one of their closest corrected neighbor.
-
-    Parameters
-    ----------
-    matching: MatchingABC
-        Fitted, referenced matching between datasets.
-
-    n_neighbors: int, default = 5
-        Number of neighbors to use to compute correction smoothing.
-
-    metric: str, default = "sqeuclidean"
-        Distance metric to use for kNN graph construction.
-
-    metric_kwargs: dict, default = {}
-        Extra parameters for the metric to pass to scipy.distance.cdist.
-
-    use_nndescent: bool, default = False
-        Use the quicker, approximate solver for nearest neighbors.
     """
 
     def __init__(self):
@@ -59,6 +42,8 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
             str_identifier="LINEAR_CORRECTION",
             matching_mode="normalized",
         )
+        UsesNeighbors.__init__(self)
+        UsesReference.__init__(self)
 
     def project(
         self,

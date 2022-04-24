@@ -65,11 +65,7 @@ class Matching(ABC, IsProfilable, CanLog):
         pass
 
     @abstractmethod
-    def fit(
-        self,
-        datasets: List[np.ndarray],
-        reference_idx: int = -1,
-    ) -> _TypeMatchingSet:
+    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Computes the matching between a set of AnnData. Should not be overriden in
         the implementation in order to ensure compatibility between Matching and

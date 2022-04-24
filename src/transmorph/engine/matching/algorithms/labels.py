@@ -27,9 +27,7 @@ class Labels(Matching, UsesSampleLabels):
         UsesSampleLabels.__init__(self, label_obs=label_obs)
 
     @profile_method
-    def fit(
-        self, datasets: List[np.ndarray], reference_idx: int = -1
-    ) -> _TypeMatchingSet:
+    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Collects label matching matrices using UsesSampleLabels
         trait.

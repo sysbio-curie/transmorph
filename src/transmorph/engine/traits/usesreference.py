@@ -16,7 +16,21 @@ class UsesReference:
     def __init__(self):
         self.reference_index: Optional[int] = None
 
-    def get_reference_index(self, datasets: List[AnnData]) -> None:
+    @staticmethod
+    def write_is_reference(adata: AnnData) -> None:
+        """
+        Sets an anndata to be considered as reference. Should not be used on
+        more than one anndata object.
+        """
+        adm.set_value(
+            adata=adata,
+            key=AnnDataKeyIdentifiers.IsReference,
+            field="uns",
+            value=True,
+            persist="pipeline",
+        )
+
+    def retrieve_reference_index(self, datasets: List[AnnData]) -> None:
         """
         Returns index of AnnData that has been chosen as a reference. If
         found none or several, returns -1.
@@ -29,7 +43,7 @@ class UsesReference:
                     raise AttributeError("More than one reference.")
                 ref_id = k
         if ref_id == -1:
-            return None
+            return
         self.reference_index = ref_id
 
     def get_reference_item(self, datasets: List[T]) -> Optional[T]:

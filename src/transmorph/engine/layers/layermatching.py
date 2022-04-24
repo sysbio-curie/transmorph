@@ -79,7 +79,7 @@ class LayerMatching(
             )
         # Checks if there is a reference dataset
         if isinstance(self.matching, UsesReference):
-            self.matching.get_reference_index(datasets)
+            self.matching.retrieve_reference_index(datasets)
         if isinstance(self.matching, UsesSampleLabels):
             self.matching.retrieve_labels(datasets)
         self.matching.check_input(Xs)
