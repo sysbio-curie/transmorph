@@ -36,6 +36,7 @@ class Checking(ABC, CanLog, IsProfilable):
 
     def __init__(self, str_identifier: str = "DEFAULT"):
         CanLog.__init__(self, str_identifier=f"CHECKING_{str_identifier}")
+        IsProfilable.__init__(self)
 
     def check_input(self, datasets: List[np.ndarray]) -> None:
         """
