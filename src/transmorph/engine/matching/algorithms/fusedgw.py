@@ -15,7 +15,7 @@ from ...traits.usescommonfeatures import UsesCommonFeatures
 from ...traits.usesmetric import UsesMetric
 
 
-class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
+class FusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
     """
     Fused Gromov-Wasserstein-based matching. Embeds the
     ot.gromov.fused_gromov_wasserstein method from POT:
@@ -98,7 +98,9 @@ class MatchingFusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         return metadata
 
     @profile_method
-    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
+    def fit(
+        self, datasets: List[np.ndarray], reference_idx: int = -1
+    ) -> _TypeMatchingSet:
         """
         Compute optimal transport plan for the FGW problem.
         TODO: specific strategy if reference is set

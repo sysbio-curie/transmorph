@@ -8,7 +8,7 @@ from ..transformation import Transformation
 from ...traits.usescommonfeatures import UsesCommonFeatures
 
 
-class CommonGenes(Transformation, UsesCommonFeatures):
+class CommonFeatures(Transformation, UsesCommonFeatures):
     """
     Puts anndata objects in their larger common gene space. Only acts
     on AnnData.X matrix, so this must be done very early in a pipeline.
@@ -17,7 +17,7 @@ class CommonGenes(Transformation, UsesCommonFeatures):
     def __init__(self):
         Transformation.__init__(
             self,
-            str_identifier="COMMON_GENES",
+            str_identifier="COMMON_FEATURES",
             preserves_space=False,
         )
         UsesCommonFeatures.__init__(self, mode="total")

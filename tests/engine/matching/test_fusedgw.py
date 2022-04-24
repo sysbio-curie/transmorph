@@ -2,7 +2,7 @@
 
 from transmorph.datasets import load_test_datasets_small
 from transmorph.datasets import load_travaglini_10x
-from transmorph.engine.matching import MatchingFusedGW
+from transmorph.engine.matching import FusedGW
 from transmorph.engine.traits import UsesMetric
 from transmorph.stats import edge_accuracy
 from transmorph.utils import plot_result
@@ -15,7 +15,7 @@ def test_matching_fusedgw_accuracy():
     UsesMetric.set_metric(src, "cosine")
     UsesMetric.set_metric(ref, "minkowski", {"p": 3})
     # Without custom metric
-    mt = MatchingFusedGW()
+    mt = FusedGW()
     assert mt.get_metadata(0, "metric") == "sqeuclidean"
     assert mt.get_metadata(1, "metric") == "sqeuclidean"
     assert mt.get_metadata(0, "metric_kwargs") == {}
@@ -41,7 +41,7 @@ def test_matching_fusedgw_accuracy():
     )
 
     # With custom metrics
-    mt = MatchingFusedGW()
+    mt = FusedGW()
     mt.retrieve_all_metadata([src, ref])
     assert mt.get_metadata(0, "metric") == "cosine"
     assert mt.get_metadata(1, "metric") == "minkowski"
@@ -71,10 +71,10 @@ def test_matching_fusedgw_accuracy():
     )
 
 
-def test_matching_fusedgw_commongenes():
+def test_matching_fusedgw_commonfeatures():
     # Tests the UsesCommonFeatures trait
     datasets = list(load_travaglini_10x().values())
-    mt = MatchingFusedGW(common_features_mode="pairwise")
+    mt = FusedGW(common_features_mode="pairwise")
     mt.retrieve_common_features(datasets, True)
     for i, j in [(0, 1), (0, 2), (1, 2)]:
         Xi, Xj = mt.slice_features(
@@ -84,7 +84,7 @@ def test_matching_fusedgw_commongenes():
             idx_2=j,
         )
         assert Xi.shape[1] == Xj.shape[1]
-    mt = MatchingFusedGW(common_features_mode="total")
+    mt = FusedGW(common_features_mode="total")
     mt.retrieve_common_features(datasets, True)
     sliced = [
         mt.slice_features(
@@ -107,4 +107,4 @@ def test_matching_fusedgw_commongenes():
 
 if __name__ == "__main__":
     test_matching_fusedgw_accuracy()
-    test_matching_fusedgw_commongenes()
+    test_matching_fusedgw_commonfeatures()

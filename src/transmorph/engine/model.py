@@ -150,6 +150,7 @@ class Model(CanLog):
 
         # Check datasets are of the right type, casting them if necessary
         # TODO: raise hard error if obs/var names needed.
+        # TODO: Check dtype of anndatas is float
         for i, adata in enumerate(datasets):
             if type(adata) is not AnnData:
                 assert type(adata) is np.ndarray, (

@@ -20,12 +20,11 @@ _TypePersistLevels = Literal["layer", "pipeline", "output"]
 
 def generate_features_slice(features: np.ndarray, selected: np.ndarray) -> np.ndarray:
     """
-    Returns a boolean selector of features so that only features belonging
-    to selected are set to True.
+    Returns an integer selector to slice {features} to {selected}
     """
-    fslice = np.zeros(features.shape).astype(bool)
-    for i, fname in enumerate(features):
-        fslice[i] = fname in selected
+    fslice = np.zeros(selected.shape).astype(int)
+    for i, fname in enumerate(selected):
+        fslice[i] = np.where(features == fname)[0]  # Yuk, could be done better
     return fslice
 
 
@@ -46,6 +45,7 @@ def get_pairwise_feature_slices(datasets: List[AnnData]) -> _TypePairwiseSlice:
             assert (
                 common_features.shape[0] > 0
             ), f"No common feature found between datasets {i} and {j}."
+            common_features = np.sort(common_features)
             slice_i = generate_features_slice(
                 features=features_i,
                 selected=common_features,
@@ -72,6 +72,8 @@ def get_total_feature_slices(datasets: List[AnnData]) -> _TypeTotalSlice:
             common_features,
             adata.var_names.to_numpy(),
         )
+    assert common_features.shape[0] > 0, "No common feature found between datasets."
+    common_features = np.sort(common_features)
     for adata in datasets:
         result.append(
             generate_features_slice(adata.var_names.to_numpy(), common_features)

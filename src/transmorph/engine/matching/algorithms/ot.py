@@ -14,7 +14,7 @@ from ...traits.isprofilable import profile_method
 from ...traits.usescommonfeatures import UsesCommonFeatures
 
 
-class MatchingOT(Matching, UsesCommonFeatures):
+class OT(Matching, UsesCommonFeatures):
     """
     Earth Mover's Distance-based matching. Embeds the ot.emd
     method from POT:
@@ -90,7 +90,9 @@ class MatchingOT(Matching, UsesCommonFeatures):
         self.partial_n_dummies = partial_n_dummies
 
     @profile_method
-    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
+    def fit(
+        self, datasets: List[np.ndarray], reference_idx: int = -1
+    ) -> _TypeMatchingSet:
         """
         Computes OT between pairs of datasets with the right optimizer.
         """

@@ -14,7 +14,7 @@ from ...traits.isprofilable import profile_method
 from ...traits.usesmetric import UsesMetric
 
 
-class MatchingGW(Matching, UsesMetric, HasMetadata):
+class GW(Matching, UsesMetric, HasMetadata):
     """
     Gromov-Wasserstein-based matching. Embeds the gromov_wasserstein class of
     methods from POT:
@@ -110,7 +110,9 @@ class MatchingGW(Matching, UsesMetric, HasMetadata):
         return metadata
 
     @profile_method
-    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
+    def fit(
+        self, datasets: List[np.ndarray], reference_idx: int = -1
+    ) -> _TypeMatchingSet:
         """
         Compute optimal transport plan for the FGW problem.
         TODO: specific strategy if reference is set

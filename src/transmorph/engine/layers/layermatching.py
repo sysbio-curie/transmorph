@@ -22,6 +22,7 @@ from ..traits import (
     IsRepresentable,
     UsesCommonFeatures,
     UsesReference,
+    UsesSampleLabels,
 )
 
 
@@ -79,6 +80,8 @@ class LayerMatching(
         # Checks if there is a reference dataset
         if isinstance(self.matching, UsesReference):
             self.matching.get_reference_index(datasets)
+        if isinstance(self.matching, UsesSampleLabels):
+            self.matching.retrieve_labels(datasets)
         self.matching.check_input(Xs)
         self.matching_matrices = self.matching.fit(Xs)
         # Trimming? Extrapolating?

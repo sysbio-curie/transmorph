@@ -12,7 +12,7 @@ from ...utils.anndata_manager import (
     get_total_feature_slices,
 )
 
-_TypeAnnDataCommonModes = Literal["pairwise", "total"]
+_TypeAnnDataCommonModes = Literal["pairwise", "total", "ignore"]
 
 
 class UsesCommonFeatures:
@@ -23,7 +23,7 @@ class UsesCommonFeatures:
     """
 
     def __init__(self, mode: _TypeAnnDataCommonModes):
-        assert mode in ("pairwise", "total")
+        assert mode in ("pairwise", "total", "ignore")
         self.mode = mode
         # TFS is used for mode "total", PFS for mode "pairwise"
         self.total_feature_slices: _TypeTotalSlice = []
@@ -38,7 +38,7 @@ class UsesCommonFeatures:
         Stores gene names for later use.
         """
         self.is_feature_space = is_feature_space
-        if not is_feature_space:
+        if not is_feature_space or self.mode == "ignore":
             return
         if self.mode == "pairwise":
             self.pairwise_feature_slices = get_pairwise_feature_slices(datasets)
@@ -81,7 +81,7 @@ class UsesCommonFeatures:
         """
         assert not ((X2 is None) ^ (idx_2 is None))
         # If we are not in feature space, we must skip the processing.
-        if not self.is_feature_space:
+        if not self.is_feature_space or not self.fitted or self.mode == "ignore":
             if X2 is None:
                 return X1
             return X1, X2
@@ -90,7 +90,7 @@ class UsesCommonFeatures:
                 self.mode == "total"
             ), "Calling slice_features with one dataset is only"
             " valid for mode == 'total'."
-            return X1[:, self.total_feature_slices[idx_1]]
+            return X1[:, self.total_feature_slices[idx_1]].copy()
         s1, s2 = self.get_common_features(idx_1, idx_2)
         assert s1.shape[0] == X1.shape[1], (
             f"Unexpected matrix features number. Expected {s1.shape[0]}, "
@@ -100,4 +100,4 @@ class UsesCommonFeatures:
             f"Unexpected matrix features number. Expected {s2.shape[0]}, "
             f"found {X2.shape[1]}."
         )
-        return X1[:, s1], X2[:, s2]
+        return X1[:, s1].copy(), X2[:, s2].copy()

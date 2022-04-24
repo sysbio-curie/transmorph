@@ -6,6 +6,8 @@ import numpy as np
 
 from sklearn.decomposition import PCA
 
+from .matrix import extract_chunks
+
 
 def pca(
     X: np.ndarray, n_components: int = 2, return_transformation: bool = False
@@ -24,6 +26,8 @@ def pca(
     return_transformation: bool, default = False
         Return the sklearn PCA object together with the transformed dataset.
     """
+    from .._settings import settings
+
     assert n_components > 0, "Number of components must be positive."
     n, d = X.shape
     if n_components > d:
@@ -32,7 +36,7 @@ def pca(
             f"Setting it to {d} instead."
         )
         n_components = d
-    pca = PCA(n_components=n_components)
+    pca = PCA(n_components=n_components, random_state=settings.global_random_seed)
     pca.fit(X)
     if return_transformation:
         return pca.transform(X), pca
@@ -103,10 +107,7 @@ def pca_multi(
             n_components=n_components,
             return_transformation=True,
         )
-        offset, datasets = 0, []
-        for X in Xs:
-            datasets.append(embeddings[offset : offset + X.shape[0]])
-            offset += X.shape[0]
+        datasets = extract_chunks(embeddings, [X.shape[0] for X in Xs])
         if return_transformation:
             return datasets, pca_object
         return datasets

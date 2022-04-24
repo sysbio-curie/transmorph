@@ -11,7 +11,7 @@ from ...traits.usescommonfeatures import UsesCommonFeatures
 from ....utils import mutual_nearest_neighbors
 
 
-class MatchingMNN(Matching, UsesCommonFeatures):
+class MNN(Matching, UsesCommonFeatures):
     """
     Mutual Nearest Neighbors (MNN) matching. Two samples xi and yj
     are matched if xi belongs to the k-nearest neighbors (kNNs) of yj
@@ -66,7 +66,9 @@ class MatchingMNN(Matching, UsesCommonFeatures):
         self.n_neighbors = n_neighbors
 
     @profile_method
-    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
+    def fit(
+        self, datasets: List[np.ndarray], reference_idx: int = -1
+    ) -> _TypeMatchingSet:
         """
         Computes MNN between pairs of datasets.
         """

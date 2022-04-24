@@ -63,7 +63,8 @@ def load_test_datasets_small() -> Dict:
             [1, 2],
             [2, 2],
             [3, 0],
-        ]
+        ],
+        dtype=np.float32,
     )
     a1 = ad.AnnData(x1, dtype=x1.dtype)
     a1.obs["class"] = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1]
@@ -81,12 +82,12 @@ def load_test_datasets_small() -> Dict:
             [7, 2],
             [7, 2],
             [7, 1],
-        ]
+        ],
+        dtype=np.float32,
     )
     a2 = ad.AnnData(x2, dtype=x2.dtype)
     a2.obs["class"] = [0, 0, 0, 0, 1, 1, 1, 1, 1]
-    errors = np.array(a1.obs["class"])[:, None] != np.array(a2.obs["class"])
-    return {"src": a1, "ref": a2, "error": errors}
+    return {"src": a1, "ref": a2}
 
 
 def load_spirals():

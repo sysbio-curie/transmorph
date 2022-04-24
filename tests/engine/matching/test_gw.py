@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from transmorph.datasets import load_test_datasets_small
-from transmorph.engine.matching import MatchingGW
+from transmorph.engine.matching import GW
 from transmorph.engine.traits import UsesMetric
 from transmorph.stats import edge_accuracy
 from transmorph.utils import plot_result
@@ -15,7 +15,7 @@ def test_matching_gw_accuracy():
     UsesMetric.set_metric(ref, "minkowski", {"p": 3})
     for optimizer in ("gw", "entropic_gw"):
         # Without custom metric
-        mt = MatchingGW(optimizer=optimizer)
+        mt = GW(optimizer=optimizer)
         assert mt.get_metadata(0, "metric") == "sqeuclidean"
         assert mt.get_metadata(1, "metric") == "sqeuclidean"
         assert mt.get_metadata(0, "metric_kwargs") == {}
@@ -41,7 +41,7 @@ def test_matching_gw_accuracy():
         )
 
         # With custom metrics
-        mt = MatchingGW(optimizer=optimizer)
+        mt = GW(optimizer=optimizer)
         mt.retrieve_all_metadata([src, ref])
         assert mt.get_metadata(0, "metric") == "cosine"
         assert mt.get_metadata(1, "metric") == "minkowski"

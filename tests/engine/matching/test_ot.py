@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from transmorph.datasets import load_test_datasets_small, load_travaglini_10x
-from transmorph.engine.matching import MatchingOT
+from transmorph.engine.matching import OT
 from transmorph.stats import edge_accuracy
 from transmorph.utils import plot_result
 
@@ -15,7 +15,7 @@ def test_matching_ot_accuracy():
         kwargs = {}
         if optimizer == "partial":
             kwargs["partial_transport_mass"] = 0.5
-        mt = MatchingOT(optimizer=optimizer, **kwargs)
+        mt = OT(optimizer=optimizer, **kwargs)
         results = mt.fit([src.X, ref.X])
         T = results[0, 1]
         time = mt.get_time_spent() * 1000
@@ -37,10 +37,10 @@ def test_matching_ot_accuracy():
         )
 
 
-def test_matching_ot_commongenes():
+def test_matching_ot_commonfeatures():
     # Tests the UsesCommonFeatures trait
     datasets = list(load_travaglini_10x().values())
-    mt = MatchingOT(common_features_mode="pairwise")
+    mt = OT(common_features_mode="pairwise")
     mt.retrieve_common_features(datasets, True)
     for i, j in [(0, 1), (0, 2), (1, 2)]:
         Xi, Xj = mt.slice_features(
@@ -50,7 +50,7 @@ def test_matching_ot_commongenes():
             idx_2=j,
         )
         assert Xi.shape[1] == Xj.shape[1]
-    mt = MatchingOT(common_features_mode="total")
+    mt = OT(common_features_mode="total")
     mt.retrieve_common_features(datasets, True)
     sliced = [
         mt.slice_features(
@@ -73,4 +73,4 @@ def test_matching_ot_commongenes():
 
 if __name__ == "__main__":
     test_matching_ot_accuracy()
-    test_matching_ot_commongenes()
+    test_matching_ot_commonfeatures()

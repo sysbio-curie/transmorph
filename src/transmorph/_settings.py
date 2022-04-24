@@ -31,6 +31,8 @@ class TransmorphSettings:
         # Logging
         self._logging_level_file: int = _DEFAULT_LEVEL_FILE
         self._logging_level_console: int = _DEFAULT_LEVEL_CONSOLE
+        # General
+        self.global_random_seed: int = 42
         # Neighbors
         self._n_neighbors: int = 15
         self._neighbors_algorithm: Literal["auto", "sklearn", "nndescent"] = "auto"
@@ -52,7 +54,9 @@ class TransmorphSettings:
         self.umap_negative_sample_rate: int = 5
         self.umap_a: Optional[float] = None
         self.umap_b: Optional[float] = None
-        self.umap_random_state: RandomState = check_random_state(42)
+        self.umap_random_state: RandomState = check_random_state(
+            self.global_random_seed
+        )
         # MDE
         self.mde_initialization: str = "quadratic"
         self.mde_repulsive_fraction: float = 1.0
