@@ -28,6 +28,7 @@ class VertexCover(Subsampling, UsesNeighbors):
         n_hops: int = 1,
     ):
         Subsampling.__init__(self, str_identifier="VERTEX_COVER")
+        UsesNeighbors.__init__(self)
         self.n_hops = n_hops
 
     def subsample(
