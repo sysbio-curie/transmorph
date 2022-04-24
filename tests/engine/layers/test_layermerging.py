@@ -31,8 +31,10 @@ ALL_MERGINGS = [
 def test_layer_merging():
     # Tests all types of merging in a simple
     # in -> matching -> merging -> out setup.
+    settings.n_neighbors = 3
     datasets = list(load_test_datasets_small().values())
     for merging_algo, kwargs in ALL_MERGINGS:
+        # Writing metadata
         for adata in datasets:
             adm.set_value(
                 adata=adata,
@@ -41,12 +43,13 @@ def test_layer_merging():
                 value=adata.X,
                 persist="pipeline",
             )
-        settings.n_neighbors = 3
         UsesNeighbors.compute_neighbors_graphs(
             datasets=datasets,
             representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
         )
         UsesReference.write_is_reference(datasets[1])
+
+        # Building model
         linput = LayerInput()
         matching = Labels(label_obs="class")
         matching.retrieve_labels(datasets)
@@ -57,16 +60,20 @@ def test_layer_merging():
         linput.connect(lmatching)
         lmatching.connect(lmerging)
         lmerging.connect(loutput)
+
+        # Fitting model
         linput.fit(datasets)
         lmatching.fit(datasets)
         lmerging.fit(datasets)
         loutput.fit(datasets)
+
+        # Comparing out results to merging results
         Xs_test = [lmerging.get_representation(adata) for adata in datasets]
         Xs_out = [loutput.get_representation(adata) for adata in datasets]
-
         for Xm, Xo in zip(Xs_test, Xs_out):
             np.testing.assert_array_equal(Xm, Xo)
 
+        # Testing merged positions against reference
         assert lmatching.matching_matrices is not None
         merging: Merging = merging_algo(**kwargs)
         if isinstance(merging, HasMetadata):

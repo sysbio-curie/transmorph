@@ -21,4 +21,6 @@ class Merging(Transformation, UsesMatching):
             preserves_space=preserves_space,
             str_identifier=f"MERGING_{str_identifier}",
         )
+        # Removes TRANSFORMATION_
+        self.str_identifier = f"MERGING_{str_identifier}"
         UsesMatching.__init__(self, mode=matching_mode)

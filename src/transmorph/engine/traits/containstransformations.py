@@ -3,7 +3,7 @@
 import numpy as np
 
 from anndata import AnnData
-from typing import List
+from typing import Callable, List, Optional
 
 from .utils import assert_trait
 from .hasmetadata import HasMetadata
@@ -41,10 +41,14 @@ class ContainsTransformations:
         self.transformations.append(transformation)
 
     def transform(
-        self, datasets: List[AnnData], representer: IsRepresentable
+        self,
+        datasets: List[AnnData],
+        representer: IsRepresentable,
+        log_callback: Optional[Callable] = None,
     ) -> List[np.ndarray]:
         """
-        Runs all transformations.
+        Runs all transformations. A logging function can be passed as
+        parameter to compensate for not inheriting from CanLog.
         """
         is_feature_space = representer.is_feature_space
         assert_trait(representer, IsRepresentable)
@@ -52,6 +56,8 @@ class ContainsTransformations:
         for transformation in self.transformations:
             # If necessary, we let transformation retrieve
             # additional information
+            if log_callback is not None:
+                log_callback(f"Running transformation {transformation}")
             if isinstance(transformation, HasMetadata):
                 transformation.retrieve_all_metadata(datasets)
             if isinstance(transformation, UsesCommonFeatures):

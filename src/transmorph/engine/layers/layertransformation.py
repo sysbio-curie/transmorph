@@ -29,15 +29,19 @@ class LayerTransformation(
             str_identifier="PREPROCESSING",
         )
         IsRepresentable.__init__(self, repr_key=f"{self}_{self.layer_id}")
+        ContainsTransformations.__init__(self)
+        IsProfilable.__init__(self)
 
     @profile_method
     def fit(self, datasets: List[AnnData]) -> List[Layer]:
         """
         Simply runs preprocessing algorithms and returns the result.
         """
-        if self.has_transformations:
-            self.log("Calling transformations.", level=logging.INFO)
-        Xs = self.transform(datasets, self.embedding_reference)
+        Xs = self.transform(
+            datasets=datasets,
+            representer=self.embedding_reference,
+            log_callback=self.info,
+        )
         is_feature_space = (
             self.embedding_reference.is_feature_space and self.preserves_space
         )
