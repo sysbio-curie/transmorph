@@ -52,12 +52,12 @@ class Layer(ABC, CanLog):
         layer.input_layer = self
         self.output_layers.append(layer)
         self.log(f"Connected to layer {layer}.")
-        if layer.embedding_reference is None:
+        if layer._embedding_reference is None:
             if not isinstance(self, IsRepresentable):
                 reference = self.embedding_reference
             else:
                 reference = self
-            self.log(f"{reference} chosen as default embedding reference for {self}.")
+            self.log(f"{reference} chosen as default embedding reference for {layer}.")
             layer.embedding_reference = reference
 
     @abstractmethod

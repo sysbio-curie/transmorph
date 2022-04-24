@@ -45,7 +45,7 @@ class LayerMerging(
         if self.has_transformations:
             self.info("Calling preprocessings.")
         Xs = self.transform(datasets, self.embedding_reference)
-        self.info("Running merging...")
+        self.info(f"Running merging {self.merging}...")
         if isinstance(self.merging, HasMetadata):
             self.merging.retrieve_all_metadata(datasets)
         if isinstance(self.merging, UsesReference):

@@ -9,6 +9,7 @@ from transmorph.engine.traits import HasMetadata, UsesSampleLabels
 from transmorph.utils import anndata_manager as adm, AnnDataKeyIdentifiers
 
 ALL_MATCHINGS = [
+    # constructor, parameters
     (FusedGW, {}),
     (GW, {}),
     (Labels, {"label_obs": "class"}),

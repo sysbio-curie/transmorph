@@ -30,6 +30,8 @@ class LayerOutput(Layer, IsRepresentable):
         under obsm["transmorph"] key.
         """
         for adata in datasets:
-            X = self.embedding_reference.get(adata)
-            self.write(adata, X, self.embedding_reference.is_feature_space)
+            X = self.embedding_reference.get_representation(adata)
+            self.write_representation(
+                adata, X, self.embedding_reference.is_feature_space
+            )
         return []
