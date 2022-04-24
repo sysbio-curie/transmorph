@@ -78,7 +78,7 @@ class Layer(ABC, CanLog):
         """
         Retrieves closest Representable object upstream from current layer.
         """
-        if self.embedding_reference is None:
+        if self._embedding_reference is None:
             if self.input_layer is None:
                 self.raise_error(
                     ValueError,
@@ -86,7 +86,7 @@ class Layer(ABC, CanLog):
                     "pipeline contains at least an input layer.",
                 )
             self._embedding_reference = self.input_layer.embedding_reference
-        return self.embedding_reference
+        return self._embedding_reference
 
     @embedding_reference.setter
     def embedding_reference(self, reference: IsRepresentable) -> None:

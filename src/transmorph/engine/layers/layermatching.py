@@ -37,12 +37,16 @@ class LayerMatching(
     It wraps an object derived from MatchingABC.
     """
 
-    def __init__(self, matching: Matching, subsampling: Optional[Subsampling]) -> None:
+    def __init__(
+        self, matching: Matching, subsampling: Optional[Subsampling] = None
+    ) -> None:
         Layer.__init__(
             self,
             compatible_inputs=[IsRepresentable],
             str_identifier="MATCHING",
         )
+        ContainsTransformations.__init__(self)
+        IsProfilable.__init__(self)
         if subsampling is None:
             subsampling = KeepAll()
         IsSubsamplable.__init__(self, subsampling)
@@ -66,7 +70,7 @@ class LayerMatching(
         self.subsample(datasets=datasets, matrices=Xs)
         Xs = self.slice_matrices(datasets=datasets, matrices=Xs)
         # Matching
-        self.info("Calling matching.")
+        self.info(f"Calling matching {self.matching}.")
         if isinstance(self.matching, HasMetadata):  # Metadata gathering
             self.matching.retrieve_all_metadata(datasets)
         if isinstance(self.matching, UsesCommonFeatures):  # Common features slicing

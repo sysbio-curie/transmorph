@@ -32,3 +32,7 @@ class LayerInput(Layer, IsRepresentable):
             ), f"Representation {self.repr_key} missing in {adata}."
         self.log("All representations found. Continuing.")
         return self.output_layers
+
+    @property
+    def embedding_reference(self) -> IsRepresentable:
+        return self
