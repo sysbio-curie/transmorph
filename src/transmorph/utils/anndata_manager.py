@@ -297,6 +297,10 @@ class AnnDataManager:
         """
         Retrieves value previously stored. Returns None if nothing is found.
         """
+        # By default, ADKI.BaseRepresentation returns .X if not set.
+        base_repr = AnnDataKeyIdentifiers.BaseRepresentation
+        if key == base_repr and AnnDataManager.get(adata.obsm, base_repr) is None:
+            return adata.X
         if transmorph_key:
             str_key = AnnDataManager.gen_keystring(key)
             ad_key = self.keys.get(key, None)
@@ -326,35 +330,42 @@ class AnnDataManager:
         logger.warning(f"WARNING - Unrecognized field {field}.")
         return None
 
-    def clean(self, adata: AnnData, level: _TypePersistLevels) -> None:
+    def clean(
+        self,
+        datasets: Union[AnnData, List[AnnData]],
+        level: _TypePersistLevels,
+    ) -> None:
         """
         Deletes transmorph keys of the given persist level and below.
         """
-        for admkey in self.keys.values():
-            key, field, persist = admkey
-            str_key = AnnDataManager.gen_keystring(key)
-            if not AnnDataManager.to_delete(persist, level):
-                continue
-            if field == "uns":
-                if "transmorph" not in adata.uns:
+        if isinstance(datasets, AnnData):
+            datasets = [datasets]
+        for adata in datasets:
+            for admkey in self.keys.values():
+                key, field, persist = admkey
+                str_key = AnnDataManager.gen_keystring(key)
+                if not AnnDataManager.to_delete(persist, level):
                     continue
-                AnnDataManager.delete(adata.uns["transmorph"], "uns", str_key)
-                if not adata.uns["transmorph"]:  # Test empty dict
-                    del adata.uns["transmorph"]
-            elif field == "obs":
-                AnnDataManager.delete(adata.obs, "obs", str_key)
-            elif field == "var":
-                AnnDataManager.delete(adata.var, "var", str_key)
-            elif field == "obsm":
-                AnnDataManager.delete(adata.obsm, "obsm", str_key)
-            elif field == "varm":
-                AnnDataManager.delete(adata.varm, "varm", str_key)
-            elif field == "obsp":
-                AnnDataManager.delete(adata.obsp, "obsp", str_key)
-            elif field == "varp":
-                AnnDataManager.delete(adata.varp, "varp", str_key)
-            else:
-                raise ValueError(f"Unrecognized field: {field}.")
+                if field == "uns":
+                    if "transmorph" not in adata.uns:
+                        continue
+                    AnnDataManager.delete(adata.uns["transmorph"], "uns", str_key)
+                    if not adata.uns["transmorph"]:  # Test empty dict
+                        del adata.uns["transmorph"]
+                elif field == "obs":
+                    AnnDataManager.delete(adata.obs, "obs", str_key)
+                elif field == "var":
+                    AnnDataManager.delete(adata.var, "var", str_key)
+                elif field == "obsm":
+                    AnnDataManager.delete(adata.obsm, "obsm", str_key)
+                elif field == "varm":
+                    AnnDataManager.delete(adata.varm, "varm", str_key)
+                elif field == "obsp":
+                    AnnDataManager.delete(adata.obsp, "obsp", str_key)
+                elif field == "varp":
+                    AnnDataManager.delete(adata.varp, "varp", str_key)
+                else:
+                    raise ValueError(f"Unrecognized field: {field}.")
 
 
 anndata_manager = AnnDataManager()

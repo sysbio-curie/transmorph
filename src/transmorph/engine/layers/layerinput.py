@@ -25,12 +25,16 @@ class LayerInput(Layer, IsRepresentable):
         """
         Simply calls the downstream layers.
         """
-        self.log("Checking all representations are present.")
+        self.log("Checking if all representations are present.")
+        self.is_feature_space = True
         for adata in datasets:
-            assert (
-                adm.get_value(adata, self.repr_key) is not None
-            ), f"Representation {self.repr_key} missing in {adata}."
-        self.log("All representations found. Continuing.")
+            X = adm.get_value(adata, self.repr_key)
+            assert X is not None, f"Representation {self.repr_key} missing in {adata}."
+            if X is not adata.X:
+                self.is_feature_space = False
+        self.log(
+            f"All representations found, in feature space: {self.is_feature_space}."
+        )
         return self.output_layers
 
     @property

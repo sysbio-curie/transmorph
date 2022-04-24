@@ -64,5 +64,5 @@ class ContainsTransformations:
                 transformation.retrieve_common_features(datasets, is_feature_space)
             transformation.check_input(Xs)
             Xs = transformation.transform(Xs)
-            is_feature_space = transformation.preserves_space
+            is_feature_space = is_feature_space and transformation.preserves_space
         return Xs

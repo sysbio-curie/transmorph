@@ -42,9 +42,11 @@ class LayerMerging(
         Runs preprocessings, then delegate to the internal merging.
         """
         # Pleases the type checker
-        if self.has_transformations:
-            self.info("Calling preprocessings.")
-        Xs = self.transform(datasets, self.embedding_reference)
+        Xs = self.transform(
+            datasets=datasets,
+            representer=self.embedding_reference,
+            log_callback=self.info,
+        )
         self.info(f"Running merging {self.merging}...")
         if isinstance(self.merging, HasMetadata):
             self.merging.retrieve_all_metadata(datasets)
@@ -60,5 +62,4 @@ class LayerMerging(
         )
         for adata, X_after in zip(datasets, Xs_transform):
             self.write_representation(adata, X_after, is_feature_space=is_feature_space)
-        self.info("Fitted.")
         return self.output_layers

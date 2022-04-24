@@ -2,11 +2,11 @@
 
 import numpy as np
 
-from transmorph.datasets import load_test_datasets_small
+from transmorph.datasets import load_test_datasets_small, load_travaglini_10x
 from transmorph.engine.layers import LayerInput, LayerMatching
 from transmorph.engine.matching import Matching, Labels, OT, GW, FusedGW, MNN
+from transmorph.engine.transforming import CommonFeatures, Standardize, PCA
 from transmorph.engine.traits import HasMetadata, UsesSampleLabels
-from transmorph.utils import anndata_manager as adm, AnnDataKeyIdentifiers
 
 ALL_MATCHINGS = [
     # constructor, parameters
@@ -16,6 +16,7 @@ ALL_MATCHINGS = [
     (MNN, {"n_neighbors": 3}),
     (OT, {}),
 ]
+N_PCS = 20
 
 
 def test_layer_matching():
@@ -24,14 +25,6 @@ def test_layer_matching():
     # We trust matching tests to ensure correctness of
     # Matchings.
     datasets = list(load_test_datasets_small().values())
-    for adata in datasets:
-        adm.set_value(
-            adata=adata,
-            key=AnnDataKeyIdentifiers.BaseRepresentation,
-            field="obsm",
-            value=adata.X,
-            persist="pipeline",
-        )
     for matching_algo, kwargs in ALL_MATCHINGS:
         linput = LayerInput()
         matching_lay: Matching = matching_algo(**kwargs)
@@ -59,8 +52,22 @@ def test_layer_matching():
 
 
 def test_layer_matching_contains_transformations():
-    pass
+    # Testing layer matching with transformations
+    # embedded as preprocessing steps.
+    # TODO: find a way to test the internal state of
+    # layermatching in a better way. For now we
+    # only trust the logs and absence of crash :(
+    datasets = list(load_travaglini_10x().values())
+    linput = LayerInput()
+    matching = Labels(label_obs="compartment")
+    lmatching = LayerMatching(matching=matching)
+    lmatching.add_transformation(CommonFeatures())
+    lmatching.add_transformation(Standardize(center=True, scale=True))
+    lmatching.add_transformation(PCA(n_components=N_PCS))
+    linput.connect(lmatching)
+    linput.fit(datasets)
+    lmatching.fit(datasets)
 
 
 if __name__ == "__main__":
-    test_layer_matching()
+    test_layer_matching_contains_transformations()

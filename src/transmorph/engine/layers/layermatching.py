@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import logging
-
 from anndata import AnnData
 from typing import List, Optional
 
@@ -61,9 +59,11 @@ class LayerMatching(
         """
         self.datasets = datasets.copy()  # Keeping a copy to preserve order
         # Preprocessing
-        if self.has_transformations:
-            self.info("Calling preprocessings.")
-        Xs = self.transform(datasets, self.embedding_reference)
+        Xs = self.transform(
+            datasets=datasets,
+            representer=self.embedding_reference,
+            log_callback=self.info,
+        )
         if not isinstance(self.subsampling, KeepAll):
             self.info("Calling subsampling.")
         # Subsampling
@@ -89,7 +89,6 @@ class LayerMatching(
         self.matching.check_input(Xs)
         self.matching_matrices = self.matching.fit(Xs)
         # Trimming? Extrapolating?
-        self.log("Fitted.", level=logging.INFO)
         return self.output_layers
 
     def get_matchings(self) -> _TypeMatchingSet:

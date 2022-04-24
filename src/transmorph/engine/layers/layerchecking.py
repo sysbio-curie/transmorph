@@ -102,7 +102,6 @@ class LayerChecking(
         if is_valid:
             if self.n_checks >= self.n_checks_max:
                 self.log("Maximum number of checks reached.", level=logging.INFO)
-            self.log("Checking passed. Continuing.", level=logging.INFO)
             return self.output_layers
         else:
             self.log("Checking failed. Continuing.", level=logging.INFO)

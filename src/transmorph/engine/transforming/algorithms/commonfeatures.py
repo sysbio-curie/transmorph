@@ -12,6 +12,8 @@ class CommonFeatures(Transformation, UsesCommonFeatures):
     """
     Puts anndata objects in their larger common gene space. Only acts
     on AnnData.X matrix, so this must be done very early in a pipeline.
+    If you want to use it internally in an object (e.g. a matching),
+    instead make this object inherit UsesCommonFeatures.
     """
 
     def __init__(self):

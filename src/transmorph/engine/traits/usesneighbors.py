@@ -16,6 +16,8 @@ from ...utils import (
 class UsesNeighbors:
     """
     Gives the ability to manipulate nearest neighbors.
+    Global status is quite dirty, we should find a better way.
+    It will cause us trouble in the future.
     """
 
     # Will be turned to true if any class with this trait is initialized.
@@ -25,6 +27,11 @@ class UsesNeighbors:
 
     def __init__(self):
         UsesNeighbors.Used = True
+
+    @staticmethod
+    def reset():
+        UsesNeighbors.Used = False
+        UsesNeighbors.NeighborsGraphs = []
 
     @staticmethod
     def set_settings_to_scanpy(adata: AnnData) -> None:

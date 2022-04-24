@@ -9,7 +9,7 @@ import scanpy as sc
 
 from os.path import dirname
 from scipy.sparse import load_npz
-from typing import Dict
+from typing import Dict, Optional
 
 from .databank_api import check_files, download_dataset, remove_dataset, unzip_file
 from .._logging import logger
@@ -166,7 +166,11 @@ def load_zhou_10x():
     return load_bank("zhou_10x")
 
 
-def load_bank(dataset_name: str, keep_sparse: bool = False):
+def load_bank(
+    dataset_name: str,
+    keep_sparse: bool = False,
+    n_samples: Optional[int] = None,
+):
     """
     Parameters
     ----------
@@ -175,6 +179,10 @@ def load_bank(dataset_name: str, keep_sparse: bool = False):
 
     keep_sparse: bool, default = False
         Prevents AnnData.X to be converted to ndarray.
+
+    n_samples: Optional[int], default = None
+        If set and lesser than the total number of samples, selects at random
+        a subset of them with an average size of n_samples.
     """
     logger.log(logging.INFO, f"databank_api > Loading bank {dataset_name}.")
     download_needed = not check_files(dataset_name)
@@ -183,7 +191,8 @@ def load_bank(dataset_name: str, keep_sparse: bool = False):
         unzip_file(zip_path, dataset_name)
         check_files(dataset_name)
     dataset_root = DPATH_DATASETS + f"{dataset_name}/"
-    data = {}
+    datasets = {}
+    # Loading datasets
     for fname in os.listdir(dataset_root):
         adata = sc.read_h5ad(dataset_root + fname)
         if not keep_sparse:
@@ -193,8 +202,21 @@ def load_bank(dataset_name: str, keep_sparse: bool = False):
             )
             adata.X = adata.X.toarray()
         pid = fname.split(".")[0]
-        data[pid] = adata
-    return data
+        datasets[pid] = adata
+
+    # Subsampling if necessary
+    if n_samples is None:
+        return datasets
+
+    total_samples = sum(adata.n_obs for adata in datasets.values())
+    if total_samples <= n_samples:
+        return datasets
+
+    frequency = n_samples / total_samples
+    for key in datasets:
+        adata = datasets[key]
+        datasets[key] = adata[np.random.random(adata.n_obs) < frequency, :].copy()
+    return datasets
 
 
 def remove_bank(dataset_name: str):

@@ -42,9 +42,10 @@ class UsesSampleLabels:
         """
         if self.label_obs is None:
             return
-        assert all(
-            self.label_obs in adata.obs for adata in datasets
-        ), f"Key {self.label_obs} missing in some datasets."
+        assert all(self.label_obs in adata.obs for adata in datasets), (
+            f"Key '{self.label_obs}' missing in some datasets. Available label "
+            f"keys in this dataset are: {', '.join(sorted(datasets[0].obs))}"
+        )
         for adata in datasets:
             self.labels.append(adata.obs[self.label_obs].to_numpy())
         self.fitted = True

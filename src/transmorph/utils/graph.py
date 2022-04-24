@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-import igraph as ig
-import louvain as lv
 import numpy as np
 import warnings
 
@@ -34,34 +32,6 @@ def distance_to_knn(D: np.ndarray, k: int, axis: int):
     if axis == 0:
         D_sorted = D_sorted.T
     return D_sorted[:, k - 1]
-
-
-def clustering(A: csr_matrix, resolution: float = 1.0) -> np.ndarray:
-    """
-    Uses Louvain algorithm to provide a clustering of the directed
-    unweighted graph represented as matrix A.
-
-    Parameters
-    ----------
-    A: csr_matrix
-        Adjacency matrix of shape (n,n).
-
-    resolution: float, default = 1.0
-        Resolution parameter for Louvain algorithm.
-        #TODO: adaptive selection of this parameter?
-
-    Returns
-    -------
-    (n,) np.ndarray containing cluster affectation as integers
-    """
-    sources, targets = A.nonzero()
-    A_ig = ig.Graph(directed=True)
-    A_ig.add_vertices(A.shape[0])
-    A_ig.add_edges(list(zip(sources, targets)))
-    partition = lv.find_partition(
-        A_ig, lv.RBConfigurationVertexPartition, resolution_parameter=resolution
-    )
-    return np.array(partition.membership)
 
 
 def mutual_nearest_neighbors(

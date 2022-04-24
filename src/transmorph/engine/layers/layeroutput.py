@@ -21,7 +21,7 @@ class LayerOutput(Layer, IsRepresentable):
             str_identifier="OUTPUT",
         )
         IsRepresentable.__init__(
-            self, repr_key=AnnDataKeyIdentifiers.BaseRepresentation
+            self, repr_key=AnnDataKeyIdentifiers.TransmorphRepresentation
         )
 
     def fit(self, datasets: List[AnnData]) -> List[Layer]:

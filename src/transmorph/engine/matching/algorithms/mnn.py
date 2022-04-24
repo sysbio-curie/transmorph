@@ -42,14 +42,6 @@ class MNN(Matching, UsesCommonFeatures):
     n_neighbors: int, default = 10
         Number of neighbors to use between datasets.
         "features" key, a list of features names.
-
-    algorithm: str, default = "auto"
-        Method to use ("auto", "exact" or "louvain"). If "auto", will
-        choose "exact" for small datasets and "louvain" for large ones.
-
-    subsampling: SubsamplingABC, default = None
-        Subsampling scheme to apply before computing the matching,
-        can be very helpful when dealing with large datasets.
     """
 
     def __init__(

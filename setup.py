@@ -24,8 +24,6 @@ setuptools.setup(
     include_package_data=True,
     install_requires=[
         "anndata",
-        "igraph",
-        "louvain",
         "numpy<1.21,>=1.17",
         "pre-commit",
         "pot",

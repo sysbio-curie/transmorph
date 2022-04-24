@@ -11,7 +11,7 @@ from transmorph.engine.transforming import (
     Standardize,
     Transformation,
 )
-from transmorph.utils import anndata_manager as adm, AnnDataKeyIdentifiers
+from transmorph.utils import anndata_manager as adm
 
 ALL_TRANSFORMATIONS = [
     (CommonFeatures, {}),
@@ -28,14 +28,6 @@ def test_layer_transformation():
     datasets = list(load_travaglini_10x().values())
     for transformation_algo, kwargs in ALL_TRANSFORMATIONS:
         # Loading datasets with base representation
-        for adata in datasets:
-            adm.set_value(
-                adata=adata,
-                key=AnnDataKeyIdentifiers.BaseRepresentation,
-                field="obsm",
-                value=adata.X,
-                persist="pipeline",
-            )
         # Creating and fitting test network
         transformation = transformation_algo(**kwargs)
         linput = LayerInput()
@@ -58,8 +50,7 @@ def test_layer_transformation():
             np.testing.assert_array_almost_equal(X_true, X_test)
 
         # Cleaning
-        for adata in datasets:
-            adm.clean(adata, level="pipeline")
+        adm.clean(datasets, level="pipeline")
 
 
 def test_layer_transformation_order():
@@ -67,14 +58,6 @@ def test_layer_transformation_order():
     # appending order.
     # Loading datasets with base representation
     datasets = list(load_travaglini_10x().values())
-    for adata in datasets:
-        adm.set_value(
-            adata=adata,
-            key=AnnDataKeyIdentifiers.BaseRepresentation,
-            field="obsm",
-            value=adata.X,
-            persist="pipeline",
-        )
     linput = LayerInput()
     ltrans = LayerTransformation()
     # Creating and fitting test network
@@ -103,4 +86,4 @@ def test_layer_transformation_order():
 
 
 if __name__ == "__main__":
-    test_layer_transformation_order()
+    test_layer_transformation()
