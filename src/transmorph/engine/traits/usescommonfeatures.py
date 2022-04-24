@@ -92,12 +92,4 @@ class UsesCommonFeatures:
             " valid for mode == 'total'."
             return X1[:, self.total_feature_slices[idx_1]].copy()
         s1, s2 = self.get_common_features(idx_1, idx_2)
-        assert s1.shape[0] == X1.shape[1], (
-            f"Unexpected matrix features number. Expected {s1.shape[0]}, "
-            f"found {X1.shape[1]}."
-        )
-        assert s2.shape[0] == X2.shape[1], (
-            f"Unexpected matrix features number. Expected {s2.shape[0]}, "
-            f"found {X2.shape[1]}."
-        )
         return X1[:, s1].copy(), X2[:, s2].copy()
