@@ -21,7 +21,8 @@ class LayerOutput(Layer, CanCatchChecking, IsRepresentable):
             str_identifier="OUTPUT",
         )
         IsRepresentable.__init__(
-            self, repr_key=AnnDataKeyIdentifiers.TransmorphRepresentation
+            self,
+            repr_key=AnnDataKeyIdentifiers.TransmorphRepresentation,
         )
         CanCatchChecking.__init__(self)
 
@@ -33,6 +34,9 @@ class LayerOutput(Layer, CanCatchChecking, IsRepresentable):
         for adata in datasets:
             X = self.embedding_reference.get_representation(adata)
             self.write_representation(
-                adata, X, self.embedding_reference.is_feature_space
+                adata,
+                X,
+                self.embedding_reference.is_feature_space,
+                persist="output",
             )
         return []

@@ -8,7 +8,11 @@ from anndata import AnnData
 from scipy.sparse import csr_matrix
 from typing import List, Union
 
-from ...utils import anndata_manager as adm, AnnDataKeyIdentifiers
+from ...utils.anndata_manager import (
+    anndata_manager as adm,
+    AnnDataKeyIdentifiers,
+    _TypePersistLevels,
+)
 
 
 class IsRepresentable:
@@ -27,6 +31,7 @@ class IsRepresentable:
         adata: AnnData,
         X: Union[np.ndarray, csr_matrix],
         is_feature_space: bool,
+        persist: _TypePersistLevels = "pipeline",
     ) -> None:
         """
         Inserts a new AnnData representation.
@@ -37,7 +42,7 @@ class IsRepresentable:
             key=self.repr_key,
             field="obsm",
             value=X,
-            persist="pipeline",
+            persist=persist,
         )
 
     def get_representation(self, adata: AnnData) -> np.ndarray:

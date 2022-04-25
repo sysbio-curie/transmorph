@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 
-import logging
-import numpy as np
-
 from anndata import AnnData
 from typing import List, Optional
 
 from .layers import Layer, LayerChecking, LayerInput, LayerOutput
 from .traits import CanLog, CanCatchChecking, UsesNeighbors, UsesReference
 from .. import profiler
-from .. import settings
 from ..utils import anndata_manager as adm, AnnDataKeyIdentifiers
 
 
 class Model(CanLog):
     """
+    TODO update description
     Model wraps a layers network in order to represent an integration
     algorithm. It needs at least one LayerInput and one LayerOutput.
 
@@ -39,34 +36,25 @@ class Model(CanLog):
     - layer_input: LayerInput, entry node in the network.
     - output_layers: List[LayerOutput], output nodes
     - layers: List[Layer], set of layers connected to self.layer_input
-
-    Example
-    -------
-    >>> li = LayerInput()
-    >>> l1, l2, ... # Various computational layers
-    >>> lo = LayerOutput()
-    >>> li.connect(l1)
-    >>> ...
-    >>> ln.connect(lo)
-    >>> tp = Model()
-    >>> tp.initialize(li)
-    >>> tp.run([adata1, adata2, adata3])
-    >>> adata1.obsm['X_transmorph_0']
-    -> np.ndarray(shape=(n,d))
     """
 
-    def __init__(self, verbose: bool = False) -> None:
+    def __init__(self, input_layer: LayerInput, verbose: bool = True) -> None:
+        from .. import settings
+
         CanLog.__init__(self, str_identifier="PIPELINE")
-        self.input_layer = None
         self.output_layers = []
         self.layers: List[Layer] = []
-        self.verbose = verbose
+        assert isinstance(
+            input_layer, LayerInput
+        ), f"LayerInput expected, {type(input_layer)} found."
+        self.input_layer = input_layer
+        self.initialize()
         if verbose:
             settings.verbose = "INFO"
         else:
             settings.verbose = "WARNING"
 
-    def initialize(self, input_layer: LayerInput):
+    def initialize(self):
         """
         Loads the network and checks basic layout properties.
 
@@ -76,48 +64,54 @@ class Model(CanLog):
             Entry point of the pipeline. Must have been conneced to the other layers
             beforehand.
         """
-        assert type(input_layer) is LayerInput, "LayerInput expected."
-        self.log("Fetching pipeline...")
-        self.input_layer = input_layer
+        self.log("Fetching pipeline layers...")
         layers_to_visit: List[Layer] = [self.input_layer]
         self.layers = [self.input_layer]
         while len(layers_to_visit) > 0:
             current_layer = layers_to_visit.pop(0)
+            self.log(f"Branching from layer {current_layer}.")
+
+            # Retrieving output layers
+            output_layers = current_layer.output_layers
+            # Checking layers have an extra output
             if (
                 isinstance(current_layer, LayerChecking)
                 and current_layer.rejected_layer is not None
             ):
                 assert isinstance(current_layer.rejected_layer, Layer)
-                output_layers = current_layer.output_layers + [
-                    current_layer.rejected_layer
-                ]
-            else:
-                output_layers = current_layer.output_layers
+                output_layers.append(current_layer.rejected_layer)
+
+            # Registering non-visited output layers
             for output_layer in output_layers:
                 if output_layer in self.layers:
+                    self.log(f"Ignored connection to {output_layer}.")
                     continue
-                if type(output_layer) is LayerOutput:
+                if isinstance(output_layer, LayerOutput):
                     self.output_layers.append(output_layer)
+                self.log(f"Found connection to {output_layer}.")
                 layers_to_visit.append(output_layer)
                 self.layers.append(output_layer)
+
+        # Verifying structure is correct
+        # FIXME: Analyze checking loops
         if len(self.output_layers) == 0:
             self.warn(
                 "No output layer reachable from input. This pipeline will not "
                 "write results in AnnData objects."
             )
-        if len(self.output_layers) > 1:  # Temp
-            raise NotImplementedError("No more than one output allowed.")
+        # TODO: Could we allow this?
+        noutputs = len(self.output_layers)
+        assert noutputs == 1, f"Exactly one output allowed, found {noutputs}."
         self.log(
-            f"Pipeline initialized -- {len(self.layers)} layers, "
-            f"{len(self.output_layers)} outputs, ",
-            level=logging.INFO,
+            f"Pipeline initialized -- {len(self.layers)} layers found, "
+            f"{len(self.output_layers)} outputs found.",
         )
 
     def fit(
         self,
         datasets: List[AnnData],
         reference: Optional[AnnData] = None,
-        use_rep: Optional[str] = None,
+        use_representation: Optional[str] = None,
     ):
         """
         Runs the pipeline given a list of AnnDatas, writes integration results in
@@ -137,55 +131,36 @@ class Model(CanLog):
             Matrix representation to use during the pipeline, useful to provide
             a low-dimensional representation of data.
             If None, use AnnData.X. Otherwise, use AnnData.obsm[use_rep].
-
-        Usage
-        -----
-        >>> tp.run([adata1, adata2, adata3])
-        >>> adata1.obsm['X_transmorph_0']
-        -> np.ndarray(shape=(n,d))
         """
-        # Initializing
+        from .. import settings
+
+        # Sanity checks
         assert len(datasets) > 0, "No dataset provided."
         assert self.input_layer is not None, "Pipeline must be initialized first."
-
-        # Check datasets are of the right type, casting them if necessary
-        # TODO: raise hard error if obs/var names needed.
-        # TODO: Check dtype of anndatas is float
-        for i, adata in enumerate(datasets):
-            if type(adata) is not AnnData:
-                assert type(adata) is np.ndarray, (
-                    f"Unrecognized dataset type: {type(adata)}. Please provide your "
-                    "data as AnnData objects. Numpy arrays are tolerated if no "
-                    "metadata is required."
-                )
-                self.warn(
-                    "AnnData expected as input, np.ndarray found. Casting to AnnData. "
-                    "Gene names being absent can cause inconsistencies in the pipeline."
-                )
-                datasets[i] = AnnData(adata)
+        assert all(isinstance(adata, AnnData) for adata in datasets), (
+            "Only AnnData objects can be processed by a Model. "
+            "You can create one from a numpy ndarray using "
+            "AnnData(X: np.ndarray). Note that in this case, "
+            "observations and variables metadata will be attributed "
+            "automatically, and may cause incompatibilities for some "
+            "pipeline steps."
+        )
 
         # Flags reference dataset if any
         for adata in datasets:
-            if adata is not reference:
-                pass
-            UsesReference.write_is_reference(adata)
-            break
+            if adata is reference:
+                UsesReference.write_is_reference(adata)
 
-        # Setting base representation
-        for adata in datasets:
-            if use_rep is not None:
-                base_rep = adata.obsm[use_rep]
-                self.input_layer.is_feature_space = False
-            else:
-                base_rep = adata.X
-                self.input_layer.is_feature_space = True
-            adm.set_value(
-                adata=adata,
-                key=AnnDataKeyIdentifiers.BaseRepresentation,
-                field="obsm",
-                value=base_rep,
-                persist="pipeline",
-            )
+        # Setting base representation if needed
+        if use_representation is not None:
+            for adata in datasets:
+                adm.set_value(
+                    adata=adata,
+                    key=AnnDataKeyIdentifiers.BaseRepresentation,
+                    field="obsm",
+                    value=adata.obsm[use_representation],
+                    persist="pipeline",
+                )
 
         # Computes NN graph if needed
         if UsesNeighbors.Used:
@@ -199,10 +174,9 @@ class Model(CanLog):
         # Logging some info
         ndatasets = len(datasets)
         nsamples = sum([adata.n_obs for adata in datasets])
-        self.log(
+        self.info(
             f"Ready to start the integration of {ndatasets} datasets,"
             f" {nsamples} total samples.",
-            level=logging.INFO,
         )
 
         # Running
@@ -210,23 +184,28 @@ class Model(CanLog):
         while len(layers_to_run) > 0:
             called = layers_to_run.pop(0)
             output_layers = called.fit(datasets)
+            # Invalid checking -> layer rejected
+            if isinstance(called, LayerChecking) and called.check_is_valid:
+                assert len(output_layers) == 1
+                output_layer = output_layers[0]
+                assert isinstance(output_layer, CanCatchChecking)
+                output_layer.called_by_checking = True
+            # Rejected layer was computed, can fall back to
+            # previous representation
             if isinstance(called, CanCatchChecking) and called.called_by_checking:
-                called.restore_previous_mapping()
-            layers_to_run += [output_layers]
-            for adata in datasets:
-                adm.clean(adata, "layer")
+                called.called_by_checking = False
+            layers_to_run += output_layers
+            adm.clean(datasets, "layer")
 
-        # Cleaning
-        for adata in datasets:
-            adm.clean(adata, "pipeline")
+        # Cleaning, LayerOutput has saved the result
+        adm.clean(datasets, "pipeline")
 
         # Logging summary
+        loutput = self.output_layers[0]
         if len(self.output_layers) > 0:
             npoints = sum(adata.n_obs for adata in datasets)
-            ndims = datasets[0].obsm["transmorph"].shape[1]
-            self.log(
-                f"Terminated. Embedding shape: {(npoints, ndims)}", level=logging.INFO
-            )
+            ndims = loutput.get_representation(datasets[0]).shape[1]
+            self.info(f"Terminated. Embedding shape: {(npoints, ndims)}")
         self.log(
             "### REPORT_START ###\n"
             + profiler.log_stats()

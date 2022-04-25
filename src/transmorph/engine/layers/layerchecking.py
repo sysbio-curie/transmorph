@@ -59,6 +59,7 @@ class LayerChecking(
         self.n_checks_max = n_checks_max  # Max checks allowed
         self.rejected_layer: Optional[CanCatchChecking] = None
         self.rejected_layer_ref: Optional[IsRepresentable] = None
+        self.check_is_valid: Optional[bool] = None
 
     def connect_rejected(self, layer: CanCatchChecking):
         """
@@ -101,9 +102,11 @@ class LayerChecking(
             self.checking.retrieve_common_features(datasets, is_feature_space)
         # Performing actual checking
         self.n_checks += 1
-        is_valid = self.n_checks >= self.n_checks_max or self.checking.check(Xs)
+        self.check_is_valid = self.n_checks >= self.n_checks_max or self.checking.check(
+            Xs
+        )
         # Routing accordingly
-        if is_valid:
+        if self.check_is_valid:
             if self.n_checks >= self.n_checks_max:
                 self.log("Maximum number of checks reached.", level=logging.INFO)
             return self.output_layers
