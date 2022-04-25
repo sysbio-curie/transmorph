@@ -3,10 +3,10 @@
 import numpy as np
 
 from anndata import AnnData
-from typing import List
+from typing import List, Optional
 
 from .hasmetadata import HasMetadata
-from ..subsampling import Subsampling
+from ..subsampling import Subsampling, KeepAll
 from ...utils import anndata_manager as adm, AnnDataKeyIdentifiers
 
 
@@ -15,7 +15,9 @@ class IsSubsamplable:
     This trait allows a class to host a subsampling algorithm.
     """
 
-    def __init__(self, subsampling: Subsampling) -> None:
+    def __init__(self, subsampling: Optional[Subsampling] = None) -> None:
+        if subsampling is None:
+            subsampling = KeepAll()
         self.subsampling = subsampling
 
     def subsample(self, datasets: List[AnnData], matrices: List[np.ndarray]) -> None:

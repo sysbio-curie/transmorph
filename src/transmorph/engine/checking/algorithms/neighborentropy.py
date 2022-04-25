@@ -55,6 +55,11 @@ class NeighborEntropy(Checking, UsesNeighbors):
         from transmorph import settings
 
         n_neighbors = settings.n_neighbors
+        if any(n_neighbors > X.shape[0] * 0.5 for X in datasets):
+            self.warn(
+                "settings.n_neighbors seems to be too high. Please consider"
+                " decreasing it."
+            )
         # Fraction of neighborhood conserved
         ndatasets = len(datasets)
         inner_nn_before = [

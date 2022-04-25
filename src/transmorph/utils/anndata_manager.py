@@ -333,7 +333,7 @@ class AnnDataManager:
     def clean(
         self,
         datasets: Union[AnnData, List[AnnData]],
-        level: _TypePersistLevels,
+        level: _TypePersistLevels = "pipeline",
     ) -> None:
         """
         Deletes transmorph keys of the given persist level and below.

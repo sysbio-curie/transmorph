@@ -7,13 +7,14 @@ from numba import njit
 from numpy.random import RandomState
 from pynndescent import NNDescent
 from scipy.spatial.distance import cdist
-from scipy.sparse import csr_matrix, coo_matrix, csc_matrix
+from scipy.sparse import csr_matrix, coo_matrix, csc_matrix, diags
 from sklearn.neighbors import NearestNeighbors
 
 
 from typing import Dict, List, Literal, Optional, Tuple
 
-from transmorph.utils.dimred import pca
+from .dimred import pca
+from .matrix import perturbate, contains_duplicates
 
 
 def fsymmetrize(A: csr_matrix) -> csr_matrix:
@@ -161,6 +162,7 @@ def nearest_neighbors(
     )
     symmetrize = use_setting(symmetrize, settings.neighbors_symmetrize)
     random_seed = use_setting(random_seed, settings.neighbors_random_seed)
+
     # Checks parameters
     nx = X.shape[0]
     if algorithm == "nndescent":
@@ -177,21 +179,25 @@ def nearest_neighbors(
     assert mode in ("edges", "distances"), f"Unknown mode: {mode}."
     assert use_pcs is None or use_pcs > 0, f"Invalid PC number: {use_pcs}"
 
-    if nx < n_neighbors:
-        warnings.warn("X.shape[0] < n_neighbors. " "Setting n_neighbors to X.shape[0].")
-        n_neighbors = nx
-
     if use_pcs is not None and use_pcs < X.shape[1]:
         X = pca(X, n_components=use_pcs)
 
+    # If overlapping points, adds a light noise to guarantee
+    # NN algorithms proper functioning.
+    if contains_duplicates(X):
+        X = perturbate(X, std=0.01)
+
+    if not include_self_loops:
+        n_neighbors += 1
+        n_neighbors = min(n_neighbors, nx - 1)
+    else:
+        n_neighbors = min(n_neighbors, nx)
     # Nearest neighbors
     connectivity = None
     if use_nndescent:
         # PyNNDescent provides a high speed implementation of kNN
         # Parameters borrowed from UMAP's implementation
         # https://github.com/lmcinnes/umap
-        if not include_self_loops:
-            n_neighbors += 1
         knn_result = NNDescent(
             X,
             n_neighbors=n_neighbors,
@@ -203,8 +209,6 @@ def nearest_neighbors(
         rows, cols, data = [], [], []
         for i, row_indices in enumerate(knn_indices):
             for j in row_indices:
-                if not include_self_loops and i == j:
-                    continue
                 rows.append(i)
                 cols.append(j)
                 data.append(1.0)
@@ -217,10 +221,10 @@ def nearest_neighbors(
             metric_params=metric_kwargs,
         )
         nn.fit(X)
-        if include_self_loops:
-            connectivity = nn.kneighbors_graph(X, n_neighbors=n_neighbors)
-        else:
-            connectivity = nn.kneighbors_graph(n_neighbors=n_neighbors)
+        connectivity = nn.kneighbors_graph(X)
+
+    if not include_self_loops:
+        connectivity = connectivity - diags(connectivity.diagonal())
 
     if symmetrize:
         connectivity = fsymmetrize(connectivity)

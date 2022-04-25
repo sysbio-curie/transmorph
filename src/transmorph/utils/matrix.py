@@ -27,3 +27,21 @@ def extract_chunks(X: np.ndarray, chunk_sizes: List[int]) -> List[np.ndarray]:
         result.append(X[offset : offset + size])
         offset += size
     return result
+
+
+def contains_duplicates(X: np.ndarray) -> bool:
+    """
+    Detects if X has duplicate rows.
+    """
+    return X.shape[0] != np.unique(X, axis=0).shape[0]
+
+
+def perturbate(X: np.ndarray, std: float = 0.01) -> np.ndarray:
+    """
+    Perturbates X row samples by a small amount, useful to unstick
+    points.
+    """
+    assert std >= 0.0, "Negative std is not allowed."
+    if std == 0.0:
+        return X
+    return X + np.random.normal(loc=0.0, scale=std, size=X.shape)

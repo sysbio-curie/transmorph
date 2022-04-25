@@ -18,7 +18,12 @@ from transmorph.engine.merging import (
     LinearCorrection,
     GraphEmbedding,
 )
-from transmorph.engine.traits import HasMetadata, UsesNeighbors, UsesReference
+from transmorph.engine.traits import (
+    HasMetadata,
+    UsesNeighbors,
+    UsesReference,
+    IsRepresentable,
+)
 from transmorph.engine.transforming import Standardize, PCA
 from transmorph.utils import anndata_manager as adm, AnnDataKeyIdentifiers
 
@@ -63,10 +68,7 @@ def test_layer_merging():
         loutput.fit(datasets)
 
         # Comparing out results to merging results
-        Xs_test = [lmerging.get_representation(adata) for adata in datasets]
-        Xs_out = [loutput.get_representation(adata) for adata in datasets]
-        for Xm, Xo in zip(Xs_test, Xs_out):
-            np.testing.assert_array_equal(Xm, Xo)
+        IsRepresentable.assert_representation_equals([lmerging, loutput], datasets)
 
         # Testing merged positions against reference
         assert lmatching.matching_matrices is not None
@@ -77,6 +79,7 @@ def test_layer_merging():
             merging.retrieve_reference_index(datasets)
         merging.set_matchings(lmatching.matching_matrices)
         Xs_true = merging.transform([adata.X for adata in datasets])
+        Xs_test = [lmerging.get_representation(adata) for adata in datasets]
 
         for X_test, X_true in zip(Xs_test, Xs_true):
             # Cannot control randomness of UMAP GraphEmbedding, despite

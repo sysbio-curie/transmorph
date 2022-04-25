@@ -7,16 +7,18 @@ from typing import List, Optional
 
 from . import Layer
 from ..checking import Checking
-from ..traits import CanCatchChecking, IsSubsamplable, ContainsTransformations
-from ..subsampling import KeepAll
 from ..traits import (
+    CanCatchChecking,
+    ContainsTransformations,
     HasMetadata,
     IsProfilable,
     profile_method,
     IsRepresentable,
+    IsSubsamplable,
     UsesCommonFeatures,
     assert_trait,
 )
+from ..subsampling import Subsampling
 
 
 class LayerChecking(
@@ -40,6 +42,7 @@ class LayerChecking(
         self,
         checking: Checking,
         n_checks_max: int = 10,
+        subsampling: Optional[Subsampling] = None,
     ) -> None:
         Layer.__init__(
             self,
@@ -48,6 +51,9 @@ class LayerChecking(
         )
         IsProfilable.__init__(self)
         IsRepresentable.__init__(self, repr_key=f"{self}#{self.layer_id}")
+        IsSubsamplable.__init__(self, subsampling)
+        ContainsTransformations.__init__(self)
+        CanCatchChecking.__init__(self)
         self.checking = checking
         self.n_checks = 0  # Numbers of checkings done
         self.n_checks_max = n_checks_max  # Max checks allowed
@@ -59,8 +65,8 @@ class LayerChecking(
         Sets up the rejected connection.
         """
         assert_trait(layer, CanCatchChecking)
-        assert isinstance(self.rejected_layer, Layer)
-        layer.connect_rejected(self)
+        assert isinstance(layer, Layer)
+        layer.catch_checking_rejected(self)
         self.rejected_layer = layer
 
     @profile_method
@@ -85,8 +91,6 @@ class LayerChecking(
             self.log("Calling preprocessings.", level=logging.INFO)
         Xs = self.transform(datasets, self.embedding_reference)
         # Subsampling if necessary
-        if not isinstance(self.subsampling, KeepAll):
-            self.log("Calling subsampling.", level=logging.INFO)
         self.subsample(datasets=datasets, matrices=Xs)
         Xs = self.slice_matrices(datasets=datasets, matrices=Xs)
         # Retrieving metadata and common features if asked by

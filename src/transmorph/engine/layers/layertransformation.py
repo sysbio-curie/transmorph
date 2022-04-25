@@ -3,6 +3,8 @@
 from anndata import AnnData
 from typing import List
 
+from transmorph.engine.traits.cancatchchecking import CanCatchChecking
+
 from . import Layer
 from ..traits import (
     ContainsTransformations,
@@ -13,7 +15,11 @@ from ..traits import (
 
 
 class LayerTransformation(
-    Layer, ContainsTransformations, IsProfilable, IsRepresentable
+    Layer,
+    CanCatchChecking,
+    ContainsTransformations,
+    IsProfilable,
+    IsRepresentable,
 ):
     """
     This layer encapsulates a series of preprocessing algorithms derived

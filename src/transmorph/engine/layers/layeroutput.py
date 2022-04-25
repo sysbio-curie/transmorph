@@ -4,11 +4,11 @@ from anndata import AnnData
 from typing import List
 
 from . import Layer
-from ..traits import IsRepresentable
+from ..traits import CanCatchChecking, IsRepresentable
 from ...utils import AnnDataKeyIdentifiers
 
 
-class LayerOutput(Layer, IsRepresentable):
+class LayerOutput(Layer, CanCatchChecking, IsRepresentable):
     """
     Simple layer to manage network outputs. There cannot be several output layers.
     for now, but it is a TODO
@@ -23,6 +23,7 @@ class LayerOutput(Layer, IsRepresentable):
         IsRepresentable.__init__(
             self, repr_key=AnnDataKeyIdentifiers.TransmorphRepresentation
         )
+        CanCatchChecking.__init__(self)
 
     def fit(self, datasets: List[AnnData]) -> List[Layer]:
         """

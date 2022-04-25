@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import numpy as np
 
 from anndata import AnnData
 from scipy.sparse import csr_matrix
-from typing import Union
+from typing import List, Union
 
 from ...utils import anndata_manager as adm, AnnDataKeyIdentifiers
 
@@ -47,3 +49,20 @@ class IsRepresentable:
         if isinstance(X, csr_matrix):
             X = X.toarray()
         return X
+
+    @staticmethod
+    def assert_representation_equals(
+        representers: List[IsRepresentable],
+        datasets: List[AnnData],
+    ) -> None:
+        """
+        For testing purposes. Raises an exception if
+        """
+        if len(representers) == 0:
+            return
+        for adata in datasets:
+            X_ref = representers[0].get_representation(adata)
+            for rpr in representers[1:]:
+                np.testing.assert_array_almost_equal(
+                    X_ref, rpr.get_representation(adata)
+                )

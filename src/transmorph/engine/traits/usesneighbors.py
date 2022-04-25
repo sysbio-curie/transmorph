@@ -4,7 +4,7 @@ import warnings
 
 from anndata import AnnData
 from scipy.sparse import csr_matrix
-from typing import Dict, List, Literal
+from typing import Dict, List, Literal, Optional
 
 from ...utils import (
     anndata_manager as adm,
@@ -67,13 +67,20 @@ class UsesNeighbors:
     @staticmethod
     def compute_neighbors_graphs(
         datasets: List[AnnData],
-        representation_key: AnnDataKeyIdentifiers,
+        representation_key: Optional[AnnDataKeyIdentifiers] = None,
     ) -> None:
         """
         Computes a neighbors graph, and stores it in adata.
         """
         from ..._settings import settings
 
+        settings.n_neighbors = min(
+            settings.n_neighbors,
+            min(adata.n_obs for adata in datasets),
+        )
+
+        if representation_key is None:
+            representation_key = AnnDataKeyIdentifiers.BaseRepresentation
         use_scanpy = settings.neighbors_use_scanpy
         for adata in datasets:
             matrix = None

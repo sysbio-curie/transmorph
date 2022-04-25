@@ -7,11 +7,9 @@ from typing import List, Optional
 
 from . import Layer
 from ..matching import Matching, _TypeMatchingSet
-from ..subsampling import (
-    Subsampling,
-    KeepAll,
-)
+from ..subsampling import Subsampling
 from ..traits import (
+    CanCatchChecking,
     ContainsTransformations,
     HasMetadata,
     IsProfilable,
@@ -26,6 +24,7 @@ from ..traits import (
 
 class LayerMatching(
     Layer,
+    CanCatchChecking,
     ContainsTransformations,
     IsProfilable,
     IsSubsamplable,
@@ -43,10 +42,9 @@ class LayerMatching(
             compatible_inputs=[IsRepresentable],
             str_identifier="MATCHING",
         )
+        CanCatchChecking.__init__(self)
         ContainsTransformations.__init__(self)
         IsProfilable.__init__(self)
-        if subsampling is None:
-            subsampling = KeepAll()
         IsSubsamplable.__init__(self, subsampling)
         self.matching = matching
         self.matching_matrices: Optional[_TypeMatchingSet] = None
@@ -64,8 +62,6 @@ class LayerMatching(
             representer=self.embedding_reference,
             log_callback=self.info,
         )
-        if not isinstance(self.subsampling, KeepAll):
-            self.info("Calling subsampling.")
         # Subsampling
         self.subsample(datasets=datasets, matrices=Xs)
         Xs = self.slice_matrices(datasets=datasets, matrices=Xs)
