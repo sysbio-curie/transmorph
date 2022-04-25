@@ -35,6 +35,7 @@ class LayerTransformation(
         IsRepresentable.__init__(self, repr_key=f"{self}_{self.layer_id}")
         ContainsTransformations.__init__(self)
         IsProfilable.__init__(self)
+        CanCatchChecking.__init__(self)
 
     @profile_method
     def fit(self, datasets: List[AnnData]) -> List[Layer]:

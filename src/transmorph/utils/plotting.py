@@ -37,7 +37,7 @@ def plot_result(
     extension: str = "png",
     caller_path: str = "",
     suffix: str = "__color_by__",
-    dpi=200,
+    dpi: int = 100,
 ):
     """
     Advanced plotting function for transmorph results, handling parameters
@@ -300,13 +300,13 @@ def plot_result(
     )
 
     # Adding text pieces
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    plt.xlabel(xlabel, fontsize=16)
+    plt.ylabel(ylabel, fontsize=16)
     plt.xticks([])
     plt.yticks([])
     if color_by == "__dataset__":
         color_by = "dataset"
-    plt.title(title + f" -- Color: {color_by}")
+    plt.title(title + f" -- Color: {color_by}", fontsize=18)
 
     # Saving, showing and closing
     if save:

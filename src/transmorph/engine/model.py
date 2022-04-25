@@ -72,7 +72,7 @@ class Model(CanLog):
             self.log(f"Branching from layer {current_layer}.")
 
             # Retrieving output layers
-            output_layers = current_layer.output_layers
+            output_layers = current_layer.output_layers.copy()
             # Checking layers have an extra output
             if (
                 isinstance(current_layer, LayerChecking)
