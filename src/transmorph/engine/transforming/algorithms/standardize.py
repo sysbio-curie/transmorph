@@ -6,6 +6,7 @@ import numpy as np
 from typing import List
 
 from ..transformation import Transformation
+from ....utils.matrix import center_matrix, scale_matrix
 
 
 class Standardize(Transformation):
@@ -33,10 +34,8 @@ class Standardize(Transformation):
         for X in datasets:
             X = X.copy()
             if self.center:
-                X -= X.mean(axis=0)
+                X = center_matrix(X, axis=0)
             if self.scale:
-                normalizer = np.std(X, axis=0)
-                normalizer[normalizer == 0.0] = 1.0
-                X /= normalizer
+                X = scale_matrix(X, axis=0)
             results.append(X)
         return results

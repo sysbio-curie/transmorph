@@ -29,7 +29,7 @@ class PCA(Transformation, UsesCommonFeatures):
 
     Parameters
     ----------
-    n_components: int, default = 2
+    n_components: int, default = 30
         Number of PCs to use.
 
     strategy: str, default = 'concatenate'
@@ -39,7 +39,7 @@ class PCA(Transformation, UsesCommonFeatures):
 
     def __init__(
         self,
-        n_components: int = 2,
+        n_components: int = 30,
         strategy: Literal["concatenate", "composite", "independent"] = "concatenate",
     ):
         Transformation.__init__(self, str_identifier="PCA", preserves_space=False)

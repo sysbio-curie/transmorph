@@ -5,16 +5,19 @@ import pymde
 
 from pymde.preprocess import Graph
 from umap.umap_ import simplicial_set_embedding, find_ab_params
-from typing import List, Literal
+from sklearn.preprocessing import scale
+from typing import List, Literal, Optional
 
 from ..merging import Merging
 from ...matching import _TypeMatchingSet
+from ...subsampling import Subsampling
+from ...traits.issubsamplable import IsSubsamplable
 from ...traits.usesneighbors import UsesNeighbors
 from ....utils.graph import combine_matchings
 from ....utils.matrix import extract_chunks
 
 
-class GraphEmbedding(Merging, UsesNeighbors):
+class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
     """
     TODO update this text to account for UMAP
 
@@ -73,8 +76,11 @@ class GraphEmbedding(Merging, UsesNeighbors):
     def __init__(
         self,
         optimizer: Literal["umap", "mde"] = "umap",
+        n_neighbors: int = 5,
         embedding_dimension: int = 2,
-        mass_concentration: float = 1.0,
+        edges_flex: float = 1.0,
+        matching_strength: float = 10.0,
+        subsampling: Optional[Subsampling] = None,
     ):
         Merging.__init__(
             self,
@@ -83,10 +89,13 @@ class GraphEmbedding(Merging, UsesNeighbors):
             matching_mode="normalized",
         )
         UsesNeighbors.__init__(self)
+        IsSubsamplable.__init__(self, subsampling=subsampling)
         assert optimizer in ("umap", "mde"), f"Unknown optimizer {optimizer}."
         self.optimizer = optimizer
+        self.n_neighbors = n_neighbors
         self.embedding_dimension = embedding_dimension
-        self.concentration = mass_concentration
+        self.edges_flex = edges_flex
+        self.matching_strength = matching_strength
 
     def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
         """
@@ -96,16 +105,40 @@ class GraphEmbedding(Merging, UsesNeighbors):
 
         ndatasets = len(datasets)
         inner_graphs = [
-            self.get_neighbors_graph(i, mode="distances") for i in range(ndatasets)
+            self.get_neighbors_graph(
+                i,
+                mode="distances",
+                n_neighbors=self.n_neighbors,
+            )
+            for i in range(ndatasets)
         ]
         matchings: _TypeMatchingSet = {}
         for i in range(ndatasets):
             for j in range(i + 1, ndatasets):
                 matchings[i, j] = self.get_matching(i, j)
-                matchings[j, i] = self.get_matching(j, i)
+        # We scale weights to balance inner/outer edges
+        for i, G in enumerate(inner_graphs):
+            self.log(f"Internal graph {i}: {(G > 0).sum()} edges.")
+            inner_graphs[i] = scale(G.T, axis=0, with_mean=False, with_std=True).T
+        for key, G in matchings.items():
+            self.log(f"Matching graph {key}: {(G > 0).sum()} edges.")
+            matchings[key] = scale(G.T, axis=0, with_mean=False, with_std=True).T
+            matchings[key] *= self.matching_strength
         edges = combine_matchings(
-            inner_graphs, matchings, "distance", self.concentration
+            inner_graphs,
+            matchings,
+            "distance",
+            self.edges_flex,
         )
+        n_edges = (edges > 0).sum()
+        if n_edges > settings.large_number_edges:
+            self.warn(
+                f"High number of edges detected ({n_edges} > "
+                f"{settings.large_number_edges}). This may take some "
+                "time. Using 'subsampling' option, decreasing the number "
+                "of neighbors or changing Matching "
+                "algorithm may accelerate the convergence."
+            )
         if self.optimizer == "umap":
             nsamples = sum(X.shape[0] for X in datasets)
             n_epochs = (
@@ -119,6 +152,7 @@ class GraphEmbedding(Merging, UsesNeighbors):
                 a, b = find_ab_params(settings.umap_spread, settings.umap_min_dist)
             else:
                 a, b = settings.umap_a, settings.umap_b
+            self.log("Computing UMAP...")
             X_result, _ = simplicial_set_embedding(
                 data=None,
                 graph=edges,
@@ -139,6 +173,7 @@ class GraphEmbedding(Merging, UsesNeighbors):
                 verbose=False,
             )
         elif self.optimizer == "mde":
+            self.log("Computing MDE...")
             mde = pymde.preserve_neighbors(
                 Graph(edges),
                 embedding_dim=self.embedding_dimension,

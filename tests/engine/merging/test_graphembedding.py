@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from transmorph import settings
 from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.matching import Labels
 from transmorph.engine.merging import GraphEmbedding
@@ -19,7 +18,6 @@ def test_merging_umap():
             value=adata.X,
             persist="pipeline",
         )
-    settings.n_neighbors = 3
     UsesNeighbors.compute_neighbors_graphs(
         datasets=datasets,
         representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
@@ -62,7 +60,6 @@ def test_merging_mde():
             value=adata.X,
             persist="pipeline",
         )
-    settings.n_neighbors = 3
     UsesNeighbors.compute_neighbors_graphs(
         datasets=datasets,
         representation_key=AnnDataKeyIdentifiers.BaseRepresentation,

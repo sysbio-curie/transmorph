@@ -35,7 +35,7 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
     equal to the one of their closest corrected neighbor.
     """
 
-    def __init__(self):
+    def __init__(self, n_neighbors: int = 10):
         Merging.__init__(
             self,
             preserves_space=True,
@@ -44,6 +44,7 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
         )
         UsesNeighbors.__init__(self)
         UsesReference.__init__(self)
+        self.n_neighbors = n_neighbors
 
     def project(
         self,
@@ -62,7 +63,11 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
 
         # We smooth correction vectors wrt neighborhood
         n = X_src.shape[0]
-        knn_graph = self.get_neighbors_graph(k_src, mode="edges")
+        knn_graph = self.get_neighbors_graph(
+            k_src,
+            mode="edges",
+            n_neighbors=self.n_neighbors,
+        )
         matched = ref_locations.any(axis=1)
         knn_graph += np.diag(matched)
         n_connections = np.array(knn_graph[:, matched].sum(axis=1)).reshape(-1)

@@ -51,6 +51,10 @@ class ContainsTransformations:
         parameter to compensate for not inheriting from CanLog.
         """
         is_feature_space = representer.is_feature_space
+        if log_callback is not None:
+            log_callback(
+                f"Beginning of transform(). Is feature space: {is_feature_space}"
+            )
         assert_trait(representer, IsRepresentable)
         Xs = [representer.get_representation(adata) for adata in datasets]
         for transformation in self.transformations:
@@ -63,6 +67,13 @@ class ContainsTransformations:
             if isinstance(transformation, UsesCommonFeatures):
                 transformation.retrieve_common_features(datasets, is_feature_space)
             transformation.check_input(Xs)
+            if log_callback is not None:
+                init_dimension = f"[{', '.join([str(X.shape[1]) for X in Xs])}]"
+                log_callback(f"Initial spaces dimension: {init_dimension}")
             Xs = transformation.transform(Xs)
             is_feature_space = is_feature_space and transformation.preserves_space
+            if log_callback is not None:
+                final_dimension = f"[{', '.join([str(X.shape[1]) for X in Xs])}]"
+                log_callback(f"Final spaces dimension: {final_dimension}")
+                log_callback(f"Is feature space: {is_feature_space}")
         return Xs

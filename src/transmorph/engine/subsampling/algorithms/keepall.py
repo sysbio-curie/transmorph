@@ -14,7 +14,7 @@ class KeepAll(Subsampling):
     """
 
     def __init__(self):
-        super().__init__()
+        Subsampling.__init__(self, str_identifier="KEEPALL")
 
     def subsample(
         self, datasets: List[np.ndarray]

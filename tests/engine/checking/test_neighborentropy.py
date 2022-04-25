@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from transmorph import settings
 from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.checking import NeighborEntropy
 from transmorph.engine.matching import Labels
@@ -20,7 +19,6 @@ def test_checking_neighborentropy():
             value=adata.X,
             persist="pipeline",
         )
-    settings.n_neighbors = 3
     UsesNeighbors.compute_neighbors_graphs(
         datasets=datasets,
         representation_key=AnnDataKeyIdentifiers.BaseRepresentation,

@@ -3,6 +3,8 @@
 from anndata import AnnData
 from typing import List, Optional
 
+from transmorph.engine.traits.isprofilable import IsProfilable
+
 from .layers import Layer, LayerChecking, LayerInput, LayerOutput
 from .traits import CanLog, CanCatchChecking, UsesNeighbors, UsesReference
 from .. import profiler
@@ -132,8 +134,6 @@ class Model(CanLog):
             a low-dimensional representation of data.
             If None, use AnnData.X. Otherwise, use AnnData.obsm[use_rep].
         """
-        from .. import settings
-
         # Sanity checks
         assert len(datasets) > 0, "No dataset provided."
         assert self.input_layer is not None, "Pipeline must be initialized first."
@@ -164,8 +164,7 @@ class Model(CanLog):
 
         # Computes NN graph if needed
         if UsesNeighbors.Used:
-            if settings.neighbors_use_scanpy:
-                UsesNeighbors.set_settings_to_scanpy(datasets[0])
+            UsesNeighbors.reset()  # Never trust this object
             UsesNeighbors.compute_neighbors_graphs(
                 datasets,
                 representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
@@ -196,9 +195,12 @@ class Model(CanLog):
                 called.called_by_checking = False
             layers_to_run += output_layers
             adm.clean(datasets, "layer")
+            if isinstance(called, IsProfilable):
+                self.log(f"Layer {called} terminated in {called.get_time_spent()}")
 
         # Cleaning, LayerOutput has saved the result
         adm.clean(datasets, "pipeline")
+        UsesNeighbors.reset()
 
         # Logging summary
         loutput = self.output_layers[0]

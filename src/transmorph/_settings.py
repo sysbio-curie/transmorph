@@ -8,6 +8,7 @@ from typing import Any, Dict, Literal, Optional, TypeVar
 
 from ._logging import logger, _DEFAULT_LEVEL_FILE, _DEFAULT_LEVEL_CONSOLE
 from .utils.type import assert_type
+from .engine.traits.usesneighbors import _DEFAULT_N_NEIGHBORS_MAX
 
 T = TypeVar("T")
 
@@ -34,7 +35,7 @@ class TransmorphSettings:
         # General
         self.global_random_seed: int = 42
         # Neighbors
-        self._n_neighbors: int = 15
+        self._n_neighbors: int = _DEFAULT_N_NEIGHBORS_MAX
         self._neighbors_algorithm: Literal["auto", "sklearn", "nndescent"] = "auto"
         self.neighbors_include_self_loops: bool = False
         self.neighbors_metric: str = "sqeuclidean"
@@ -63,6 +64,8 @@ class TransmorphSettings:
         self.mde_device: Literal["cpu", "cuda"] = "cpu"
         # Scale
         self.large_dataset_threshold: int = 2048
+        self.high_dimensional_threshold: int = 100
+        self.large_number_edges: int = 1_000_000
         # End
         logger.debug("Transmorph settings initialized.")
 
@@ -128,11 +131,11 @@ class TransmorphSettings:
         self.logging_level_console = int_level
 
     @property
-    def n_neighbors(self) -> int:
+    def n_neighbors_max(self) -> int:
         return self._n_neighbors
 
-    @n_neighbors.setter
-    def n_neighbors(self, n: int) -> None:
+    @n_neighbors_max.setter
+    def n_neighbors_max(self, n: int) -> None:
         n = int(n)
         assert n > 0, f"Invalid number of neighbors {n}"
         self._n_neighbors = n

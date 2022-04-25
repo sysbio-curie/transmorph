@@ -45,7 +45,7 @@ class LayerTransformation(
         Xs = self.transform(
             datasets=datasets,
             representer=self.embedding_reference,
-            log_callback=self.info,
+            log_callback=self.log,
         )
         is_feature_space = (
             self.embedding_reference.is_feature_space and self.preserves_space

@@ -2,7 +2,6 @@
 
 import numpy as np
 
-from transmorph import settings
 from transmorph.datasets import load_test_datasets_small, load_bank
 from transmorph.engine.layers import (
     LayerInput,
@@ -39,7 +38,6 @@ N_PCS = 20
 def test_layer_merging():
     # Tests all types of merging in a simple
     # in -> matching -> merging -> out setup.
-    settings.n_neighbors = 3
     datasets = list(load_test_datasets_small().values())
     for merging_algo, kwargs in ALL_MERGINGS:
         # Writing metadata

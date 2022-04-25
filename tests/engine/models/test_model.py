@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-from transmorph import settings
-from transmorph.datasets import load_test_datasets_small
+from transmorph.datasets import load_test_datasets_small, load_travaglini_10x
 from transmorph.engine.checking import NeighborEntropy
 from transmorph.engine.layers import (
     LayerInput,
@@ -11,10 +10,11 @@ from transmorph.engine.layers import (
     LayerOutput,
 )
 from transmorph.engine.layers.layertransformation import LayerTransformation
-from transmorph.engine.matching import Labels
-from transmorph.engine.merging import Barycenter, LinearCorrection
+from transmorph.engine.matching import Labels, MNN
+from transmorph.engine.merging import Barycenter, LinearCorrection, GraphEmbedding
 from transmorph.engine.model import Model
-from transmorph.engine.transforming import Standardize
+from transmorph.engine.subsampling import VertexCover
+from transmorph.engine.transforming import Standardize, PCA, CommonFeatures
 from transmorph.utils import plot_result
 
 
@@ -72,7 +72,6 @@ def test_model_smalldata_simple():
 def test_model_smalldata_complex():
     # Tests a more complex model with several
     # transformations on a small dataset
-    settings.n_neighbors = 3
     datasets = list(load_test_datasets_small().values())
     linput = LayerInput()
     lpreprocess = LayerTransformation()
@@ -103,5 +102,42 @@ def test_model_smalldata_complex():
     )
 
 
+def test_model_largedata_simple():
+    # Tests a simple match -> merge model on a
+    # data bank with few, large datasets. This allows to
+    # test integration with subsampling.
+    datasets = list(load_travaglini_10x().values())
+    linput = LayerInput()
+    ltransformation = LayerTransformation()
+    ltransformation.add_transformation(CommonFeatures())
+    ltransformation.add_transformation(Standardize())
+    ltransformation.add_transformation(PCA())
+    lmatching = LayerMatching(
+        MNN(),
+        subsampling=VertexCover(n_neighbors=5),
+    )
+    lmerging = LayerMerging(GraphEmbedding(n_neighbors=15))
+    lmerging.embedding_reference = ltransformation
+    loutput = LayerOutput()
+    linput.connect(ltransformation)
+    ltransformation.connect(lmatching)
+    lmatching.connect(lmerging)
+    lmerging.connect(loutput)
+    model = Model(linput, verbose=True)
+    model.fit(datasets)
+    testname = "largedatasets_simple"
+    plot_result(
+        datasets,
+        color_by="compartment",
+        title=testname,
+        xlabel="UMAP1",
+        ylabel="UMAP2",
+        save=True,
+        show=False,
+        caller_path=__file__,
+        suffix=testname,
+    )
+
+
 if __name__ == "__main__":
-    test_model_smalldata_complex()
+    test_model_largedata_simple()

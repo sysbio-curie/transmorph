@@ -60,10 +60,10 @@ class LayerMatching(
         Xs = self.transform(
             datasets=datasets,
             representer=self.embedding_reference,
-            log_callback=self.info,
+            log_callback=self.log,
         )
         # Subsampling
-        self.subsample(datasets=datasets, matrices=Xs, log_callback=self.info)
+        self.subsample(datasets=datasets, matrices=Xs, log_callback=self.log)
         Xs = self.slice_matrices(datasets=datasets, matrices=Xs)
         # Matching
         self.info(f"Calling matching {self.matching}.")

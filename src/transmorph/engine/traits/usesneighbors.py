@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 
-import warnings
-
 from anndata import AnnData
 from scipy.sparse import csr_matrix
-from typing import Dict, List, Literal, Optional
+from typing import List, Literal, Optional
 
 from ...utils import (
     anndata_manager as adm,
     AnnDataKeyIdentifiers,
     nearest_neighbors,
 )
+from ...utils.matrix import sort_sparse_matrix, sparse_from_arrays
+
+_DEFAULT_N_NEIGHBORS_MAX = 15
 
 
 class UsesNeighbors:
@@ -22,47 +23,21 @@ class UsesNeighbors:
 
     # Will be turned to true if any class with this trait is initialized.
     Used = False
-    # Cache of neighbor graphs
-    NeighborsGraphs = []
+    # Cache of neighbor graphs (distance matrix/index matrix)
+    NeighborsDistances = []
+    NeighborsIndices = []
 
     def __init__(self):
         UsesNeighbors.Used = True
 
     @staticmethod
     def reset():
+        from ... import settings
+
         UsesNeighbors.Used = False
-        UsesNeighbors.NeighborsGraphs = []
-
-    @staticmethod
-    def set_settings_to_scanpy(adata: AnnData) -> None:
-        """
-        Retrieves scanpy neighbors parameters, and set transmorph settings
-        accordingly. If parameters are not found, transmorph parameters are
-        left untouched.
-        """
-        from ..._settings import settings
-
-        parameters = adm.get_value(
-            adata=adata,
-            key="neighbors",
-            transmorph_key=False,
-            field="uns",
-        )
-        if not isinstance(parameters, Dict):
-            return
-        parameters = parameters.get("params", None)
-        if parameters is None:
-            warnings.warn("No information found for scanpy neighbors.")
-            settings.neighbors_use_scanpy = False
-            return
-        # We want to raise an error if n_neighbors or metric is missing,
-        # as this is unexpected.
-        settings.n_neighbors = parameters["n_neighbors"]
-        settings.neighbors_metric = parameters["metric"]
-        if "metric_kwds" in parameters:
-            settings.neighbors_metric_kwargs = parameters["metric_kwds"]
-        if "n_pcs" in parameters:
-            settings.neighbors_n_pcs = parameters["n_pcs"]
+        UsesNeighbors.NeighborsDistances = []
+        UsesNeighbors.NeighborsIndices = []
+        settings.n_neighbors_max = _DEFAULT_N_NEIGHBORS_MAX
 
     @staticmethod
     def compute_neighbors_graphs(
@@ -74,39 +49,32 @@ class UsesNeighbors:
         """
         from ..._settings import settings
 
-        settings.n_neighbors = min(
-            settings.n_neighbors,
-            min(adata.n_obs for adata in datasets),
+        settings.n_neighbors_max = min(
+            settings.n_neighbors_max,
+            min(adata.n_obs for adata in datasets),  # Change to max?
         )
 
         if representation_key is None:
             representation_key = AnnDataKeyIdentifiers.BaseRepresentation
-        use_scanpy = settings.neighbors_use_scanpy
         for adata in datasets:
             matrix = None
-            if use_scanpy:  # Scanpy mode
-                matrix = adm.get_value(
-                    adata=adata,
-                    key="distances",
-                    transmorph_key=False,
-                    field="obsp",
-                )
-            if not use_scanpy or matrix is None:
-                X = adm.get_value(adata, representation_key)
-                # Settings parameters are used as default
-                matrix = nearest_neighbors(
-                    X=X,
-                    include_self_loops=False,
-                    symmetrize=False,
-                    mode="distances",
-                )
-            assert isinstance(matrix, csr_matrix)
-            UsesNeighbors.NeighborsGraphs.append(matrix)
+            X = adm.get_value(adata, representation_key)
+            # Settings parameters are used as default
+            matrix = nearest_neighbors(
+                X=X,
+                include_self_loops=False,
+                symmetrize=False,
+                mode="distances",
+            )
+            indices, distances = sort_sparse_matrix(matrix)
+            UsesNeighbors.NeighborsIndices.append(indices)
+            UsesNeighbors.NeighborsDistances.append(distances)
 
     @staticmethod
     def get_neighbors_graph(
         idx: int,
         mode: Literal["edges", "distances"] = "edges",
+        n_neighbors: Optional[int] = None,
     ) -> csr_matrix:
         """
         Returns nearest neighbors data for dataset #idx.
@@ -116,12 +84,24 @@ class UsesNeighbors:
         idx: int
             Dataset indice when called compute_neighbor_graphs.
         """
+        from ... import settings, use_setting
+
         assert mode in ("edges", "distances")
-        assert len(UsesNeighbors.NeighborsGraphs) > 0, (
+        assert len(UsesNeighbors.NeighborsDistances) > 0, (
             "UsesNeighbors must be initialized via"
             " UsesNeighbors.compute_neighbors_graphs."
         )
-        nn_matrix = UsesNeighbors.NeighborsGraphs[idx]
-        if mode == "edges":
-            nn_matrix = nn_matrix.astype(bool)
-        return nn_matrix
+        n_neighbors = use_setting(n_neighbors, settings.n_neighbors_max)
+        n_neighbors = min(n_neighbors, settings.n_neighbors_max)
+        assert n_neighbors <= settings.n_neighbors_max, (
+            f"n_neighbors < n_neighbors_max ({n_neighbors} < "
+            f"{settings.n_neighbors_max}). You can increase this "
+            "value by increasing transmorph.settings.n_neighbors_max."
+        )
+        nn_indices = UsesNeighbors.NeighborsIndices[idx]
+        nn_indices = nn_indices[:, :n_neighbors]
+        if mode == "distances":
+            nn_distances = UsesNeighbors.NeighborsDistances[idx]
+            nn_distances = nn_distances[:, :n_neighbors]
+            return sparse_from_arrays(nn_indices, nn_distances)
+        return sparse_from_arrays(nn_indices)

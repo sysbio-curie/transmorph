@@ -7,7 +7,7 @@ from numba import njit
 from numpy.random import RandomState
 from pynndescent import NNDescent
 from scipy.spatial.distance import cdist
-from scipy.sparse import csr_matrix, coo_matrix, csc_matrix, diags
+from scipy.sparse import csr_matrix, coo_matrix, diags
 from sklearn.neighbors import NearestNeighbors
 
 
@@ -153,7 +153,7 @@ def nearest_neighbors(
     # Retrieves default parameters if needed
     from .. import settings, use_setting
 
-    n_neighbors = use_setting(n_neighbors, settings.n_neighbors)
+    n_neighbors = use_setting(n_neighbors, settings.n_neighbors_max)
     metric = use_setting(metric, settings.neighbors_metric)
     metric_kwargs = use_setting(metric_kwargs, settings.neighbors_metric_kwargs)
     use_pcs = use_setting(use_pcs, settings.neighbors_n_pcs)
@@ -314,6 +314,8 @@ def combine_matchings(
     knn_graph: List[csr_matrix]
         List of knn-graphs, where knn-graph[i] is the knn-graph
         associated to matching.datasets[i].
+
+    TODO: maybe rewrite this dirty function
     """
     rows, cols, data, N = [], [], [], 0
     offset_i = 0
@@ -333,23 +335,16 @@ def combine_matchings(
                 offset_j += nj
                 continue
             T = matchings[i, j]
-            if T.shape[0] == nj:  # FIXME a lot of unnecessary conversions
-                T = T.T
-            if type(T) is csc_matrix or type(T) is csr_matrix:
-                T = T.toarray()
-            assert type(T) is np.ndarray, f"Unrecognized type: {type(T)}"
-            norm = T.sum(axis=1, keepdims=True)
-            norm[norm == 0.0] = 1.0
-            T = csr_matrix(T / norm)
             matching_ij = T.tocoo()
-            rows_k, cols_k = matching_ij.row, matching_ij.col
+            rows_k, cols_k, data_k = matching_ij.row, matching_ij.col, matching_ij.data
             rows_k += offset_i
             cols_k += offset_j
             rows += list(rows_k)  # Keep the symmetry
             rows += list(cols_k)
+            data += list(data_k)
             cols += list(cols_k)
             cols += list(rows_k)
-            data += 2 * len(cols_k) * [1]
+            data += list(data_k)
             offset_j += nj
         offset_i += ni
         N += ni

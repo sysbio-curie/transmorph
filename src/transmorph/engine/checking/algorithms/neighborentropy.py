@@ -33,11 +33,12 @@ class NeighborEntropy(Checking, UsesNeighbors):
         label entropy.
     """
 
-    def __init__(self, threshold: float = 0.5):
+    def __init__(self, n_neighbors: int = 15, threshold: float = 0.5):
         Checking.__init__(self, str_identifier="NEIGHBOR_ENTROPY")
         UsesNeighbors.__init__(self)
         self.score: Optional[float] = None
         self.threshold = threshold
+        self.n_neighbors = n_neighbors
 
     def check_input(self, datasets: List[np.ndarray]) -> None:
         """
@@ -52,13 +53,9 @@ class NeighborEntropy(Checking, UsesNeighbors):
         """
         Computes label entropy, and return true if it is above threshold.
         """
-        from transmorph import settings
-
-        n_neighbors = settings.n_neighbors
-        if any(n_neighbors > X.shape[0] * 0.5 for X in datasets):
+        if any(self.n_neighbors > X.shape[0] * 0.5 for X in datasets):
             self.warn(
-                "settings.n_neighbors seems to be too high. Please consider"
-                " decreasing it."
+                "n_neighbors seems to be too high. Please consider decreasing it."
             )
         # Fraction of neighborhood conserved
         ndatasets = len(datasets)
@@ -68,7 +65,7 @@ class NeighborEntropy(Checking, UsesNeighbors):
         inner_nn_after = [nearest_neighbors(X, mode="edges") for X in datasets]
         nn_conserved = np.concatenate(  # For each point, ratio of kept neighbors
             [
-                np.array(nnb.multiply(nna).sum(axis=1)) / n_neighbors
+                np.array(nnb.multiply(nna).sum(axis=1)) / self.n_neighbors
                 for nna, nnb in zip(inner_nn_after, inner_nn_before)
             ],
             axis=0,
@@ -79,7 +76,7 @@ class NeighborEntropy(Checking, UsesNeighbors):
         N = X_all.shape[0]
         T_all = nearest_neighbors(
             X_all,
-            n_neighbors=n_neighbors,
+            n_neighbors=self.n_neighbors,
             symmetrize=False,
         )
         belongs = np.zeros(N)
@@ -93,7 +90,7 @@ class NeighborEntropy(Checking, UsesNeighbors):
 
         # origins: n*k matrix where o[i,j] if the dataset of origin
         # of the j-th neighbor of xi
-        origins = np.zeros((N, n_neighbors))
+        origins = np.zeros((N, self.n_neighbors))
         for i in range(N):
             oi = T_all[i]
             oi = oi[oi != 0]

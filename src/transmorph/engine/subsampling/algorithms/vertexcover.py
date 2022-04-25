@@ -23,13 +23,11 @@ class VertexCover(Subsampling, UsesNeighbors):
         Maximal geodesic distance a point is allowed to be to the cover.
     """
 
-    def __init__(
-        self,
-        n_hops: int = 1,
-    ):
+    def __init__(self, n_hops: int = 1, n_neighbors: int = 5):
         Subsampling.__init__(self, str_identifier="VERTEX_COVER")
         UsesNeighbors.__init__(self)
         self.n_hops = n_hops
+        self.n_neighbors = n_neighbors
 
     def subsample(
         self, datasets: List[np.ndarray]
@@ -39,7 +37,9 @@ class VertexCover(Subsampling, UsesNeighbors):
         """
         results = []
         for i, _ in enumerate(datasets):
-            Adj = UsesNeighbors.get_neighbors_graph(i, mode="edges")
+            Adj = UsesNeighbors.get_neighbors_graph(
+                i, mode="edges", n_neighbors=self.n_neighbors
+            )
             anchors, references = vertex_cover(Adj, hops=self.n_hops)
             results.append((anchors, references))
         return results

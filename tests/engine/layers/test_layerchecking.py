@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from transmorph import settings
 from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.layers import (
     LayerInput,
@@ -22,7 +21,6 @@ N_CHECKS_MAX = 5
 def test_layer_checking_simple():
     # Tests a very simple network
     # with two branches.
-    settings.n_neighbors = 3
     datasets = list(load_test_datasets_small().values())
     UsesNeighbors.compute_neighbors_graphs(datasets)
     linput = LayerInput()
@@ -43,7 +41,6 @@ def test_layer_checking_simple():
 
 def test_layer_checking_standard():
     # Tests a standard model with a single loop.
-    settings.n_neighbors = 3
     datasets = list(load_test_datasets_small().values())
     UsesNeighbors.compute_neighbors_graphs(datasets)
     UsesReference.write_is_reference(datasets[1])

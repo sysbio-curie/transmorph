@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from transmorph import settings
 from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.matching import Labels
 from transmorph.engine.merging import LinearCorrection
@@ -20,7 +19,6 @@ def test_merging_linearcorrection():
             value=adata.X,
             persist="pipeline",
         )
-    settings.n_neighbors = 3
     UsesNeighbors.compute_neighbors_graphs(
         datasets=datasets,
         representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
@@ -28,7 +26,7 @@ def test_merging_linearcorrection():
     matching = Labels(label_obs="class")
     matching.retrieve_labels(datasets)
     T = matching.fit([adata.X for adata in datasets])
-    mg = LinearCorrection()
+    mg = LinearCorrection(n_neighbors=3)
     mg.retrieve_reference_index(datasets)
     mg.set_matchings(T)
     Xs_out = mg.transform([adata.X for adata in datasets])

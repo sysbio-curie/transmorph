@@ -52,7 +52,7 @@ class CanLog:
             Message to print
         """
         warnings.warn(msg)
-        self.log(msg, level=logging.WARNING)
+        self.log(msg)
 
     def raise_error(self, error_type: Type, msg: str = "") -> None:
         """

@@ -12,6 +12,7 @@ from ..traits import (
     IsProfilable,
     profile_method,
     IsRepresentable,
+    IsSubsamplable,
     HasMetadata,
 )
 
@@ -45,8 +46,10 @@ class LayerMerging(
         Xs = self.transform(
             datasets=datasets,
             representer=self.embedding_reference,
-            log_callback=self.info,
+            log_callback=self.log,
         )
+        if isinstance(self.merging, IsSubsamplable):
+            self.merging.subsample(datasets, Xs, log_callback=self.log)
         self.info(f"Running merging {self.merging}...")
         if isinstance(self.merging, HasMetadata):
             self.merging.retrieve_all_metadata(datasets)
