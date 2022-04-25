@@ -3,7 +3,7 @@
 import numpy as np
 
 from anndata import AnnData
-from typing import List, Optional
+from typing import Callable, List, Optional
 
 from .hasmetadata import HasMetadata
 from ..subsampling import Subsampling, KeepAll
@@ -20,7 +20,12 @@ class IsSubsamplable:
             subsampling = KeepAll()
         self.subsampling = subsampling
 
-    def subsample(self, datasets: List[AnnData], matrices: List[np.ndarray]) -> None:
+    def subsample(
+        self,
+        datasets: List[AnnData],
+        matrices: List[np.ndarray],
+        log_callback: Optional[Callable] = None,
+    ) -> None:
         """
         Runs the subsampling on a list of datasets, and
         stores the result in AnnData objects. If subsampling results
@@ -34,6 +39,8 @@ class IsSubsamplable:
         matrices: List[np.ndarray]
             Matrix representation of datasets to subsample.
         """
+        if log_callback is not None:
+            log_callback(f"Applying subsampling {self.subsampling}.")
         if isinstance(self.subsampling, HasMetadata):
             self.subsampling.retrieve_all_metadata(datasets)
         to_compute = []

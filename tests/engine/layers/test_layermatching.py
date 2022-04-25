@@ -5,8 +5,9 @@ import numpy as np
 from transmorph.datasets import load_test_datasets_small, load_travaglini_10x
 from transmorph.engine.layers import LayerInput, LayerMatching
 from transmorph.engine.matching import Matching, Labels, OT, GW, FusedGW, MNN
+from transmorph.engine.subsampling import VertexCover
 from transmorph.engine.transforming import CommonFeatures, Standardize, PCA
-from transmorph.engine.traits import HasMetadata, UsesSampleLabels
+from transmorph.engine.traits import HasMetadata, UsesSampleLabels, UsesNeighbors
 
 ALL_MATCHINGS = [
     # constructor, parameters
@@ -39,8 +40,8 @@ def test_layer_matching():
         if isinstance(matching_ref, UsesSampleLabels):
             matching_ref.retrieve_labels(datasets)
         dict_true = matching_ref.fit([adata.X for adata in datasets])
-
         dict_test = lmatching.matching_matrices
+
         assert dict_test is not None
         for key in dict_test:
             assert key in dict_true
@@ -69,5 +70,24 @@ def test_layer_matching_contains_transformations():
     lmatching.fit(datasets)
 
 
+def test_layer_matching_subsampling():
+    # Testing layer matching with a subsampling.
+    datasets = list(load_test_datasets_small().values())
+    UsesNeighbors.compute_neighbors_graphs(datasets)
+    linput = LayerInput()
+    matching = Labels(label_obs="class")
+    lmatching = LayerMatching(matching=matching, subsampling=VertexCover())
+    linput.connect(lmatching)
+    linput.fit(datasets)
+    lmatching.fit(datasets)
+    matching_shape = lmatching.matching_matrices[0, 1].shape
+
+    # computing by hand to compare
+    subsampling = VertexCover()
+    (a1, _), (a2, _) = subsampling.subsample([adata.X for adata in datasets])
+    a1, a2 = a1.sum(), a2.sum()
+    assert matching_shape == (a1, a2)
+
+
 if __name__ == "__main__":
-    test_layer_matching_contains_transformations()
+    test_layer_matching_subsampling()

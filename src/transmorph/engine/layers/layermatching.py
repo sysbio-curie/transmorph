@@ -63,7 +63,7 @@ class LayerMatching(
             log_callback=self.info,
         )
         # Subsampling
-        self.subsample(datasets=datasets, matrices=Xs)
+        self.subsample(datasets=datasets, matrices=Xs, log_callback=self.info)
         Xs = self.slice_matrices(datasets=datasets, matrices=Xs)
         # Matching
         self.info(f"Calling matching {self.matching}.")
@@ -82,6 +82,7 @@ class LayerMatching(
             self.matching.retrieve_reference_index(datasets)
         if isinstance(self.matching, UsesSampleLabels):
             self.matching.retrieve_labels(datasets)
+            self.matching.apply_subsampling_to_labels(self, datasets)
         self.matching.check_input(Xs)
         self.matching_matrices = self.matching.fit(Xs)
         # Trimming? Extrapolating?

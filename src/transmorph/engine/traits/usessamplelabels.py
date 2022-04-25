@@ -6,6 +6,8 @@ from anndata import AnnData
 from scipy.sparse import csr_matrix
 from typing import List, Optional
 
+from .issubsamplable import IsSubsamplable
+
 
 class UsesSampleLabels:
     """
@@ -65,3 +67,13 @@ class UsesSampleLabels:
         labels_1 = self.get_dataset_labels(idx_1)
         labels_2 = self.get_dataset_labels(idx_2)
         return csr_matrix(labels_1[:, None] == labels_2)
+
+    def apply_subsampling_to_labels(
+        self,
+        subsampled: IsSubsamplable,
+        datasets: List[AnnData],
+    ) -> None:
+        """
+        If datasets have been subsampled, slice stored labels.
+        """
+        self.labels = subsampled.slice_matrices(datasets, self.labels)
