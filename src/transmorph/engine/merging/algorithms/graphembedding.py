@@ -79,7 +79,7 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
         n_neighbors: int = 5,
         embedding_dimension: int = 2,
         edges_flex: float = 1.0,
-        matching_strength: float = 10.0,
+        matching_strength: float = 1.0,
         subsampling: Optional[Subsampling] = None,
     ):
         Merging.__init__(
@@ -107,7 +107,7 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
         inner_graphs = [
             self.get_neighbors_graph(
                 i,
-                mode="distances",
+                mode="edges",
                 n_neighbors=self.n_neighbors,
             )
             for i in range(ndatasets)
@@ -124,6 +124,7 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
             self.log(f"Matching graph {key}: {(G > 0).sum()} edges.")
             matchings[key] = scale(G.T, axis=0, with_mean=False, with_std=True).T
             matchings[key] *= self.matching_strength
+            matchings[key].data = np.clip(matchings[key].data, 0, 1)
         edges = combine_matchings(
             inner_graphs,
             matchings,

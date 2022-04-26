@@ -25,7 +25,7 @@ def test_merging_umap():
     matching = Labels(label_obs="class")
     matching.retrieve_labels(datasets)
     T = matching.fit([adata.X for adata in datasets])
-    mg = GraphEmbedding(optimizer="umap")
+    mg = GraphEmbedding(optimizer="umap", n_neighbors=3)
     mg.set_matchings(T)
     Xs_out = mg.transform([adata.X for adata in datasets])
     for adata, X_out in zip(datasets, Xs_out):

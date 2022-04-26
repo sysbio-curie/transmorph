@@ -74,20 +74,23 @@ def perturbate(X: np.ndarray, std: float = 0.01) -> np.ndarray:
     return X + np.random.normal(loc=0.0, scale=std, size=X.shape)
 
 
-def sort_sparse_matrix(X: csr_matrix) -> Tuple[np.ndarray, np.ndarray]:
+def sort_sparse_matrix(
+    X: csr_matrix, reverse: bool = False
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Returns (indices, values) so that rows of sparse matrix X are sorted.
     Each row of X must have the same number of values. Useful to sort
     a neighbors matrix for instance, to easily slice $k nearest
     neighbors.
     """
+    coef = -1 if reverse else 1
     nsamples = X.shape[0]
     nlinks = (X[0] > 0).sum()
     indices = np.zeros((nsamples, nlinks), dtype=int)
     values = np.zeros((nsamples, nlinks), dtype=X.dtype)
     for i in range(X.shape[0]):
         row = X.getrow(i).tocoo()
-        order = np.argsort(-row.data)
+        order = np.argsort(coef * row.data)
         indices[i] = row.col[order]
         values[i] = row.data[order]
     return indices, values
