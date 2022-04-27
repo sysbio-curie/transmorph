@@ -129,7 +129,11 @@ class TransmorphSettings:
         elif level == "ERROR":
             int_level = logging.ERROR
         else:
-            raise ValueError(level)
+            raise ValueError(
+                level,
+                f"Unknown verbose level {level}. Available options are "
+                "'DEBUG', 'INFO', 'WARNING' or 'ERROR'.",
+            )
         self.logging_level_console = int_level
 
     @property

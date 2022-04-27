@@ -1,46 +1,42 @@
 #!/usr/bin/env python3
 
 from anndata import AnnData
-from typing import List, Optional
-
-from transmorph.engine.traits.isprofilable import IsProfilable
+from typing import List, Literal, Optional
 
 from .layers import Layer, LayerChecking, LayerInput, LayerOutput
-from .traits import CanLog, CanCatchChecking, UsesNeighbors, UsesReference
+from .traits import CanLog, CanCatchChecking, IsProfilable, UsesNeighbors, UsesReference
 from .. import profiler
 from ..utils import anndata_manager as adm, AnnDataKeyIdentifiers
 
 
 class Model(CanLog):
     """
-    TODO update description
-    Model wraps a layers network in order to represent an integration
-    algorithm. It needs at least one LayerInput and one LayerOutput.
+    A Model wraps and manages a network of Layers, allowing to articulate
+    integration modules together. Layers are expected to be already
+    connected to one another, with exactly one input and one output layer.
 
-    Initialization
-    --------------
-    Initializing a Model requires a connected network of
-    Layers. Network source must be an LayerInput, and finish with one
-    or more LayerOutput.
-
-    Running
-    -------
-    To run the Model, simply use the .run(List[AnnData]) method. It
-    will then recursively apply layers.
-
-    Output
-    ------
-    For simplicity, transmorph directly writes integration result in the AnnData
-    object under the entry .obsm['X_transmorph_$i'] where $i is the output layer id.
-
-    Attributes
+    Parameters
     ----------
-    - layer_input: LayerInput, entry node in the network.
-    - output_layers: List[LayerOutput], output nodes
-    - layers: List[Layer], set of layers connected to self.layer_input
+    input_layer: LayerInput
+        Input layer of the network, which is assumed to be already
+        connected. The Model will then automatically gather all
+        layers connected to the network, which is expected to have
+        exactly one output layer.
+
+    verbose: Literal["DEBUG", "INFO", "WARNING", "ERROR"], default = "INFO"
+        Level of verbose of console logging.
+
+        - "DEBUG": All loggings are printed to the console
+        - "INFO": Only important informations are printed (default)
+        - "WARNING": Only warnings and errors are printed
+        - "ERROR": No information is printed, except for runtime errors
     """
 
-    def __init__(self, input_layer: LayerInput, verbose: bool = True) -> None:
+    def __init__(
+        self,
+        input_layer: LayerInput,
+        verbose: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO",
+    ) -> None:
         from .. import settings
 
         CanLog.__init__(self, str_identifier="PIPELINE")
@@ -50,21 +46,13 @@ class Model(CanLog):
             input_layer, LayerInput
         ), f"LayerInput expected, {type(input_layer)} found."
         self.input_layer = input_layer
-        self.initialize()
-        if verbose:
-            settings.verbose = "INFO"
-        else:
-            settings.verbose = "WARNING"
+        self._initialize()
+        settings.verbose = verbose
 
-    def initialize(self):
+    def _initialize(self):
         """
         Loads the network and checks basic layout properties.
-
-        Parameters
-        ----------
-        input_layer: LayerInput
-            Entry point of the pipeline. Must have been conneced to the other layers
-            beforehand.
+        Is called by __init__.
         """
         self.log("Fetching pipeline layers...")
         layers_to_visit: List[Layer] = [self.input_layer]
@@ -95,12 +83,12 @@ class Model(CanLog):
                 self.layers.append(output_layer)
 
         # Verifying structure is correct
-        # FIXME: Analyze checking loops
         if len(self.output_layers) == 0:
             self.warn(
                 "No output layer reachable from input. This pipeline will not "
                 "write results in AnnData objects."
             )
+
         # TODO: Could we allow this?
         noutputs = len(self.output_layers)
         assert noutputs == 1, f"Exactly one output allowed, found {noutputs}."
@@ -116,27 +104,42 @@ class Model(CanLog):
         use_representation: Optional[str] = None,
     ):
         """
-        Runs the pipeline given a list of AnnDatas, writes integration results in
-        each AnnData object under the entry .obsm['X_transmorph_$i'] where $i is
-        the output layer id.
+        Runs the Model given a list of AnnData datasets, and writes integration
+        results in each AnnData object under the entry .obsm['transmorph']. A
+        reference dataset, or a specific dataset .obsm representation can be
+        set if needed.
 
         Parameters
         ----------
         datasets: List[AnnData]
-            Datasets to integrate.
+            Datasets to integrate at the AnnData format. Basic preprocessing such
+            as sample filtering is expected at this stage, even if additional
+            transformation steps can be integrated in a Model. If you expect
+            the Model to work with datasets in a common feature space, please
+            ensure var_names are common between datasets -- not necessarily
+            all identical and in the same order, but at least with common names.
 
         reference: AnnData
-            Reference AnnData to use in mergings that need one. If the pipeline
-            is reference-less, leave it None.
+            If some parts of the pipeline (typically mergings) are expected
+            to work with a reference, you must provide the reference AnnData
+            using this parameter (it must also be part of datasets list).
+            TODO: Automatically detect at initialization if reference is needed,
+            to avoid useless computations before raising an error.
 
         use_representation: str
             Matrix representation to use during the pipeline, useful to provide
             a low-dimensional representation of data.
-            If None, use AnnData.X. Otherwise, use AnnData.obsm[use_rep].
+            If None, use AnnData.X. Otherwise, uses the provided .obsm key.
+
+        Returns
+        -------
+        fit() will write the datasets at entry .obsm["transmorph"] with
+        integrated embeddings.
         """
         # Sanity checks
         assert len(datasets) > 0, "No dataset provided."
         assert self.input_layer is not None, "Pipeline must be initialized first."
+        assert len(self.output_layers) == 1, "No output layer found."
         assert all(isinstance(adata, AnnData) for adata in datasets), (
             "Only AnnData objects can be processed by a Model. "
             "You can create one from a numpy ndarray using "
@@ -146,13 +149,17 @@ class Model(CanLog):
             "pipeline steps."
         )
 
-        # Flags reference dataset if any
+        self.info("Transmorph model is initializing.")
+
+        # Flags reference dataset as such if any
         for adata in datasets:
+            self.log("Flagging reference dataset.")
             if adata is reference:
                 UsesReference.write_is_reference(adata)
 
         # Setting base representation if needed
         if use_representation is not None:
+            self.log("Setting base representation.")
             for adata in datasets:
                 adm.set_value(
                     adata=adata,
@@ -164,7 +171,7 @@ class Model(CanLog):
 
         # Computes NN graph if needed
         if UsesNeighbors.Used:
-            self.info("Precomputing neighbors graph.")
+            self.log("Precomputing neighbors graph.")
             UsesNeighbors.compute_neighbors_graphs(
                 datasets,
                 representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
@@ -182,7 +189,9 @@ class Model(CanLog):
         layers_to_run = [self.input_layer]
         while len(layers_to_run) > 0:
             called = layers_to_run.pop(0)
+            self.info(f"Running layer {called}.")
             output_layers = called.fit(datasets)
+
             # Invalid checking -> layer rejected
             if isinstance(called, LayerChecking) and called.check_is_valid:
                 assert len(output_layers) == 1
@@ -193,20 +202,21 @@ class Model(CanLog):
             # previous representation
             if isinstance(called, CanCatchChecking) and called.called_by_checking:
                 called.called_by_checking = False
+
             layers_to_run += output_layers
             adm.clean(datasets, "layer")
             if isinstance(called, IsProfilable):
                 self.log(f"Layer {called} terminated in {called.get_time_spent()}")
 
-        # Cleaning, LayerOutput has saved the result
+        # Cleaning anndatas, LayerOutput has saved the result
         adm.clean(datasets, "pipeline")
 
         # Logging summary
+
         loutput = self.output_layers[0]
-        if len(self.output_layers) > 0:
-            npoints = sum(adata.n_obs for adata in datasets)
-            ndims = loutput.get_representation(datasets[0]).shape[1]
-            self.info(f"Terminated. Embedding shape: {(npoints, ndims)}")
+        npoints = sum(adata.n_obs for adata in datasets)
+        ndims = loutput.get_representation(datasets[0]).shape[1]
+        self.info(f"Terminated. Total embedding shape: {(npoints, ndims)}")
         self.log(
             "### REPORT_START ###\n"
             + profiler.log_stats()

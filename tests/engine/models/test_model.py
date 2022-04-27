@@ -123,12 +123,12 @@ def test_model_largedata_simple():
     ltransformation.connect(lmatching)
     lmatching.connect(lmerging)
     lmerging.connect(loutput)
-    model = Model(linput, verbose=True)
+    model = Model(linput)
     model.fit(datasets)
     testname = "largedatasets_simple"
     plot_result(
         datasets,
-        color_by="compartment",
+        color_by="class",
         title=testname,
         xlabel="UMAP1",
         ylabel="UMAP2",

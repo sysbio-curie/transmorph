@@ -98,7 +98,7 @@ def test_is_feature_space_propagation_1():
     # Network 1: Not feature space from the beginning
     # but then only space-preserving operations
     datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
-    matching = Labels(label_obs="compartment")
+    matching = Labels(label_obs="class")
     UsesNeighbors.compute_neighbors_graphs(
         datasets,
         AnnDataKeyIdentifiers.BaseRepresentation,
@@ -131,7 +131,7 @@ def test_is_feature_space_propagation_2():
     # Network 2: Feature space from the beginning
     # and then only space-preserving operations
     datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
-    matching = Labels(label_obs="compartment")
+    matching = Labels(label_obs="class")
     UsesNeighbors.compute_neighbors_graphs(
         datasets,
         AnnDataKeyIdentifiers.BaseRepresentation,
@@ -164,7 +164,7 @@ def test_is_feature_space_propagation_3():
     # but changes in the middle, then continues
     # with space-preserving operations.
     datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
-    matching = Labels(label_obs="compartment")
+    matching = Labels(label_obs="class")
     UsesNeighbors.compute_neighbors_graphs(
         datasets,
         AnnDataKeyIdentifiers.BaseRepresentation,
@@ -211,7 +211,7 @@ def test_is_feature_space_propagation_4():
     # with space-preserving operations. But the last
     # step uses a feature space embedding.
     datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
-    matching = Labels(label_obs="compartment")
+    matching = Labels(label_obs="class")
     UsesNeighbors.compute_neighbors_graphs(
         datasets,
         AnnDataKeyIdentifiers.BaseRepresentation,
@@ -260,7 +260,7 @@ def test_is_feature_space_propagation_5():
     # transformation, which should invalidate feature
     # space preservation on last layers.
     datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
-    matching = Labels(label_obs="compartment")
+    matching = Labels(label_obs="class")
     UsesNeighbors.compute_neighbors_graphs(
         datasets,
         AnnDataKeyIdentifiers.BaseRepresentation,

@@ -407,10 +407,8 @@ def generate_membership_matrix(
         tol,
     )
     membership = sparse_from_arrays(indices, distances, n_cols=X2.shape[0])
-    print("Edges before:", len(membership.data))
     membership.data[membership.data < low_thr] = 0.0
     membership.eliminate_zeros()
-    print("Edges after:", len(membership.data))
     return membership
 
 

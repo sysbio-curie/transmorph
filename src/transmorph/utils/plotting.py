@@ -134,6 +134,7 @@ def plot_result(
         all_labels = set()
         for adata in datasets:
             all_labels = all_labels | set(adata.obs[color_by])
+        all_labels = sorted(all_labels)
         n_labels = len(all_labels)
         continuous = (n_labels > 20) and all(isinstance(y, Number) for y in all_labels)
 
