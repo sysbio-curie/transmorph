@@ -30,12 +30,39 @@ class LayerMatching(
     IsSubsamplable,
 ):
     """
-    This layer performs a matching between two or more datasets.
-    It wraps an object derived from MatchingABC.
+    A LayerMatching encapsulates a matching algorithm, used to assess
+    similarity between samples across datasets. It then stores matching
+    results internally, and provides them upon request to a LayerMerging.
+    Merings use this information to build a common embedding between
+    datasets. Temporary transformations can be loaded in LayerMatching
+    to be carried out before the matching algorithm.
+
+    Parameters
+    ----------
+    matching: Matching
+        Matching algorithm contained in the layer. This object is
+        endowed with a fit() method, that will be called by the
+        layer.
+
+    subsampling: Optional[Subsampling], default = None
+        Subsampling algorithm to use before the matching, can help
+        for performance when dealing with large datasets. Note it
+        tends to greatly reduce the number of matching edges.
+
+    Attributes
+    ----------
+    matching_matrices: _TypeMatchingSet = Dict[Tuple[int, int], csr_matrix]
+        Internal matching matrices, stored one internal matching has
+        been called. Contains in coordinates (i, j) the matching
+        between datasets i and j stored as a CSR matrix. These matrices
+        can be provided to LayerMerging, and must not be directly
+        modified.
     """
 
     def __init__(
-        self, matching: Matching, subsampling: Optional[Subsampling] = None
+        self,
+        matching: Matching,
+        subsampling: Optional[Subsampling] = None,
     ) -> None:
         Layer.__init__(
             self,
@@ -52,8 +79,14 @@ class LayerMatching(
     @profile_method
     def fit(self, datasets: List[AnnData]) -> List[Layer]:
         """
-        Calling self.matching.fit after carrying out the requested
-        preprocessings.
+        Runs the internal algorithm after carrying out the
+        appropriate preprocessings. Then, returns next layers
+        in the model.
+
+        Parameters
+        ----------
+        datasets: List[AnnData]
+            Datasets to run matching on.
         """
         self.datasets = datasets.copy()  # Keeping a copy to preserve order
         # Preprocessing
@@ -100,6 +133,8 @@ class LayerMatching(
     def get_matchings(self) -> _TypeMatchingSet:
         """
         Returns computed matchings for read-only purposes.
+        get_matchings()[i, j] is the matching between datasets
+        i and j.
         """
         assert self.matching_matrices is not None, "Layer is not fit."
         return self.matching_matrices

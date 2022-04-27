@@ -12,7 +12,6 @@ from ..traits import (
     IsProfilable,
     profile_method,
     IsRepresentable,
-    IsSubsamplable,
     HasMetadata,
 )
 
@@ -24,8 +23,19 @@ class LayerMerging(
     IsRepresentable,
 ):
     """
-    This layer performs a merging between two or more datasets and their matchings.
-    It wraps an object derived from MergingABC.
+    A LayerMerging encapsulates a merging algorithms, used to leverage
+    matching information to embed several datasets in a common integration
+    space. It can only follow a LayerMatching, and is able to provide
+    matrix representation of AnnData datasets. Temporary transformations
+    can be loaded in LayerMatching to be carried out before the matching
+    algorithm.
+
+    Parameters
+    ----------
+    merging: Merging
+        Merging algorithm contained in the layer. This object is
+        endowed with a transform() method, that will be called by the
+        layer.
     """
 
     def __init__(self, merging: Merging) -> None:
@@ -40,7 +50,14 @@ class LayerMerging(
     @profile_method
     def fit(self, datasets: List[AnnData]) -> List[Layer]:
         """
-        Runs preprocessings, then delegate to the internal merging.
+        Runs the internal algorithm after carrying out the
+        appropriate preprocessings. Then, returns next layers
+        in the model.
+
+        Parameters
+        ----------
+        datasets: List[AnnData]
+            Datasets to run merging on.
         """
         # Pleases the type checker
         Xs = self.transform(
@@ -48,8 +65,6 @@ class LayerMerging(
             representer=self.embedding_reference,
             log_callback=self.log,
         )
-        if isinstance(self.merging, IsSubsamplable):
-            self.merging.subsample(datasets, Xs, log_callback=self.log)
         self.info(f"Running merging {self.merging}...")
         if isinstance(self.merging, HasMetadata):
             self.merging.retrieve_all_metadata(datasets)

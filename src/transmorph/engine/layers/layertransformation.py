@@ -22,15 +22,19 @@ class LayerTransformation(
     IsRepresentable,
 ):
     """
-    This layer encapsulates a series of preprocessing algorithms derived
-    from PreprocessingABC.
+    A LayerTransformation encapsulates a Transformation algorithm,
+    which is useful to alter representations of datasets,  facilitating
+    the work of subsequent algorithms. It contains a set of
+    transformations which will be applied in the order of addition.
+    This layer can provide a matrix representation of AnnData
+    objects.
     """
 
     def __init__(self) -> None:
         Layer.__init__(
             self,
             compatible_inputs=[IsRepresentable],
-            str_identifier="PREPROCESSING",
+            str_identifier="TRANSFORMATION",
         )
         IsRepresentable.__init__(self, repr_key=f"{self}_{self.layer_id}")
         ContainsTransformations.__init__(self)
@@ -40,7 +44,13 @@ class LayerTransformation(
     @profile_method
     def fit(self, datasets: List[AnnData]) -> List[Layer]:
         """
-        Simply runs preprocessing algorithms and returns the result.
+        Sequentially runs the internal algorithms. Then, returns
+        next layers in the model.
+
+        Parameters
+        ----------
+        datasets: List[AnnData]
+            Datasets to run merging on.
         """
         Xs = self.transform(
             datasets=datasets,

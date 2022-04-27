@@ -10,9 +10,13 @@ from ...utils import anndata_manager as adm, AnnDataKeyIdentifiers
 
 class LayerInput(Layer, IsRepresentable):
     """
-    Every pipeline must contain exactly one input layer, followed by an
-    arbitrary network structure. Every pipeline is initialized using this
-    input layer.
+    Every pipeline must contain exactly one input layer,
+    followed by an arbitrary network structure. Every
+    pipeline is initialized using this input layer. This
+    layer is the first to be called by any model. Its role
+    is just to check all representations are present, and
+    call subsequent layers. This layer can provide AnnData
+    matrix representations.
     """
 
     def __init__(self) -> None:
@@ -23,9 +27,16 @@ class LayerInput(Layer, IsRepresentable):
 
     def fit(self, datasets: List[AnnData]) -> List[Layer]:
         """
-        Simply calls the downstream layers.
+        Simply checks dataset representations are at the right
+        place, and call downstream layers.
+
+        Parameters
+        ----------
+        datasets: List[AnnData]
+            Datasets to run checking on.
         """
         self.log("Checking if all representations are present.")
+        # Detecting if datasets are in feature space
         self.is_feature_space = True
         for adata in datasets:
             X = adm.get_value(adata, self.repr_key)
@@ -39,4 +50,8 @@ class LayerInput(Layer, IsRepresentable):
 
     @property
     def embedding_reference(self) -> IsRepresentable:
+        """
+        Each layer input is its own embedding reference, for
+        obvious structural reasons.
+        """
         return self

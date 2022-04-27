@@ -10,8 +10,9 @@ from ...utils import AnnDataKeyIdentifiers
 
 class LayerOutput(Layer, CanCatchChecking, IsRepresentable):
     """
-    Simple layer to manage network outputs. There cannot be several output layers.
-    for now, but it is a TODO
+    A LayerOutput is the final step of any model. Its only role
+    is to retrieve last computed representation, and write it
+    durably in AnnDatas under the entry .obsm['transmorph'].
     """
 
     def __init__(self) -> None:
@@ -28,14 +29,18 @@ class LayerOutput(Layer, CanCatchChecking, IsRepresentable):
 
     def fit(self, datasets: List[AnnData]) -> List[Layer]:
         """
-        Simply retrieves latest data representation, and stores it
-        under obsm["transmorph"] key.
+        Simply retrieves last computed representation,
+        and write it in AnnData objects.
+
+        Parameters
+        ----------
+        datasets: List[AnnData]
+            Datasets to write results in.
         """
         for adata in datasets:
-            X = self.embedding_reference.get_representation(adata)
             self.write_representation(
                 adata,
-                X,
+                self.embedding_reference.get_representation(adata),
                 self.embedding_reference.is_feature_space,
                 persist="output",
             )
