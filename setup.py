@@ -32,6 +32,7 @@ setuptools.setup(
         "scanpy",
         "scikit-learn",
         "scipy",
+        "stabilized-ica",
         "umap-learn",
     ],
     python_requires=">=3.8,<3.10",

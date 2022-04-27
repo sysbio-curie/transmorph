@@ -4,6 +4,7 @@ from logging import warn
 from typing import Literal, List, Tuple, Union
 import numpy as np
 
+from sica.base import StabilizedICA
 from sklearn.decomposition import PCA
 
 from .matrix import extract_chunks
@@ -140,3 +141,21 @@ def pca_multi(
         raise NotImplementedError(
             "Strategy must be in 'concatenate', 'reference', 'composite'."
         )
+
+
+def ica(
+    X: np.ndarray, n_components: int = 30, max_iter: int = 1000, n_runs: int = 10
+) -> np.ndarray:
+    """
+    Computes an ICA representation of the data using StablilizedICA.
+    """
+    sica = StabilizedICA(n_components=n_components, max_iter=max_iter, n_jobs=-1)
+    sica.fit(
+        X.T,
+        n_runs=n_runs,
+        normalize=True,
+        plot=False,
+        fun="logcosh",
+        pca_solver="auto",
+    )
+    return sica.A_

@@ -61,8 +61,8 @@ def get_pairwise_feature_slices(datasets: List[AnnData]) -> _TypePairwiseSlice:
 
 def get_total_feature_slices(datasets: List[AnnData]) -> _TypeTotalSlice:
     """
-    Returns a dictionary where index (i, j) corresponds to boolean
-    slices to use to put datasets i and j to the same feature space.
+    Returns a list where array at index i corresponds to boolean
+    slice to use to slice dataset i in a common feature space.
     """
     assert len(datasets) > 0, "No dataset provided."
     result: _TypeTotalSlice = []
