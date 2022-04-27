@@ -63,6 +63,8 @@ class LayerMatching(
             log_callback=self.log,
         )
         # Subsampling
+        if self.has_subsampling:
+            self.info("Subsampling datasets...")
         self.subsample(datasets=datasets, matrices=Xs, log_callback=self.log)
         Xs = self.slice_matrices(datasets=datasets, matrices=Xs)
         # Matching

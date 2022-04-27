@@ -380,6 +380,7 @@ def generate_membership_matrix(
     X2: np.ndarray,
     max_iter: int = 64,
     tol: float = 1e-5,
+    low_thr: float = 1e-6,
 ) -> csr_matrix:
     """
     Converts a graph matrix G between two datasets X1 and X2 embedded in the same
@@ -388,10 +389,15 @@ def generate_membership_matrix(
     """
     # Sanity checks
     assert G.shape == (X1.shape[0], X2.shape[0])
-    assert X1.shape[1] == X2.shape[1], "Same space datasets expected."
+
+    # Retrieving distances is possible, otherwise guessing them
+    if X1.shape[1] != X2.shape[1]:  # Not same space
+        G_dist = G / G.max()
+        G_dist.data = 1.0 / (1.0 + G_dist.data)
+    else:  # Same space
+        G_dist = sparse_cdist(X1, X2, G, metric="euclidean")
 
     # Initialization
-    G_dist = sparse_cdist(X1, X2, G, metric="euclidean")
     k = np.min((G_dist > 0).sum(axis=1))
     indices, distances = sort_sparse_matrix(G_dist, fill_empty=True)
     distances = _generate_membership_matrix_njit(
@@ -400,7 +406,12 @@ def generate_membership_matrix(
         max_iter,
         tol,
     )
-    return sparse_from_arrays(indices, distances, n_cols=X2.shape[0])
+    membership = sparse_from_arrays(indices, distances, n_cols=X2.shape[0])
+    print("Edges before:", len(membership.data))
+    membership.data[membership.data < low_thr] = 0.0
+    membership.eliminate_zeros()
+    print("Edges after:", len(membership.data))
+    return membership
 
 
 @njit(fastmath=True)

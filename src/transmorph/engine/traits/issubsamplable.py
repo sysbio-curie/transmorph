@@ -21,6 +21,10 @@ class IsSubsamplable:
             subsampling = KeepAll()
         self.subsampling = subsampling
 
+    @property
+    def has_subsampling(self) -> bool:
+        return not isinstance(self.subsampling, KeepAll)
+
     def subsample(
         self,
         datasets: List[AnnData],

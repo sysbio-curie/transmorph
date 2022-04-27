@@ -5,6 +5,7 @@ import pymde
 
 from pymde.preprocess import Graph
 from umap.umap_ import simplicial_set_embedding, find_ab_params
+from scipy.sparse import csr_matrix
 from typing import List, Literal, Optional
 
 from ..merging import Merging
@@ -114,12 +115,13 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
             for i in range(ndatasets)
         ]
         for i, G in enumerate(inner_graphs):
-            inner_graphs[i] = generate_membership_matrix(
+            assert isinstance(G, csr_matrix)
+            G = generate_membership_matrix(
                 G,
                 datasets[i],
                 datasets[i],
             )
-            inner_graphs[i] /= self.matching_strength
+            inner_graphs[i] = G / self.matching_strength
             self.log(f"Internal graph {i}: {(G > 0).sum()} edges.")
 
         # Matching matrix is already row-normalized
