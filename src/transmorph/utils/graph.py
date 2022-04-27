@@ -14,7 +14,13 @@ from sklearn.neighbors import NearestNeighbors
 from typing import Dict, List, Literal, Optional, Tuple
 
 from .dimred import pca
-from .matrix import perturbate, contains_duplicates
+from .geometry import sparse_cdist
+from .matrix import (
+    perturbate,
+    contains_duplicates,
+    sort_sparse_matrix,
+    sparse_from_arrays,
+)
 
 
 def fsymmetrize(A: csr_matrix) -> csr_matrix:
@@ -184,9 +190,6 @@ def nearest_neighbors(
 
     # If overlapping points, adds a light noise to guarantee
     # NN algorithms proper functioning.
-    if contains_duplicates(X):
-        X = perturbate(X, std=0.01)
-
     if not include_self_loops:
         n_neighbors += 1
         n_neighbors = min(n_neighbors, nx - 1)
@@ -205,23 +208,33 @@ def nearest_neighbors(
             metric_kwds=metric_kwargs,
             random_state=RandomState(random_seed),
         )
-        knn_indices, _ = knn_result.neighbor_graph
+        knn_indices, knn_distances = knn_result.neighbor_graph
         rows, cols, data = [], [], []
         for i, row_indices in enumerate(knn_indices):
-            for j in row_indices:
+            for jcol, j in enumerate(row_indices):
                 rows.append(i)
                 cols.append(j)
-                data.append(1.0)
+                if mode == "distances":
+                    data.append(knn_distances[i, jcol])
+                else:
+                    data.append(1.0)
         connectivity = coo_matrix((data, (rows, cols)), shape=(nx, nx)).tocsr()
     else:
         # Standard exact kNN using sklearn implementation
+        if contains_duplicates(X):
+            X = perturbate(X, std=0.01)
+
         nn = NearestNeighbors(
             n_neighbors=n_neighbors,
             metric=metric,
             metric_params=metric_kwargs,
         )
         nn.fit(X)
-        connectivity = nn.kneighbors_graph(X)
+        if mode == "distances":
+            nnmode = "distance"
+        else:
+            nnmode = "connectivity"
+        connectivity = nn.kneighbors_graph(X, mode=nnmode)
 
     if not include_self_loops:
         connectivity = connectivity - diags(connectivity.diagonal())
@@ -297,9 +310,9 @@ def vertex_cover_njit(
 
 
 def combine_matchings(
-    knn_graphs: List[csr_matrix],
     matchings: Dict[Tuple[int, int], csr_matrix],
-    mode: Literal["probability", "distance"],
+    knn_graphs: List[csr_matrix],
+    mode: Literal["probability", "distance"] = "probability",
     lam: float = 1.0,
 ) -> csr_matrix:
     """
@@ -314,29 +327,23 @@ def combine_matchings(
     knn_graph: List[csr_matrix]
         List of knn-graphs, where knn-graph[i] is the knn-graph
         associated to matching.datasets[i].
-
-    TODO: maybe rewrite this dirty function
     """
-    rows, cols, data, N = [], [], [], 0
-    offset_i = 0
-    ndatasets = len(knn_graphs)
+    # Yuk
+    ndatasets = max(max(matchings.keys(), key=lambda k: max(k))) + 1
+    sizes = [X.shape[0] for X in knn_graphs]
+    # Loading these containers
+    rows, cols, data = [], [], []
+    offset_i: int = 0
     for i in range(ndatasets):
         # Initial relations
         knn_graph = knn_graphs[i].tocoo()
         rows += list(knn_graph.row + offset_i)
         cols += list(knn_graph.col + offset_i)
         data += list(knn_graph.data)
-        # Matchings
-        offset_j = 0
-        ni = knn_graphs[i].shape[0]
-        for j in range(ndatasets):
-            nj = knn_graphs[j].shape[0]
-            if i >= j:
-                offset_j += nj
-                continue
-            T = matchings[i, j]
-            matching_ij = T.tocoo()
-            rows_k, cols_k, data_k = matching_ij.row, matching_ij.col, matching_ij.data
+        offset_j = offset_i + sizes[i]
+        for j in range(i + 1, ndatasets):
+            T = matchings[i, j].tocoo()
+            rows_k, cols_k, data_k = T.row, T.col, T.data
             rows_k += offset_i
             cols_k += offset_j
             rows += list(rows_k)  # Keep the symmetry
@@ -345,10 +352,10 @@ def combine_matchings(
             cols += list(cols_k)
             cols += list(rows_k)
             data += list(data_k)
-            offset_j += nj
-        offset_i += ni
-        N += ni
-    T = coo_matrix((data, (rows, cols)), shape=(N, N)).tocsr()
+            offset_j += sizes[j]
+        offset_i += sizes[i]
+    N = sum(sizes)
+    T = csr_matrix((data, (rows, cols)), shape=(N, N))
     T.data = np.clip(T.data, 0.0, 1.0)
     T = T + T.T - T.multiply(T.T)  # symmetrize
     T.data[T.data == 0] = 1e-12  # Stabilize
@@ -365,3 +372,85 @@ def combine_matchings(
         raise ValueError(
             f"Mode {mode} unrecognized, should be 'probability'" " or 'distance'."
         )
+
+
+def generate_membership_matrix(
+    G: csr_matrix,
+    X1: np.ndarray,
+    X2: np.ndarray,
+    max_iter: int = 64,
+    tol: float = 1e-5,
+) -> csr_matrix:
+    """
+    Converts a graph matrix G between two datasets X1 and X2 embedded in the same
+    space to a distance-based membership matrix, ready to be embedded by UMAP or
+    MDE optimizers. Adapted from umap-learn package.
+    """
+    # Sanity checks
+    assert G.shape == (X1.shape[0], X2.shape[0])
+    assert X1.shape[1] == X2.shape[1], "Same space datasets expected."
+
+    # Initialization
+    G_dist = sparse_cdist(X1, X2, G, metric="euclidean")
+    k = np.min((G_dist > 0).sum(axis=1))
+    indices, distances = sort_sparse_matrix(G_dist, fill_empty=True)
+    distances = _generate_membership_matrix_njit(
+        distances,
+        k,
+        max_iter,
+        tol,
+    )
+    return sparse_from_arrays(indices, distances, n_cols=X2.shape[0])
+
+
+@njit(fastmath=True)
+def _generate_membership_matrix_njit(
+    distances: np.ndarray,
+    k: int,
+    max_iter: int,
+    tol: float,
+) -> np.ndarray:
+    """
+    Numba accelerated helper
+    """
+    n1 = distances.shape[0]
+    target_log2k = np.log2(k)
+    # Binary search
+    for row_i in range(n1):
+
+        # Skip the line
+        if distances[row_i, 0] == np.inf:
+            continue
+
+        low = 0.0
+        mid = 1.0
+        high = np.inf
+
+        rhos_i = distances[row_i, 0]
+
+        for _ in range(max_iter):
+
+            cand_log2k = 0.0
+            for j in range(k):
+                d = distances[row_i, j] - rhos_i
+                if d <= 0:
+                    cand_log2k += 1
+                else:
+                    cand_log2k += np.exp(-(d / mid))
+
+            if np.abs(cand_log2k - target_log2k) < tol:
+                break
+
+            if cand_log2k > target_log2k:
+                high = mid
+                mid = (low + high) / 2.0
+            else:
+                low = mid
+                if high is np.inf:
+                    mid *= 2.0
+                else:
+                    mid = (low + high) / 2.0
+
+        distances[row_i] = np.exp(-np.clip(distances[row_i] - rhos_i, 0, None) / mid)
+
+    return distances
