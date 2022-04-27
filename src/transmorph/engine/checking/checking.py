@@ -11,30 +11,19 @@ from ..traits.isprofilable import IsProfilable
 
 class Checking(ABC, CanLog, IsProfilable):
     """
-    CheckingABC is the abstract class used to describe checking algorithms.
+    Checking is the abstract class used to describe checking algorithms.
     A "checking" is a function that takes as input a set of datasets
     endowed with their respective embeddings, and provides a boolean
-    answer to "are these datasets satisfyingly integrated?". This answer
-    is computed using statistical testings and a threshold. All Checking
-    algorithms must inherit CheckingABC.
+    answer to "are these datasets satisfyingly integrated?". All checking
+    algorithms must inherit Checking, in addition to their own traits.
 
     Parameters
     ----------
-    threshold: float, default = 0.0
-        Threshold value to compare statistical test result with. ByCheckingEntropy
-        default, checking passes if test value is below the threshold.
-
-    accept_if_lower: bool, default = True
-        If True, then lower is better. Otherwise, higher is better.
-
-    Attributes
-    ----------
-    last_value: float
-        Value returned by the last call to the testing algorithm. Can
-        be retrived by other modules for logging purposes for instance.
+    str_identifier: str
+        Small string to identify the algorithm in logging.
     """
 
-    def __init__(self, str_identifier: str = "DEFAULT"):
+    def __init__(self, str_identifier: str):
         CanLog.__init__(self, str_identifier=f"CHECKING_{str_identifier}")
         IsProfilable.__init__(self)
 

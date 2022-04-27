@@ -3,7 +3,7 @@
 from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.checking import NeighborEntropy
 from transmorph.engine.matching import Labels
-from transmorph.engine.merging import Barycenter
+from transmorph.engine.merging import LinearCorrection
 from transmorph.engine.traits import UsesNeighbors, UsesReference
 from transmorph.utils import AnnDataKeyIdentifiers
 
@@ -19,13 +19,12 @@ def test_checking_neighborentropy():
     matching = Labels(label_obs="class")
     matching.retrieve_labels(datasets)
     T = matching.fit([adata.X for adata in datasets])
-    mg = Barycenter()
+    mg = LinearCorrection(n_neighbors=3)
     mg.retrieve_reference_index(datasets)
     mg.set_matchings(T)
     Xs_out = mg.transform([adata.X for adata in datasets])
-    check = NeighborEntropy()
-    is_valid = check.check(Xs_out)
-    assert check.score is not None and not is_valid
+    check = NeighborEntropy(n_neighbors=5, threshold=0.6)
+    assert check.check(Xs_out)
 
 
 if __name__ == "__main__":
