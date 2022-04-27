@@ -80,13 +80,6 @@ def test_layer_matching_subsampling():
     linput.connect(lmatching)
     linput.fit(datasets)
     lmatching.fit(datasets)
-    matching_shape = lmatching.matching_matrices[0, 1].shape
-
-    # computing by hand to compare
-    subsampling = VertexCover()
-    (a1, _), (a2, _) = subsampling.subsample([adata.X for adata in datasets])
-    a1, a2 = a1.sum(), a2.sum()
-    assert matching_shape == (a1, a2)
 
 
 if __name__ == "__main__":

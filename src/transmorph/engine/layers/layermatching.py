@@ -84,7 +84,14 @@ class LayerMatching(
             self.matching.retrieve_labels(datasets)
             self.matching.apply_subsampling_to_labels(self, datasets)
         self.matching.check_input(Xs)
-        self.matching_matrices = self.matching.fit(Xs)
+
+        # Supersampling matrices
+        self.matching_matrices = {}
+        for key, T in self.matching.fit(Xs).items():
+            i, j = key
+            T = self.supersample_matrix(datasets[i], T, datasets[j])
+            self.matching_matrices[i, j] = T
+
         # Trimming? Extrapolating?
         return self.output_layers
 

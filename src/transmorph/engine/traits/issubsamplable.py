@@ -3,6 +3,7 @@
 import numpy as np
 
 from anndata import AnnData
+from scipy.sparse import csr_matrix
 from typing import Callable, List, Optional
 
 from .hasmetadata import HasMetadata
@@ -116,3 +117,45 @@ class IsSubsamplable:
                 X_sliced = X[:, anchors]
             result.append(X_sliced)
         return result
+
+    def supersample_matrix(
+        self,
+        adata: AnnData,
+        X: csr_matrix,
+        adata2: Optional[AnnData] = None,
+        n_features: Optional[int] = None,
+    ) -> csr_matrix:
+        """
+        Restores initial structure of a subsampled matrix, possibly
+        pairwise. Useful to reverse subsampling of a distance matrix for
+        instance.
+
+        TODO np.array version
+        """
+        # Sanity check
+        if isinstance(self.subsampling, KeepAll):
+            return X
+        assert isinstance(X, csr_matrix)
+        if adata2 is None:
+            assert n_features is not None, "Cannot guess number of features."
+
+        # Inverting subsampling indices
+        s_to_S1 = np.arange(adata.n_obs)[IsSubsamplable.get_anchors(adata).astype(bool)]
+        if adata2 is not None:
+            s_to_S2 = np.arange(adata2.n_obs)[
+                IsSubsamplable.get_anchors(adata2).astype(bool)
+            ]
+            n_features = adata2.n_obs
+
+        # Reversing subsampling
+        X_coo = X.tocoo()
+        srow, scol, sdata = X_coo.row, X_coo.col, X_coo.data
+        Srow = s_to_S1[srow]
+        if adata2 is None:
+            Scol = scol
+        else:
+            Scol = s_to_S2[scol]
+        return csr_matrix(
+            (sdata, (Srow, Scol)),
+            shape=(adata.n_obs, n_features),
+        )

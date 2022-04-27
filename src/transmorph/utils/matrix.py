@@ -75,42 +75,68 @@ def perturbate(X: np.ndarray, std: float = 0.01) -> np.ndarray:
 
 
 def sort_sparse_matrix(
-    X: csr_matrix, reverse: bool = False
+    X: csr_matrix,
+    reverse: bool = False,
+    fill_empty: bool = False,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Returns (indices, values) so that rows of sparse matrix X are sorted.
-    Each row of X must have the same number of values. Useful to sort
-    a neighbors matrix for instance, to easily slice $k nearest
-    neighbors.
+    Useful to sort a neighbors matrix for instance, to easily slice $k
+    nearest neighbors. If fill_empty = True, different number of elements
+    between rows is allowed. Gaps are filled with np.inf.
     """
     coef = -1 if reverse else 1
     nsamples = X.shape[0]
-    nlinks = (X[0] > 0).sum()
-    indices = np.zeros((nsamples, nlinks), dtype=int)
-    values = np.zeros((nsamples, nlinks), dtype=X.dtype)
+    if fill_empty:
+        nlinks = np.max((X > 0).sum(axis=1))
+    else:
+        nlinks = (X[0] > 0).sum()
+        assert np.all((X != 0).sum(axis=1) == nlinks), (
+            "Inconsistent number of elements in rows detected. If "
+            "this is expected, please explicitly set fill_empty to True."
+        )
+    indices = np.zeros((nsamples, nlinks), dtype=int) + np.inf
+    values = np.zeros((nsamples, nlinks), dtype=X.dtype) + np.inf
     for i in range(X.shape[0]):
         row = X.getrow(i).tocoo()
         order = np.argsort(coef * row.data)
-        indices[i] = row.col[order]
-        values[i] = row.data[order]
+        k = row.data.shape[0]
+        indices[i, :k] = row.col[order]
+        values[i, :k] = row.data[order]
     return indices, values
 
 
 def sparse_from_arrays(
     np_indices: np.ndarray,
     np_data: Optional[np.ndarray] = None,
+    n_cols: Optional[int] = None,
 ) -> csr_matrix:
     """
     Builds a sparse matrix from a pair of arrays.
+    If np_data is None, nonzero values will be set to True.
+    If n_cols is None, matrix is assumed to be square.
     """
     rows, cols, data = [], [], []
     for i_row, col_indices in enumerate(np_indices):
         for col_index, j_col in enumerate(col_indices):
+            if j_col == np.inf:
+                continue
             rows.append(i_row)
-            cols.append(j_col)
+            cols.append(int(j_col))
             if np_data is None:
                 data.append(True)
             else:
                 data.append(np_data[i_row, col_index])
-    shape = (np_indices.shape[0], np_indices.shape[0])
+    if n_cols is None:
+        n_cols = np_indices.shape[0]
+    shape = (np_indices.shape[0], n_cols)
     return csr_matrix((data, (rows, cols)), shape=shape)
+
+
+def pooling(X: np.ndarray, indices: np.ndarray) -> np.ndarray:
+    """
+    Replaces each sample by the average of its neighbors. This
+    is a useful to smooth data manifolds, and reduce the impact
+    of outliers or artifacts.
+    """
+    return X[indices].mean(axis=1)

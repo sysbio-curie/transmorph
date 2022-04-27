@@ -164,7 +164,7 @@ class Model(CanLog):
 
         # Computes NN graph if needed
         if UsesNeighbors.Used:
-            UsesNeighbors.reset()  # Never trust this object
+            self.info("Precomputing neighbors graph.")
             UsesNeighbors.compute_neighbors_graphs(
                 datasets,
                 representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
@@ -200,7 +200,6 @@ class Model(CanLog):
 
         # Cleaning, LayerOutput has saved the result
         adm.clean(datasets, "pipeline")
-        UsesNeighbors.reset()
 
         # Logging summary
         loutput = self.output_layers[0]

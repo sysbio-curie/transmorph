@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import numpy as np
+
 from anndata import AnnData
 from scipy.sparse import csr_matrix
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, Tuple, Union
 
 from ...utils import (
     anndata_manager as adm,
@@ -12,6 +14,8 @@ from ...utils import (
 from ...utils.matrix import sort_sparse_matrix, sparse_from_arrays
 
 _DEFAULT_N_NEIGHBORS_MAX = 15
+_ModeNeighborsMatrix = Literal["csr", "arrays"]
+_TypeNeighborsMatrix = Union[csr_matrix, Tuple[np.ndarray, Optional[np.ndarray]]]
 
 
 class UsesNeighbors:
@@ -24,8 +28,8 @@ class UsesNeighbors:
     # Will be turned to true if any class with this trait is initialized.
     Used = False
     # Cache of neighbor graphs (distance matrix/index matrix)
-    NeighborsDistances = []
-    NeighborsIndices = []
+    NeighborsDistances: List[np.ndarray] = []
+    NeighborsIndices: List[np.ndarray] = []
 
     def __init__(self):
         UsesNeighbors.Used = True
@@ -37,7 +41,7 @@ class UsesNeighbors:
         UsesNeighbors.Used = False
         UsesNeighbors.NeighborsDistances = []
         UsesNeighbors.NeighborsIndices = []
-        settings.n_neighbors_max = _DEFAULT_N_NEIGHBORS_MAX
+        settings.n_neighbors_max = settings.n_neighbors_max
 
     @staticmethod
     def compute_neighbors_graphs(
@@ -48,6 +52,8 @@ class UsesNeighbors:
         Computes a neighbors graph, and stores it in adata.
         """
         from ..._settings import settings
+
+        UsesNeighbors.reset()
 
         settings.n_neighbors_max = min(
             settings.n_neighbors_max,
@@ -75,7 +81,8 @@ class UsesNeighbors:
         idx: int,
         mode: Literal["edges", "distances"] = "edges",
         n_neighbors: Optional[int] = None,
-    ) -> csr_matrix:
+        return_format: _ModeNeighborsMatrix = "csr",
+    ) -> _TypeNeighborsMatrix:
         """
         Returns nearest neighbors data for dataset #idx.
 
@@ -103,5 +110,9 @@ class UsesNeighbors:
         if mode == "distances":
             nn_distances = UsesNeighbors.NeighborsDistances[idx]
             nn_distances = nn_distances[:, :n_neighbors]
-            return sparse_from_arrays(nn_indices, nn_distances)
-        return sparse_from_arrays(nn_indices)
+            if return_format == "csr":
+                return sparse_from_arrays(nn_indices, nn_distances)
+            return nn_indices, nn_distances
+        if return_format == "csr":
+            return sparse_from_arrays(nn_indices).astype(float)
+        return nn_indices, None

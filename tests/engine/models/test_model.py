@@ -116,7 +116,7 @@ def test_model_largedata_simple():
         MNN(),
         subsampling=VertexCover(n_neighbors=5),
     )
-    lmerging = LayerMerging(GraphEmbedding(n_neighbors=15))
+    lmerging = LayerMerging(GraphEmbedding(n_neighbors=5, matching_strength=5))
     lmerging.embedding_reference = ltransformation
     loutput = LayerOutput()
     linput.connect(ltransformation)
@@ -135,7 +135,19 @@ def test_model_largedata_simple():
         save=True,
         show=False,
         caller_path=__file__,
-        suffix=testname,
+        suffix=f"{testname}_class",
+        use_cache=True,
+    )
+    plot_result(
+        datasets,
+        title=testname,
+        xlabel="UMAP1",
+        ylabel="UMAP2",
+        save=True,
+        show=False,
+        caller_path=__file__,
+        suffix=f"{testname}_dataset",
+        use_cache=True,
     )
 
 

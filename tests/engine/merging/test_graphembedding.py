@@ -67,7 +67,7 @@ def test_merging_mde():
     matching = Labels(label_obs="class")
     matching.retrieve_labels(datasets)
     T = matching.fit([adata.X for adata in datasets])
-    mg = GraphEmbedding(optimizer="mde")
+    mg = GraphEmbedding(optimizer="mde", n_neighbors=3)
     mg.set_matchings(T)
     Xs_out = mg.transform([adata.X for adata in datasets])
     for adata, X_out in zip(datasets, Xs_out):

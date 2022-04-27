@@ -42,7 +42,7 @@ def test_sparse_sorting_and_recreating():
     )
 
     # Testing
-    indices, data = sort_sparse_matrix(X)
+    indices, data = sort_sparse_matrix(X, reverse=True)
     np.testing.assert_array_equal(indices, target_indices)
     np.testing.assert_array_equal(data, target_data)
     X_rebuilt = sparse_from_arrays(indices, data)

@@ -5,16 +5,16 @@ import numpy as np
 from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.traits import UsesNeighbors
 from transmorph.engine.subsampling import VertexCover
-from transmorph.utils import anndata_manager as adm, AnnDataKeyIdentifiers
+from transmorph.utils import AnnDataKeyIdentifiers
 
 EXPECTED_RESULT = [
     (
-        np.array([0, 1, 1, 1, 0, 0, 0, 0, 0, 0], dtype=bool),
-        np.array([2, 1, 2, 3, 1, 3, 1, 1, 1, 2]),
+        np.array([0, 1, 0, 0, 1, 0, 1, 0, 0, 0], dtype=bool),
+        np.array([1, 1, 1, 1, 4, 1, 6, 6, 6, 6]),
     ),
     (
-        np.array([1, 1, 1, 1, 0, 0, 0, 0, 0], dtype=bool),
-        np.array([0, 1, 2, 3, 2, 1, 1, 1, 1]),
+        np.array([0, 1, 0, 0, 1, 0, 0, 0, 0], dtype=bool),
+        np.array([1, 1, 1, 1, 4, 4, 4, 1, 4]),
     ),
 ]
 
@@ -22,14 +22,6 @@ EXPECTED_RESULT = [
 def test_subsampling_vertexcover():
     # Tests matching quality of partial OT on small controlled dataset
     datasets = list(load_test_datasets_small().values())
-    for adata in datasets:
-        adm.set_value(
-            adata=adata,
-            key=AnnDataKeyIdentifiers.BaseRepresentation,
-            field="obsm",
-            value=adata.X,
-            persist="pipeline",
-        )
     UsesNeighbors.compute_neighbors_graphs(
         datasets=datasets,
         representation_key=AnnDataKeyIdentifiers.BaseRepresentation,

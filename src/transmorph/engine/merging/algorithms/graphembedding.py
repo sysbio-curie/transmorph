@@ -5,7 +5,6 @@ import pymde
 
 from pymde.preprocess import Graph
 from umap.umap_ import simplicial_set_embedding, find_ab_params
-from sklearn.preprocessing import scale
 from typing import List, Literal, Optional
 
 from ..merging import Merging
@@ -13,7 +12,7 @@ from ...matching import _TypeMatchingSet
 from ...subsampling import Subsampling
 from ...traits.issubsamplable import IsSubsamplable
 from ...traits.usesneighbors import UsesNeighbors
-from ....utils.graph import combine_matchings
+from ....utils.graph import combine_matchings, generate_membership_matrix
 from ....utils.matrix import extract_chunks
 
 
@@ -76,10 +75,10 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
     def __init__(
         self,
         optimizer: Literal["umap", "mde"] = "umap",
-        n_neighbors: int = 5,
+        n_neighbors: int = 15,
         embedding_dimension: int = 2,
         edges_flex: float = 1.0,
-        matching_strength: float = 1.0,
+        matching_strength: float = 10.0,
         subsampling: Optional[Subsampling] = None,
     ):
         Merging.__init__(
@@ -104,6 +103,8 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
         from .... import settings
 
         ndatasets = len(datasets)
+
+        # We retrieve and scale boolean kNN-graphs
         inner_graphs = [
             self.get_neighbors_graph(
                 i,
@@ -112,25 +113,36 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
             )
             for i in range(ndatasets)
         ]
+        for i, G in enumerate(inner_graphs):
+            inner_graphs[i] = generate_membership_matrix(
+                G,
+                datasets[i],
+                datasets[i],
+            )
+            inner_graphs[i] /= self.matching_strength
+            self.log(f"Internal graph {i}: {(G > 0).sum()} edges.")
+
+        # Matching matrix is already row-normalized
         matchings: _TypeMatchingSet = {}
         for i in range(ndatasets):
             for j in range(i + 1, ndatasets):
-                matchings[i, j] = self.get_matching(i, j)
-        # We scale weights to balance inner/outer edges
-        for i, G in enumerate(inner_graphs):
-            self.log(f"Internal graph {i}: {(G > 0).sum()} edges.")
-            inner_graphs[i] = scale(G.T, axis=0, with_mean=False, with_std=True).T
-        for key, G in matchings.items():
-            self.log(f"Matching graph {key}: {(G > 0).sum()} edges.")
-            matchings[key] = scale(G.T, axis=0, with_mean=False, with_std=True).T
-            matchings[key] *= self.matching_strength
-            matchings[key].data = np.clip(matchings[key].data, 0, 1)
+                G = self.get_matching(i, j)
+                matchings[i, j] = generate_membership_matrix(
+                    G,
+                    datasets[i],
+                    datasets[j],
+                )
+                self.log(f"Matching graph {i, j}: {(G > 0).sum()} edges.")
+
+        # Combining all those in a big edges matrix
         edges = combine_matchings(
-            inner_graphs,
-            matchings,
-            "distance",
-            self.edges_flex,
+            matchings=matchings,
+            knn_graphs=inner_graphs,
+            mode="probability",
+            lam=self.edges_flex,
         )
+
+        # Checking total number of edges
         n_edges = (edges > 0).sum()
         if n_edges > settings.large_number_edges:
             self.warn(
@@ -140,6 +152,8 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
                 "of neighbors or changing Matching "
                 "algorithm may accelerate the convergence."
             )
+
+        # Computing the embedding
         if self.optimizer == "umap":
             nsamples = sum(X.shape[0] for X in datasets)
             n_epochs = (

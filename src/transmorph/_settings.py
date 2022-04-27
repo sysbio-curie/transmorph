@@ -26,6 +26,7 @@ class TransmorphSettings:
     """
     Settings manager.
     TODO check all settings that are at risk
+    TODO update random generation numpy
     """
 
     def __init__(self):
@@ -44,6 +45,7 @@ class TransmorphSettings:
         self.neighbors_random_seed: int = 42
         self.neighbors_symmetrize: bool = False
         self.neighbors_use_scanpy: bool = True
+
         # UMAP
         self.umap_metric: str = "euclidean"
         self.umap_metric_kwargs: Dict[str, Any] = {}
