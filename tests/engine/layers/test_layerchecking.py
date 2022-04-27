@@ -19,8 +19,7 @@ N_CHECKS_MAX = 5
 
 
 def test_layer_checking_simple():
-    # Tests a very simple network
-    # with two branches.
+    # Tests a very simple network with two branches
     datasets = list(load_test_datasets_small().values())
     UsesNeighbors.compute_neighbors_graphs(datasets)
     linput = LayerInput()
@@ -48,7 +47,7 @@ def test_layer_checking_standard():
     lmatching = LayerMatching(matching=Labels("class"))
     lmerging = LayerMerging(merging=LinearCorrection())
     lchecking = LayerChecking(
-        checking=NeighborEntropy(),
+        checking=NeighborEntropy(threshold=1.0),
         n_checks_max=N_CHECKS_MAX,
     )
     lout = LayerOutput()

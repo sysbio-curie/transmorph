@@ -8,7 +8,6 @@ from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
 
 from ..utils import sparse_cdist
-from ..utils import nearest_neighbors
 
 # TODO: update to better compare between datasets
 
@@ -67,65 +66,6 @@ def matching_divergence(
             -1,
         )
     return matched_distances.sum()
-
-
-def neighborhood_preservation(
-    X_before,
-    X_after,
-    n_neighbors: int = 10,
-    metric: str = "sqeuclidean",
-    metric_kwargs: Optional[Dict] = None,
-    per_point: bool = False,
-) -> Union[float, np.ndarray]:
-    """
-    Neighborhood preservation counts, for each point, the fraction of its
-    initial nearest neighbors that stay nearest neighbors after integration.
-    Therefore, it measures how well the initial dataset topology is preserved.
-
-    Parameters
-    ----------
-    X_before: np.ndarray
-        Dataset embedding before integration
-
-    X_after: np.ndarray
-        Dataset embedding after integration
-
-    n_neighbors: int, default = 10
-        Number of neighbors to take into account, the lower the more constraints
-
-    metric: str, default = "sqeuclidean"
-        Metric to use during kNN-graph computation
-
-    metric_kwargs: dict, default = {}
-        Dictionary containing additional metric parameters
-
-    per_point: bool, default = False
-        Return preservation per point intstead of global
-    """
-    assert (
-        X_before.shape[0] == X_after.shape[0]
-    ), "Number of samples must match between representations."
-    if not per_point:
-        return (
-            neighborhood_preservation(
-                X_before,
-                X_after,
-                n_neighbors=n_neighbors,
-                metric=metric,
-                per_point=True,
-            ).sum()
-            / X_before.shape[0]
-        )
-    metric_kwargs = {} if metric_kwargs is None else metric_kwargs
-    nn_before = nearest_neighbors(
-        X_before, n_neighbors=n_neighbors, metric=metric, metric_kwargs=metric_kwargs
-    )
-    nn_after = nearest_neighbors(X_after, n_neighbors=n_neighbors, metric=metric)
-    return np.asarray(
-        ((nn_before + nn_after) == 2.0).sum(axis=1) / n_neighbors
-    ).reshape(
-        -1,
-    )
 
 
 def earth_movers_distance(

@@ -41,7 +41,7 @@ class UsesNeighbors:
         UsesNeighbors.Used = False
         UsesNeighbors.NeighborsDistances = []
         UsesNeighbors.NeighborsIndices = []
-        settings.n_neighbors_max = settings.n_neighbors_max
+        settings.n_neighbors_max = _DEFAULT_N_NEIGHBORS_MAX
 
     @staticmethod
     def compute_neighbors_graphs(

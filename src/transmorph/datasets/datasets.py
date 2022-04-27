@@ -66,7 +66,7 @@ def load_test_datasets_small() -> Dict[str, AnnData]:
             [8, 1],
             [6, 2],
             [7, 2],
-            [7, 2],
+            [7, 0],
             [7, 1],
         ],
         dtype=np.float32,

@@ -60,7 +60,7 @@ def test_layer_matching_contains_transformations():
     # only trust the logs and absence of crash :(
     datasets = list(load_travaglini_10x().values())
     linput = LayerInput()
-    matching = Labels(label_obs="compartment")
+    matching = Labels(label_obs="class")
     lmatching = LayerMatching(matching=matching)
     lmatching.add_transformation(CommonFeatures())
     lmatching.add_transformation(Standardize(center=True, scale=True))

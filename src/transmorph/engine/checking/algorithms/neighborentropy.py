@@ -5,12 +5,11 @@ import numpy as np
 from typing import List, Optional
 
 from ..checking import Checking
-from ...traits.usesneighbors import UsesNeighbors
 from ...traits.isprofilable import profile_method
 from ....stats.entropy import label_entropy
 
 
-class NeighborEntropy(Checking, UsesNeighbors):
+class NeighborEntropy(Checking):
     """
     Uses a neighborhood criterion to provide a numerical estimation
     of neighborhood sanity after integration. Intuitively, it attributes
@@ -39,7 +38,6 @@ class NeighborEntropy(Checking, UsesNeighbors):
 
     def __init__(self, n_neighbors: int = 15, threshold: float = 0.5):
         Checking.__init__(self, str_identifier="NEIGHBOR_ENTROPY")
-        UsesNeighbors.__init__(self)
         self.n_neighbors = n_neighbors
         self.threshold = threshold
         # Can be used to retrieve result

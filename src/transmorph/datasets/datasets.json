@@ -26,7 +26,7 @@
     },
     {
         "name": "pal_10x",
-        "reference": "embopress.org/doi/full/10.15252/embj.2020107333",
+        "reference": "https://embopress.org/doi/full/10.15252/embj.2020107333",
         "type": "single-cell RNA-seq 10x",
         "zip_link": "https://1drv.ms/u/s!Al03Ky07bKkGheMM3FETrabb7Iv3Rw?e=iQp4cS",
         "zip_name": "pal_10x.zip",

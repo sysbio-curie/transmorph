@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
 from transmorph.datasets import load_test_datasets_small
-from transmorph.engine.checking import NeighborEntropy
+from transmorph.engine.checking import NeighborConservation
 from transmorph.engine.matching import Labels
 from transmorph.engine.merging import LinearCorrection
 from transmorph.engine.traits import UsesNeighbors, UsesReference
 from transmorph.utils import AnnDataKeyIdentifiers
 
 
-def test_checking_neighborentropy():
-    # Tests NeighborEntropy checking on a small dataset
+def test_checking_neighborconservation():
+    # Tests NeighborConservation checking on a small dataset.
     datasets = list(load_test_datasets_small().values())
     UsesNeighbors.compute_neighbors_graphs(
         datasets=datasets,
@@ -23,9 +23,9 @@ def test_checking_neighborentropy():
     mg.retrieve_reference_index(datasets)
     mg.set_matchings(T)
     Xs_out = mg.transform([adata.X for adata in datasets])
-    check = NeighborEntropy(n_neighbors=5, threshold=0.6)
+    check = NeighborConservation(n_neighbors=5, threshold=0.95)
     assert check.check(Xs_out)
 
 
 if __name__ == "__main__":
-    test_checking_neighborentropy()
+    test_checking_neighborconservation()

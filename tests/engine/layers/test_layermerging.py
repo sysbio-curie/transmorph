@@ -98,7 +98,7 @@ def test_is_feature_space_propagation_1():
     # Network 1: Not feature space from the beginning
     # but then only space-preserving operations
     datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
-    matching = Labels(label_obs="class")
+    matching = Labels(label_obs="compartment")
     UsesNeighbors.compute_neighbors_graphs(
         datasets,
         AnnDataKeyIdentifiers.BaseRepresentation,
@@ -131,7 +131,7 @@ def test_is_feature_space_propagation_2():
     # Network 2: Feature space from the beginning
     # and then only space-preserving operations
     datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
-    matching = Labels(label_obs="class")
+    matching = Labels(label_obs="compartment")
     UsesNeighbors.compute_neighbors_graphs(
         datasets,
         AnnDataKeyIdentifiers.BaseRepresentation,
@@ -160,11 +160,11 @@ def test_is_feature_space_propagation_2():
 def test_is_feature_space_propagation_3():
     # Tests if is_feature_space is correctly propagated
     # along the network.
-    # Network 2: Feature space from the beginning
+    # Network 3: Feature space from the beginning
     # but changes in the middle, then continues
     # with space-preserving operations.
     datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
-    matching = Labels(label_obs="class")
+    matching = Labels(label_obs="compartment")
     UsesNeighbors.compute_neighbors_graphs(
         datasets,
         AnnDataKeyIdentifiers.BaseRepresentation,
@@ -206,12 +206,12 @@ def test_is_feature_space_propagation_3():
 def test_is_feature_space_propagation_4():
     # Tests if is_feature_space is correctly propagated
     # along the network.
-    # Network 2: Feature space from the beginning
+    # Network 4: Feature space from the beginning
     # but changes in the middle, then continues
     # with space-preserving operations. But the last
     # step uses a feature space embedding.
     datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
-    matching = Labels(label_obs="class")
+    matching = Labels(label_obs="compartment")
     UsesNeighbors.compute_neighbors_graphs(
         datasets,
         AnnDataKeyIdentifiers.BaseRepresentation,
@@ -254,13 +254,13 @@ def test_is_feature_space_propagation_4():
 def test_is_feature_space_propagation_5():
     # Tests if is_feature_space is correctly propagated
     # along the network.
-    # Network 1: Feature space from the beginning,
+    # Network 5: Feature space from the beginning,
     # then only space-preserving operations. The
     # last merging is endowed with a space transforming
     # transformation, which should invalidate feature
     # space preservation on last layers.
     datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
-    matching = Labels(label_obs="class")
+    matching = Labels(label_obs="compartment")
     UsesNeighbors.compute_neighbors_graphs(
         datasets,
         AnnDataKeyIdentifiers.BaseRepresentation,
@@ -288,4 +288,8 @@ def test_is_feature_space_propagation_5():
 
 
 if __name__ == "__main__":
+    test_is_feature_space_propagation_1()
     test_is_feature_space_propagation_2()
+    test_is_feature_space_propagation_3()
+    test_is_feature_space_propagation_4()
+    test_is_feature_space_propagation_5()

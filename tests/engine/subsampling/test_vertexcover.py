@@ -14,7 +14,7 @@ EXPECTED_RESULT = [
     ),
     (
         np.array([0, 1, 0, 0, 1, 0, 0, 0, 0], dtype=bool),
-        np.array([1, 1, 1, 1, 4, 4, 4, 1, 4]),
+        np.array([1, 1, 1, 1, 4, 4, 1, 4, 4]),
     ),
 ]
 
