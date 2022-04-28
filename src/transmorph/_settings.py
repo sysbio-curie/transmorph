@@ -65,8 +65,10 @@ class TransmorphSettings:
         self.mde_repulsive_fraction: float = 1.0
         self.mde_device: Literal["cpu", "cuda"] = "cpu"
         # Scale
+        self.small_dataset_threshold: int = 100
         self.large_dataset_threshold: int = 2048
-        self.high_dimensional_threshold: int = 100
+        self.low_dimensional_threshold: int = 5
+        self.high_dimensional_threshold: int = 60
         self.large_number_edges: int = 1_000_000
         # End
         logger.debug("Transmorph settings initialized.")

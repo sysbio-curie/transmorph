@@ -73,8 +73,12 @@ class MNN(Matching, UsesCommonFeatures):
         """
         Computes MNN between pairs of datasets.
         """
+        from .... import settings
+
         # We can only use qtrees if datasets are in the same space.
-        use_qtrees = self.mode == "total" or not self.is_feature_space
+        use_qtrees = (self.mode == "total" or not self.is_feature_space) and any(
+            X.shape[0] > settings.small_dataset_threshold for X in datasets
+        )
         qtrees = []
         if use_qtrees:
             qtrees = [
