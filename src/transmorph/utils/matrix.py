@@ -103,7 +103,7 @@ def sort_sparse_matrix(
         k = row.data.shape[0]
         indices[i, :k] = row.col[order]
         values[i, :k] = row.data[order]
-    return indices, values
+    return indices.astype("int"), values
 
 
 def sparse_from_arrays(
