@@ -20,9 +20,23 @@ class Transformation(ABC, CanLog, IsProfilable):
     Child classes can be enriched by traits.
     """
 
-    def __init__(self, preserves_space: bool = False, str_identifier: str = "DEFAULT"):
+    def __init__(
+        self,
+        str_identifier: str = "DEFAULT",
+        preserves_space: bool = False,
+        transformation_rate: float = 1.0,
+    ):
         CanLog.__init__(self, str_identifier=f"TRANSFORMATION_{str_identifier}")
         self.preserves_space = preserves_space
+        if transformation_rate != 1.0:
+            assert self.preserves_space, (
+                "Partial transformations are only allowed for "
+                "space-preserving transformations."
+            )
+        assert (
+            0.0 <= transformation_rate <= 1.0
+        ), f"Partial rate must be between 0.0 and 1.0, found {transformation_rate}."
+        self.transformation_rate = transformation_rate
 
     def check_input(self, datasets: List[np.ndarray]) -> None:
         """

@@ -35,12 +35,13 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
     equal to the one of their closest corrected neighbor.
     """
 
-    def __init__(self, n_neighbors: int = 10):
+    def __init__(self, n_neighbors: int = 10, transformation_rate: float = 1.0):
         Merging.__init__(
             self,
             preserves_space=True,
             str_identifier="LINEAR_CORRECTION",
             matching_mode="normalized",
+            transformation_rate=transformation_rate,
         )
         UsesNeighbors.__init__(self)
         UsesReference.__init__(self)
@@ -91,7 +92,7 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
             )
             idx_ref = np.arange(n)[connected][np.argmin(dists, axis=1)]
             corr_vectors_smooth[unconnected] = corr_vectors_smooth[idx_ref]
-        return X_src + corr_vectors_smooth
+        return X_src + corr_vectors_smooth * self.transformation_rate
 
     def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
         """

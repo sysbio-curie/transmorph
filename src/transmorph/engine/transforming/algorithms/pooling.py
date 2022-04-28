@@ -22,18 +22,26 @@ class Pooling(Transformation, UsesNeighbors):
         the smoother data is.
     """
 
-    def __init__(self, n_neighbors: int = 5):
-        Transformation.__init__(self, True, "POOLING")
+    def __init__(self, n_neighbors: int = 5, transformation_rate: float = 1.0):
+        Transformation.__init__(self, "POOLING", True, transformation_rate)
         UsesNeighbors.__init__(self)
         self.n_neighbors = n_neighbors
 
     def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+        """
+        Applies pooling, potentially partial.
+        """
         result = []
         for i, X in datasets:
             indices, _ = self.get_neighbors_graph(
                 i,
                 "edges",
                 n_neighbors=self.n_neighbors,
+                return_format="arrays",
             )
-            pooling(X, indices)
+            X_pooled = pooling(X, indices)
+            if self.transformation_rate <= 1.0:
+                X_pooled *= self.transformation_rate
+                X_pooled += X * (1.0 - self.transformation_rate)
+            result.append(X_pooled)
         return result

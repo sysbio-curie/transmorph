@@ -15,11 +15,13 @@ class Merging(Transformation, UsesMatching):
         preserves_space: bool = False,
         str_identifier: str = "DEFAULT",
         matching_mode: _TypeMatchingModes = "raw",
+        transformation_rate: float = 1.0,
     ):
         Transformation.__init__(
             self,
             preserves_space=preserves_space,
             str_identifier=f"MERGING_{str_identifier}",
+            transformation_rate=transformation_rate,
         )
         # Removes TRANSFORMATION_
         self.str_identifier = f"MERGING_{str_identifier}"

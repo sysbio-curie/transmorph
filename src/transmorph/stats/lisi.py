@@ -41,7 +41,7 @@ def compute_lisi(
     indices, distances = sort_sparse_matrix(connectivity)
 
     # Compute Simpson index
-    n_categories = len(np.unique(labels))
+    n_categories = len(set(labels))
     simpson = compute_simpson(
         distances.T,
         indices.T,
