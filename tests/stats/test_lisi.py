@@ -15,3 +15,7 @@ def test_lisi():
     X, labels = load_simulated_data()
     lisi = compute_lisi(X, labels, 30)
     assert lisi.shape == (X.shape[0], labels.shape[1])
+
+
+if __name__ == "__main__":
+    test_lisi()
