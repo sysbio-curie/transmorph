@@ -2,13 +2,14 @@
 
 import numpy as np
 
+from pynndescent import NNDescent
 from scipy.sparse import csr_matrix
 from typing import Dict, List, Literal, Optional
 
 from ..matching import Matching, _TypeMatchingSet
 from ...traits.isprofilable import profile_method
 from ...traits.usescommonfeatures import UsesCommonFeatures
-from ....utils import mutual_nearest_neighbors
+from ....utils.graph import raw_mutual_nearest_neighbors, qtree_mutual_nearest_neighbors
 
 
 class MNN(Matching, UsesCommonFeatures):
@@ -42,6 +43,14 @@ class MNN(Matching, UsesCommonFeatures):
     n_neighbors: int, default = 10
         Number of neighbors to use between datasets.
         "features" key, a list of features names.
+
+    algorithm: str, default = "auto"
+        Method to use ("auto", "exact" or "louvain"). If "auto", will
+        choose "exact" for small datasets and "louvain" for large ones.
+
+    subsampling: SubsamplingABC, default = None
+        Subsampling scheme to apply before computing the matching,
+        can be very helpful when dealing with large datasets.
     """
 
     def __init__(
@@ -50,31 +59,50 @@ class MNN(Matching, UsesCommonFeatures):
         metric_kwargs: Optional[Dict] = None,
         n_neighbors: int = 10,
         common_features_mode: Literal["pairwise", "total"] = "pairwise",
+        exact_mnn: bool = False,
     ):
         Matching.__init__(self, str_identifier="MNN")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
         self.metric = metric
         self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.n_neighbors = n_neighbors
+        self.exact_mnn = exact_mnn
 
     @profile_method
     def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Computes MNN between pairs of datasets.
         """
+        # We can only use qtrees if datasets are in the same space.
+        use_qtrees = self.mode == "total" or not self.is_feature_space
+        qtrees = []
+        if use_qtrees:
+            qtrees = [
+                NNDescent(X, metric=self.metric, metric_kwds=self.metric_kwargs)
+                for X in datasets
+            ]
         ndatasets = len(datasets)
         results: _TypeMatchingSet = {}
         for i in range(ndatasets):
             for j in range(i + 1, ndatasets):
                 Xi, Xj = datasets[i], datasets[j]
-                Xj, Xj = self.slice_features(X1=Xi, X2=Xj, idx_1=i, idx_2=j)
-                Tij = mutual_nearest_neighbors(
-                    Xi,
-                    Xj,
-                    metric=self.metric,
-                    metric_kwargs=self.metric_kwargs,
-                    n_neighbors=self.n_neighbors,
-                )
+                Xi, Xj = self.slice_features(X1=Xi, X2=Xj, idx_1=i, idx_2=j)
+                if use_qtrees:
+                    Tij = qtree_mutual_nearest_neighbors(
+                        Xi,
+                        Xj,
+                        qtrees[i],
+                        qtrees[j],
+                        n_neighbors=self.n_neighbors,
+                    )
+                else:
+                    Tij = raw_mutual_nearest_neighbors(
+                        Xi,
+                        Xj,
+                        metric=self.metric,
+                        metric_kwargs=self.metric_kwargs,
+                        n_neighbors=self.n_neighbors,
+                    )
                 results[i, j] = csr_matrix(Tij)
                 results[j, i] = csr_matrix(Tij.T)
         return results

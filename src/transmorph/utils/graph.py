@@ -7,7 +7,7 @@ from numba import njit
 from numpy.random import RandomState
 from pynndescent import NNDescent
 from scipy.spatial.distance import cdist
-from scipy.sparse import csr_matrix, coo_matrix, diags
+from scipy.sparse import csr_matrix, diags
 from sklearn.neighbors import NearestNeighbors
 
 
@@ -41,7 +41,46 @@ def distance_to_knn(D: np.ndarray, k: int, axis: int):
     return D_sorted[:, k - 1]
 
 
-def mutual_nearest_neighbors(
+def qtree_mutual_nearest_neighbors(
+    X: np.ndarray,
+    Y: np.ndarray,
+    qtX: NNDescent,
+    qtY: NNDescent,
+    n_neighbors: int = 10,
+) -> csr_matrix:
+    """
+    Accelerated mutual nearest neighbors scheme using NNDescent.
+    It requires precomputed indexes that can be queried.
+
+    Parameters
+    ----------
+    X: np.ndarray
+        First dataset, will be in rows in the final matrix
+
+    Y: np.ndarray
+        Second dataset, in columns in the final matrix
+
+    qtX: NNDescent
+        Precomputed index for X samples
+
+    qtY: NNDescent
+        Precomputed index for Y samples
+
+    n_neighbors: int, default = 10
+        Number of neighbors to use to build the intersection.
+    """
+    XYknn = sparse_from_arrays(
+        qtY.query(X, k=n_neighbors)[0],
+        n_cols=Y.shape[0],
+    )
+    YXknn = sparse_from_arrays(
+        qtX.query(Y, k=n_neighbors)[0],
+        n_cols=X.shape[0],
+    )
+    return XYknn.multiply(YXknn.T)
+
+
+def raw_mutual_nearest_neighbors(
     X: np.ndarray,
     Y: np.ndarray,
     metric: str = "sqeuclidean",
@@ -201,24 +240,18 @@ def nearest_neighbors(
         # PyNNDescent provides a high speed implementation of kNN
         # Parameters borrowed from UMAP's implementation
         # https://github.com/lmcinnes/umap
-        knn_result = NNDescent(
+        q_tree = NNDescent(
             X,
             n_neighbors=n_neighbors,
             metric=metric,
             metric_kwds=metric_kwargs,
             random_state=RandomState(random_seed),
         )
-        knn_indices, knn_distances = knn_result.neighbor_graph
-        rows, cols, data = [], [], []
-        for i, row_indices in enumerate(knn_indices):
-            for jcol, j in enumerate(row_indices):
-                rows.append(i)
-                cols.append(j)
-                if mode == "distances":
-                    data.append(knn_distances[i, jcol])
-                else:
-                    data.append(1.0)
-        connectivity = coo_matrix((data, (rows, cols)), shape=(nx, nx)).tocsr()
+        knn_indices, knn_distances = q_tree.neighbor_graph
+        if mode == "distances":
+            connectivity = sparse_from_arrays(knn_indices, knn_distances)
+        else:
+            connectivity = sparse_from_arrays(knn_indices)
     else:
         # Standard exact kNN using sklearn implementation
         if contains_duplicates(X):

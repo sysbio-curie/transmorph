@@ -113,10 +113,9 @@ def test_model_largedata_simple():
     ltransformation.add_transformation(Standardize())
     ltransformation.add_transformation(PCA())
     lmatching = LayerMatching(
-        MNN(),
-        subsampling=VertexCover(n_neighbors=5),
+        MNN(n_neighbors=10), subsampling=VertexCover(n_neighbors=3)
     )
-    lmerging = LayerMerging(GraphEmbedding(n_neighbors=5, matching_strength=5))
+    lmerging = LayerMerging(GraphEmbedding(n_neighbors=4, matching_strength=5))
     lmerging.embedding_reference = ltransformation
     loutput = LayerOutput()
     linput.connect(ltransformation)

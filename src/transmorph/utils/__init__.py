@@ -3,7 +3,7 @@
 from .anndata_manager import anndata_manager, AnnDataKeyIdentifiers
 from .dimred import pca, pca_multi
 from .geometry import sparse_cdist
-from .graph import mutual_nearest_neighbors, nearest_neighbors, vertex_cover
+from .graph import nearest_neighbors, vertex_cover
 from .matrix import extract_chunks, sort_sparse_matrix
 from .plotting import plot_result
 
@@ -13,7 +13,6 @@ __all__ = [
     "pca",
     "pca_multi",
     "plot_result",
-    "mutual_nearest_neighbors",
     "nearest_neighbors",
     "sparse_cdist",
     "vertex_cover",

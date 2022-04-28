@@ -147,6 +147,10 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
         # Checking total number of edges
         n_edges = (edges > 0).sum()
         if n_edges > settings.large_number_edges:
+            self.log(
+                f"Embedding a graph of {n_edges} edges in "
+                f"{self.embedding_dimension} dimensions."
+            )
             self.warn(
                 f"High number of edges detected ({n_edges} > "
                 f"{settings.large_number_edges}). This may take some "

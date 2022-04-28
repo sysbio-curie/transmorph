@@ -115,7 +115,7 @@ class OT(Matching, UsesCommonFeatures):
                 Xi, Xj = datasets[i], datasets[j]
                 ni, nj = Xi.shape[0], Xj.shape[0]
                 wi, wj = np.ones(ni) / ni, np.ones(nj) / nj
-                Xj, Xj = self.slice_features(X1=Xi, X2=Xj, idx_1=i, idx_2=j)
+                Xi, Xj = self.slice_features(X1=Xi, X2=Xj, idx_1=i, idx_2=j)
                 M = cdist(Xi, Xj, metric=self.metric, **self.metric_kwargs)
                 M /= M.max()
                 Tij = optimizer(a=wi, b=wj, M=M, numItermax=self.max_iter, **kwargs)

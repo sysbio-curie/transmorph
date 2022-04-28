@@ -82,5 +82,20 @@ def test_layer_matching_subsampling():
     lmatching.fit(datasets)
 
 
+def test_layer_matching_mnn_qtree():
+    # Testing MNN <-> UsesNeighbors qtree interface
+    datasets = list(load_travaglini_10x().values())
+    UsesNeighbors.compute_neighbors_graphs(datasets)
+    linput = LayerInput()
+    matching = MNN(n_neighbors=20)
+    lmatching = LayerMatching(matching=matching)
+    lmatching.add_transformation(CommonFeatures())
+    lmatching.add_transformation(Standardize(True, True))
+    lmatching.add_transformation(PCA(n_components=30))
+    linput.connect(lmatching)
+    linput.fit(datasets)
+    lmatching.fit(datasets)
+
+
 if __name__ == "__main__":
-    test_layer_matching_subsampling()
+    test_layer_matching_mnn_qtree()

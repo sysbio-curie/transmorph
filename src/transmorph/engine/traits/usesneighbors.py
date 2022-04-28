@@ -62,6 +62,10 @@ class UsesNeighbors:
 
         if representation_key is None:
             representation_key = AnnDataKeyIdentifiers.BaseRepresentation
+
+        algorithm = "sklearn"
+        if any(adata.n_obs > settings.large_dataset_threshold for adata in datasets):
+            algorithm = "nndescent"
         for adata in datasets:
             matrix = None
             X = adm.get_value(adata, representation_key)
@@ -71,6 +75,7 @@ class UsesNeighbors:
                 include_self_loops=False,
                 symmetrize=False,
                 mode="distances",
+                algorithm=algorithm,
             )
             indices, distances = sort_sparse_matrix(matrix)
             UsesNeighbors.NeighborsIndices.append(indices)
