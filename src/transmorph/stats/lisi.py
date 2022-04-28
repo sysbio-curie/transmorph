@@ -7,12 +7,15 @@ from ..utils import sort_sparse_matrix
 from ..utils.graph import nearest_neighbors
 
 
+# Adapted from pyharmony:
+# https://github.com/slowkow/harmonypy/blob/master/harmonypy/lisi.py
 def compute_lisi(X: np.ndarray, sample_labels: np.ndarray, perplexity: float = 30.0):
     """
     Compute the Local Inverse Simpson Index (LISI) for each column in metadata.
     LISI is a statistic computed for each item (row) in the data matrix X.
     The following example may help to interpret the LISI values.
     Suppose one of the columns in metadata is a categorical variable with 3 categories.
+
         - If LISI is approximately equal to 3 for an item in the data matrix,
           that means that the item is surrounded by neighbors from all 3
           categories.
@@ -21,7 +24,9 @@ def compute_lisi(X: np.ndarray, sample_labels: np.ndarray, perplexity: float = 3
 
     The LISI statistic is useful to evaluate whether multiple datasets are
     well-integrated by algorithms such as Harmony [1].
+
     [1]: Korsunsky et al. 2019 doi: 10.1038/s41592-019-0619-0
+
     Parameters
     ----------
     X: Matrix of shape (n_samples, d) where M[i, j] with the coordinates of samples.
@@ -29,6 +34,7 @@ def compute_lisi(X: np.ndarray, sample_labels: np.ndarray, perplexity: float = 3
         point $i for label type $j.
     perplexity
         Parameters for lisi.
+
     Returns
     -------
         A Matrix of shape (n_samples, k) with estimation of lisi for each point
