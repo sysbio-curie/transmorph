@@ -16,23 +16,36 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
     LinearCorrection is a way to merge vectorized datasets embedded
     in the same vector space onto a reference, aiming to solve issues
     of barycentric merging with partial matchings and overfitting.
+    LinearCorrection requires all datasets to be already embedded in
+    a common features space.
 
     Starting from two datasets X (source) and Y (reference) and a
-    matching M[x, y] > 0 if x and y are matched, M[x, y] = 0 otherwise,
-    we compute correction vectors c(x) between matched points and the
+    row-normalized matching T where Tij > 0 iff xi and yj are matched,
+    we compute correction vectors c(Xm) between matched points Xm and the
     barycenter of their matches,
 
-        c(x) = (1 / \\sum_y M[x, y]) * (\\sum_y M[x, y] * y) - x
+    c(Xm) = bary_Y(Xm, Tm) - Xm
 
-    We end up with a set of correction vectors c(x) for some x, and
-    need to guess c(x) for unmatched x.
+    We end up with a set of correction vectors c(Xm), and need to
+    define c(Xu) for unmatched samples.
 
-    The strategy we adopt is to build a k-NN graph of X points,
+    The strategy we adopt is to build a k-NN graph of all X points,
     smoothing correction vectors with respect to kNN neighborhood.
     Doing so, all points that are matched or neighboring a matched
     point are associated with a smoothed correction vector. To
     finish, we set for all uncorrected points a correction vector
     equal to the one of their closest corrected neighbor.
+
+    Parameters
+    ----------
+    n_neighbors: int, default = 10
+        Number of neighbors to use to compute the correction extrapolation
+        graph.
+
+    transformation_rate: float, default = 1.0
+        Output merging is interpolated as a linear combination of
+        original embedding and merged embedding, with 0.0 being the
+        original embedding and 1.0 being the merged embedding.
     """
 
     def __init__(self, n_neighbors: int = 10, transformation_rate: float = 1.0):

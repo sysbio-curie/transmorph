@@ -6,36 +6,45 @@ import pymde
 from pymde.preprocess import Graph
 from umap.umap_ import simplicial_set_embedding, find_ab_params
 from scipy.sparse import csr_matrix
-from typing import List, Literal, Optional
+from typing import List, Literal
 
 from ..merging import Merging
 from ...matching import _TypeMatchingSet
-from ...subsampling import Subsampling
-from ...traits.issubsamplable import IsSubsamplable
 from ...traits.usesneighbors import UsesNeighbors
 from ....utils.graph import combine_matchings, generate_membership_matrix
 from ....utils.matrix import extract_chunks
 
 
-class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
+class GraphEmbedding(Merging, UsesNeighbors):
     """
-    TODO update this text to account for UMAP
+    This merging regroups different graph embedding methods (GEM). Given a
+    graph of weighted edges between data samples, a GEM learns an embedding
+    of samples which minimizes a cost depending on graph edges. We use as a
+    representation graph a combination of matching graphs and internal kNN
+    graphs. Several GEMs have been proposed, we included 2 in transmorph.
 
-    Minimum Distorsion Integration is a joint embedding technique
-    expressed in the Minimum Distorsion Embedding framework [1]. Given
-    n datasets linked together by {2 choose n} fuzzy matchings, it
-    computes a joint embedding of both datasets so that matched samples
-    are brought close from one another. Furthermore, initial graph
-    structure of each dataset is included in the problem, so that close
-    points of a dataset tend to end up close from one another in the
-    final embedding.
+    - Uniform Manifold Approximation Projection (UMAP) [1] is a GEM which
+      assumes samples to be uniformly distributed along their support
+      manifold, and learns a local metric to approximate this hypothesis.
+      It then simulates the graph in an embedding space, with edges
+      acting as springs pulling or repelling samples depending to their
+      estimated distance. We use the umap-learn implementation of UMAP.
 
-    We rely on the MDE implementation of pyMDE that is fast and scalable.
+    - Minimum Distorsion Embedding (MDE) [2] is a GEM which approaches the
+      problem by trying to minimize distances between points with strong
+      edges, while the embedding is constrained (in our case, it must be
+      standardized). This creates an optimization problem yielding
+      convincing embeddings. We ise the pymde implementation of MDE.
+
+    Optimizers parameters can be edited in transmorph settings.
 
     Parameters
     ----------
-    matching: MatchingABC
-        Fitted, referenced matching between datasets.
+    optimizer: Literal["umap", "mde"] = "umap"
+        Graph embedding method to use
+
+    n_neighbors: int = 15
+        Number of neighbors to include in inner knn graphs.
 
     embedding_dimension: int, default = 2
         Target dimensionality of the embedding. For visualization
@@ -43,34 +52,20 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
         like 20 or 50 can yield interesting results. It is recommended
         not to exceed initial dataset dimensionality.
 
-    initialization: str, default = "quadratic"
-        Initialization strategy, "quadratic" or "random".
-
-    n_neighbors: int, default = 10
-        Number of neighbors to include in inner knn graphs.
-
-    knn_metric: str, default = "sqeuclidean"
-        Metric used for computing knn graph.
-
-    knn_metric_kwargs: dict = {}
-        Additional metric arguments for scipy.cdist.
-
-    repulsive_fraction: float, default = 0.5
-        How many repulsive edges to include, relative to the number
-        of attractive edges. 1.0 means as many repulsive edges as attractive
-        edges. The higher this number, the more uniformly spread out the
-        embedding will be. Defaults to 0.5 for standardized embeddings, and
-        1 otherwise.
-
-    device: str, default = "cpu"
-        Device for the embedding (eg, 'cpu', 'cuda').
-
-    verbose: bool
-        If ``True``, print verbose output.
+    matching_strength: float = 10.0
+        Edges weights between samples belonging to the same batch will
+        be divided by this coefficient. Therefore, increasing it will
+        tend to emphasize matching edges in the embedding representation.
+        In the other hand, decreasing it will emphasize initial
+        datasets geometry.
 
     References
     ----------
-    [1] A. Agrawal, A. Ali, S. Boyd, Minimum-Distorsion Embedding, 2021
+    [1] Becht, Etienne, et al. "Dimensionality reduction for visualizing
+        single-cell data using UMAP." Nature biotechnology 37.1 (2019): 38-44.
+
+    [2] Agrawal, Akshay, Alnur Ali, and Stephen Boyd. "Minimum-distortion
+        embedding." arXiv preprint arXiv:2103.02559 (2021).
     """
 
     def __init__(
@@ -78,9 +73,7 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
         optimizer: Literal["umap", "mde"] = "umap",
         n_neighbors: int = 15,
         embedding_dimension: int = 2,
-        edges_flex: float = 1.0,
         matching_strength: float = 10.0,
-        subsampling: Optional[Subsampling] = None,
     ):
         Merging.__init__(
             self,
@@ -89,12 +82,10 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
             matching_mode="normalized",
         )
         UsesNeighbors.__init__(self)
-        IsSubsamplable.__init__(self, subsampling=subsampling)
         assert optimizer in ("umap", "mde"), f"Unknown optimizer {optimizer}."
         self.optimizer = optimizer
         self.n_neighbors = n_neighbors
         self.embedding_dimension = embedding_dimension
-        self.edges_flex = edges_flex
         self.matching_strength = matching_strength
 
     def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
@@ -140,8 +131,6 @@ class GraphEmbedding(Merging, UsesNeighbors, IsSubsamplable):
         edges = combine_matchings(
             matchings=matchings,
             knn_graphs=inner_graphs,
-            mode="probability",
-            lam=self.edges_flex,
         )
 
         # Checking total number of edges

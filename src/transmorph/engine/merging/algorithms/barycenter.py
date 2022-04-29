@@ -11,16 +11,17 @@ from ...traits.usesreference import UsesReference
 class Barycenter(Merging, UsesReference):
     """
     Barycentric merging is the most naive way of merging datasets.
-    Given n vectorized datasets x1, ..., xn and a reference dataset y,
-    and n row-normalized matchings m1, ..., mn, we compute the following
-    projection:
+    Given n vectorized datasets X1, ..., Xk, a reference dataset Y,
+    and n row-normalized matchings T1, ..., Tk from Xis to Y, the
+    barycentric merging f of Xi to Y through Ti is given by
 
-        f(xi) = mi @ y
+        bary_Y(Xi, Ti) = Ti @ Y
 
-    In other terms, every sample from xi is projected to the weighted sum
-    of its matches in y. This works quite well with optimal transport-based
-    methods, but is quite limited in the MNN case due to unmatched samples.
-    Fitted, referenced matching between datasets.
+    In other terms, every sample from Xi is projected to the weighted sum
+    of its matches in Y. This merging is limited to complete matchings,
+    where all points from Xi are matched to at least one point in Y, as
+    unmatched points are naturally projected to the origin. In this case,
+    LinearCorrection can circumvent this issue to a certain extent.
     """
 
     def __init__(self):

@@ -345,8 +345,6 @@ def vertex_cover_njit(
 def combine_matchings(
     matchings: Dict[Tuple[int, int], csr_matrix],
     knn_graphs: List[csr_matrix],
-    mode: Literal["probability", "distance"] = "probability",
-    lam: float = 1.0,
 ) -> csr_matrix:
     """
     Concatenates any number of matchings Mij and knn-graph
@@ -391,20 +389,7 @@ def combine_matchings(
     T = csr_matrix((data, (rows, cols)), shape=(N, N))
     T.data = np.clip(T.data, 0.0, 1.0)
     T = T + T.T - T.multiply(T.T)  # symmetrize
-    T.data[T.data == 0] = 1e-12  # Stabilize
-    if mode == "probability":
-        return T
-    elif mode == "distance":
-        # Gaussian model
-        # pij = exp(-dij**2 * lambda)
-        # iff dij = sqrt(-ln(pij) / lambda)
-        # + epsilon to stabilize MDE solver
-        T.data = np.sqrt(-np.log(T.data) / lam) + 1e-9
-        return T
-    else:
-        raise ValueError(
-            f"Mode {mode} unrecognized, should be 'probability'" " or 'distance'."
-        )
+    return T
 
 
 def generate_membership_matrix(
