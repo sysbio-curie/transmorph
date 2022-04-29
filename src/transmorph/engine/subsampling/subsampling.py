@@ -9,6 +9,8 @@ from typing import List, Tuple
 
 from ..traits import CanLog
 
+_TypeSubsampling = Tuple[np.ndarray, np.ndarray]
+
 
 class Subsampling(ABC, CanLog):
     """
@@ -38,9 +40,7 @@ class Subsampling(ABC, CanLog):
         pass
 
     @abstractmethod
-    def subsample(
-        self, datasets: List[np.ndarray]
-    ) -> List[Tuple[np.ndarray, np.ndarray]]:
+    def subsample(self, datasets: List[np.ndarray]) -> List[_TypeSubsampling]:
         """
         Applies a subsampling algorithm to a list of matrices
         representing datasets. Returns results in the following

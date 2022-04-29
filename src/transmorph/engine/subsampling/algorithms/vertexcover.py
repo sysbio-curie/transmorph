@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from typing import List, Tuple
+from typing import List
 
-from ..subsampling import Subsampling
+from ..subsampling import Subsampling, _TypeSubsampling
 from ...traits.usesneighbors import UsesNeighbors
 from ....utils.graph import vertex_cover
 
@@ -21,6 +21,11 @@ class VertexCover(Subsampling, UsesNeighbors):
     ----------
     n_hops: int, default = 1
         Maximal geodesic distance a point is allowed to be to the cover.
+
+    n_neighbors: int, default = 5
+        Number of neighbors to use to build the kNN-graph along which is
+        computed the vertex cover. On average, a dataset with n samples
+        will have a subsampled size of n / n_neighbors.
     """
 
     def __init__(self, n_hops: int = 1, n_neighbors: int = 5):
@@ -29,9 +34,7 @@ class VertexCover(Subsampling, UsesNeighbors):
         self.n_hops = n_hops
         self.n_neighbors = n_neighbors
 
-    def subsample(
-        self, datasets: List[np.ndarray]
-    ) -> List[Tuple[np.ndarray, np.ndarray]]:
+    def subsample(self, datasets: List[np.ndarray]) -> List[_TypeSubsampling]:
         """
         Simply retrieves neighbor graphs, and uses it to compute vertex covers.
         """
