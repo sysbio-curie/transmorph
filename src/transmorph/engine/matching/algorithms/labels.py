@@ -12,14 +12,15 @@ from ...traits.usessamplelabels import UsesSampleLabels
 
 class Labels(Matching, UsesSampleLabels):
     """
-    This is a supervised boolean matching, that matches all
-    samples sharing the same label.
+    Supervised, label-based boolean matching that matches every pair
+    of samples that share the same label. Does not depend on dataset
+    dimensionality, and will typically generate a lot -- O(n^2) -- of
+    edges.
 
     Parameters
     ----------
     label_obs: str
-        AnnData obs key to extract label from. If left None,
-        this trait is ignored.
+        AnnData.obs entry containing categorical labels.
     """
 
     def __init__(self, label_obs: str):
@@ -30,7 +31,7 @@ class Labels(Matching, UsesSampleLabels):
     def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Collects label matching matrices using UsesSampleLabels
-        trait.
+        trait, then computes the matching.
         """
         ndatasets = len(datasets)
         results: _TypeMatchingSet = {}

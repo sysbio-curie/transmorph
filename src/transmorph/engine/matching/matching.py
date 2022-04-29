@@ -19,32 +19,19 @@ _TypeMatchingSet = Dict[Tuple[int, int], csr_matrix]
 
 class Matching(ABC, IsProfilable, CanLog):
     """
-    A matching is a class containing a function match(x1, ..., xn), able
-    to predict matching between dataset samples (possibly fuzzy). Any class
-    implementing matching must implement a
+    A Matching is an algorithm that is used to assess similarity between
+    samples across datasets. Mergings use this information to build a
+    common embedding between datasets. In our framework a matching between
+    two datasets is represented as a sparse matrix whose value i,j represent
+    matching strength between sample i from the first dataset and sample
+    j from the second dataset.
 
-        _match2(self, x1: np.ndarray, x2: np.ndarray)
-
-    method, returning a possibly sparse T = (x1.shape[0], x2.shape[0]) array
-    where T[i, j] = prob(x1_i matches x2_j).
-
-    Parameters
-    ----------
-    subsampling: SubsamplingABC, default = None
-        Subsampling scheme to apply before computing the matching,
-        can be very helpful when dealing with large datasets.
-
-    str_identifier: str
-        String representation of the matching algorithm. Will
-        typically be the matching algorithm name. For logging purposes.
-
-    Attributes
-    ----------
-    matchings: list of arrays
-        After calling match(x0, ..., xn), list of matchings. If matching is
-        referenced, matching[i] contains matching between datasets[i] and
-        reference dataset. Otherwise, matching[i(i-1)/2+j] contains the
-        matching between xi and xj (with i > j).
+    Every matching algorithm must inherit from the Matching class, and at
+    least implement a fit() method. This method takes as input a list of
+    matrices representing datasets to match, and returns a dictionary D
+    where D[i, j] contains the sparse matching between datasets i and j.
+    Access to other type of metadata can be granted by inheriting specific
+    traits, and implementing their methods.
     """
 
     def __init__(
@@ -67,20 +54,13 @@ class Matching(ABC, IsProfilable, CanLog):
     @abstractmethod
     def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
-        Computes the matching between a set of AnnData. Should not be overriden in
-        the implementation in order to ensure compatibility between Matching and
-        all Merging.
+        Computes pairwise matchings between a set of numpy ndarrays, and
+        returns these matchings as a dictionary of int tuples -> csr_matrix.
+        Must be implemented in each Matching child class.
 
         Parameters:
         -----------
-        datasets: List[AnnData]
-            List of datasets.
-
-        dataset_key: str, default = ""
-            Dictionary key, locating where preprocessed vectorized datasets are.
-
-        reference: AnnData, default = None
-            Optional reference dataset. If left empty, all $datasets are matched
-            between one another.
+        datasets: List[np.ndarray]
+            List of numpy ndarray datasets.
         """
         pass

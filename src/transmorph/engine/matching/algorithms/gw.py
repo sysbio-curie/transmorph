@@ -28,6 +28,8 @@ class GW(Matching, UsesMetric, HasMetadata):
     respect to the other regions. This combinatorial cost is typically more
     expansive than the optimal transport alternative, but comes very handy when
     a ground cost is difficult (or impossible) to compute between distributions.
+    It is unfortunately prone to overfitting, and is sensitive to class
+    imbalance between datasets.
 
     Parameters
     ----------

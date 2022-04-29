@@ -17,15 +17,15 @@ from ...traits.usesmetric import UsesMetric
 
 class FusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
     """
-    Fused Gromov-Wasserstein-based matching. Embeds the
-    ot.gromov.fused_gromov_wasserstein method from POT:
+    Fused Gromov-Wasserstein-based [1] matching. Embeds the
+    ot.gromov.fused_gromov_wasserstein method from POT
+    package:
 
         https://github.com/PythonOT/POT
 
     It computes a combination of Gromov-Wasserstein and Optimal
-    Transport, weighted by a coefficient alpha.
-    Both datasets need to be in the same
-    space in order to compute a cost matrix.
+    Transport, weighted by a coefficient alpha. Datasets must be
+    able to be embedded in a common space, at least pairwisely.
 
     Parameters
     ----------
@@ -45,14 +45,21 @@ class FusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         Ratio between optimal transport and Gromov-Wasserstein terms
         in the optimization problem.
 
-    GW_loss: str, default = "square_loss"
+    GW_loss: Literal["square_loss", "kl_loss"], default = "square_loss"
         Loss to use in the Gromov-Wasserstein problem. Valid options
         are "square_loss", "kl_loss".
 
     common_features_mode: Literal["pairwise", "total"]
         Uses pairwise common features, or total common features. Use "total"
         for a small number of datasets, and "pairwise" if the features
-        intersection is too small.
+        intersection is too small. Ignored if datasets are not in feature
+        space.
+
+    References
+    ----------
+    [1] Vayer Titouan, Chapel Laetitia, Flamary Rémi, Tavenard Romain and
+        Courty Nicolas “Optimal Transport for structured data with application
+        on graphs”, International Conference on Machine Learning (ICML). 2019.
     """
 
     def __init__(
@@ -62,7 +69,7 @@ class FusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         default_GW_metric: str = "sqeuclidean",
         default_GW_metric_kwargs: Optional[Dict] = None,
         alpha: float = 0.5,
-        GW_loss: str = "square_loss",
+        GW_loss: Literal["square_loss", "kl_loss"] = "square_loss",
         common_features_mode: Literal["pairwise", "total"] = "pairwise",
     ):
         Matching.__init__(self, str_identifier="FUSEDGW")
@@ -101,7 +108,6 @@ class FusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
     def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
         Compute optimal transport plan for the FGW problem.
-        TODO: specific strategy if reference is set
         """
         # Precomputes weights and internal distances
         all_w = [np.ones(X.shape[0]) / X.shape[0] for X in datasets]

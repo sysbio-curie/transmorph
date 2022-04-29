@@ -15,42 +15,46 @@ from ....utils.graph import raw_mutual_nearest_neighbors, qtree_mutual_nearest_n
 class MNN(Matching, UsesCommonFeatures):
     """
     Mutual Nearest Neighbors (MNN) matching. Two samples xi and yj
-    are matched if xi belongs to the k-nearest neighbors (kNNs) of yj
-    and vice-versa. If we denote by dk(x) the distance from x to its
-    kNN, then xi and yj are matched if d(xi, yj) < min{dk(xi), dk(yj)}.
-    In other terms,
-    x \\in X and y \\in Y are mutual nearest neighbors if
-    - y belongs to the $k nearest neighbors of x in Y
-    AND
-    - x belongs to the $k nearest neighbors of y in X
+    from batches X and Y are matched if xi belongs to the k-nearest neighbors
+    (kNNs) of yj in X and vice-versa. All batches must be able to be
+    embedded in the same space, at least pairwisely.
 
-    You can choose between two methods:
-    - The exact MNN solver, with high fiability but which can become
-      computationally prohibitive when datasets scale over tens of
-      thousands of samples.
-    - An experimental approached solver, which matches samples between
-      matched clusters, less fiable but more tractable for large problems.
-      This solver will be subject to improvements.
+    We propose two solvers,
+
+    - An exact solver, which computes all pairwise distances between
+      batches, computes exact nearest neighbors and makes the intersection
+    - An approximate solver, that leverages NNDescent algorithm to
+      compute approximate nearest neighbors using projection trees.
+      This allows MNN to scale to large, high dimensional datasets.
 
     Parameters
     ----------
     metric: str or Callable, default = "sqeuclidean"
-        Scipy-compatible metric.
+        Scipy-compatible metric for kNN computation.
 
     metric_kwargs: dict, default = {}
         Additional metric parameters.
 
     n_neighbors: int, default = 10
-        Number of neighbors to use between datasets.
-        "features" key, a list of features names.
+        Number of neighbors to use between datasets before computing the
+        intersection. The more samples, the higher this number must be
+        to have a chance to get nonempty intersections. Using a subsampling
+        algorithm greatly helps keeping this number of neighbors low.
 
-    algorithm: str, default = "auto"
-        Method to use ("auto", "exact" or "louvain"). If "auto", will
-        choose "exact" for small datasets and "louvain" for large ones.
+    common_features_mode: Literal["pairwise", "total"], default = "pairwise"
+        Uses pairwise common features, or total common features. Use "total"
+        for a small number of datasets, and "pairwise" if the features
+        intersection is too small. Ignored if datasets are not in feature
+        space, set to "total" if solver = "pynndescent".
 
-    subsampling: SubsamplingABC, default = None
-        Subsampling scheme to apply before computing the matching,
-        can be very helpful when dealing with large datasets.
+    solver: Literal["auto", "exact", "pynndescent"], default = "auto"
+        Solver to use.
+
+    References
+    ----------
+    [1] Haghverdi, Laleh, et al. "Batch effects in single-cell RNA-sequencing
+        data are corrected by matching mutual nearest neighbors." Nature
+        biotechnology 36.5 (2018): 421-427.
     """
 
     def __init__(
@@ -59,14 +63,14 @@ class MNN(Matching, UsesCommonFeatures):
         metric_kwargs: Optional[Dict] = None,
         n_neighbors: int = 10,
         common_features_mode: Literal["pairwise", "total"] = "pairwise",
-        exact_mnn: bool = False,
+        solver: Literal["auto", "exact", "nndescent"] = "auto",
     ):
         Matching.__init__(self, str_identifier="MNN")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
         self.metric = metric
         self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.n_neighbors = n_neighbors
-        self.exact_mnn = exact_mnn
+        self.solver = solver
 
     @profile_method
     def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
@@ -76,11 +80,28 @@ class MNN(Matching, UsesCommonFeatures):
         from .... import settings
 
         # We can only use qtrees if datasets are in the same space.
-        use_qtrees = (self.mode == "total" or not self.is_feature_space) and any(
-            X.shape[0] > settings.small_dataset_threshold for X in datasets
+        small_data = any(
+            X.shape[0] < settings.small_dataset_threshold for X in datasets
         )
+        large_data = any(
+            X.shape[0] > settings.large_dataset_threshold for X in datasets
+        )
+        if small_data and large_data:
+            self.warn(
+                "Very disproportionate datasets can be an obstacle to the MNN solver."
+            )
+        if self.solver == "auto":
+            if small_data:
+                self.solver = "exact"
+            else:
+                self.solver = "nndescent"
+        if self.solver == "exact" and large_data:
+            self.warn("Using exact solver with large datasets is discouraged.")
+        if self.solver == "nndescent" and small_data:
+            self.warn("Using nndescent solver with small datasets is discouraged")
+
         qtrees = []
-        if use_qtrees:
+        if self.solver == "nndescent":
             qtrees = [
                 NNDescent(X, metric=self.metric, metric_kwds=self.metric_kwargs)
                 for X in datasets
@@ -91,7 +112,7 @@ class MNN(Matching, UsesCommonFeatures):
             for j in range(i + 1, ndatasets):
                 Xi, Xj = datasets[i], datasets[j]
                 Xi, Xj = self.slice_features(X1=Xi, X2=Xj, idx_1=i, idx_2=j)
-                if use_qtrees:
+                if self.solver == "nndescent":
                     Tij = qtree_mutual_nearest_neighbors(
                         Xi,
                         Xj,
