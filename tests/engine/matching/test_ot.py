@@ -10,12 +10,12 @@ def test_matching_ot_accuracy():
     # Tests matching quality of OT matching on small controlled dataset
     datasets = load_test_datasets_small()
     src, ref = datasets["src"], datasets["ref"]
-    scores = [0.8, 0.8, 0.5]
-    for i, optimizer in enumerate(["emd", "sinkhorn", "partial"]):
+    scores = [0.8, 0.8, 0.5, 0.9]
+    for i, solver in enumerate(["emd", "sinkhorn", "partial", "unbalanced"]):
         kwargs = {}
-        if optimizer == "partial":
+        if solver == "partial":
             kwargs["partial_transport_mass"] = 0.5
-        mt = OT(optimizer=optimizer, **kwargs)
+        mt = OT(solver=solver, **kwargs)
         results = mt.fit([src.X, ref.X])
         T = results[0, 1]
         time = mt.get_time_spent() * 1000
@@ -33,7 +33,7 @@ def test_matching_ot_accuracy():
             show=False,
             save=True,
             caller_path=__file__,
-            suffix=optimizer,
+            suffix=solver,
         )
 
 
