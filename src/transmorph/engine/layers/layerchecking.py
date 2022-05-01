@@ -10,14 +10,13 @@ from ..checking import Checking
 from ..traits import (
     CanCatchChecking,
     ContainsTransformations,
-    HasMetadata,
     IsProfilable,
     profile_method,
     IsRepresentable,
     IsSubsamplable,
-    UsesCommonFeatures,
     assert_trait,
 )
+from ..traits.utils import preprocess_traits
 from ..subsampling import Subsampling
 
 
@@ -83,6 +82,8 @@ class LayerChecking(
         Used to temporarily store the embedding reference of
         rejected layer, that will be swapped during the loop with
         this CheckingLayer.
+
+    TODO: remove IsRepresentable trait from LayerChecking
     """
 
     def __init__(
@@ -142,6 +143,7 @@ class LayerChecking(
         # Writing previous output for next layers to use
         Xs = [self.embedding_reference.get_representation(adata) for adata in datasets]
         is_feature_space = self.embedding_reference.is_feature_space
+        assert is_feature_space is not None
         for adata, X in zip(datasets, Xs):
             self.write_representation(
                 adata,
@@ -153,14 +155,16 @@ class LayerChecking(
             self.log("Calling preprocessings.", level=logging.INFO)
         Xs = self.transform(datasets, self.embedding_reference)
         # Subsampling if necessary
-        self.subsample(datasets=datasets, matrices=Xs)
-        Xs = self.slice_matrices(datasets=datasets, matrices=Xs)
+        self.compute_subsampling(
+            datasets=datasets,
+            matrices=Xs,
+            is_feature_space=is_feature_space,
+            log_callback=self.log,
+        )
+        Xs = self.subsample_matrices(Xs)
         # Retrieving metadata and common features if asked by
         # self.checking
-        if isinstance(self.checking, HasMetadata):
-            self.checking.retrieve_all_metadata(datasets)
-        if isinstance(self.checking, UsesCommonFeatures):
-            self.checking.retrieve_common_features(datasets, is_feature_space)
+        preprocess_traits(self.checking, datasets, is_feature_space)
         # Performing actual checking
         self.n_checks += 1
         self.check_is_valid = self.n_checks >= self.n_checks_max or self.checking.check(
