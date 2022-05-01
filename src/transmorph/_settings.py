@@ -74,27 +74,21 @@ class TransmorphSettings:
         logger.debug("Transmorph settings initialized.")
 
     @property
-    def logging_level(self) -> int:
-        return min(self.logging_level_console, self.logging_level_file)
-
-    @logging_level.setter
-    def logging_level(self, value: int) -> None:
-        self.logging_level_console = value
-        self.logging_level_file = value
-
-    @property
     def logging_level_file(self) -> int:
         return self._logging_level_file
 
     @logging_level_file.setter
     def logging_level_file(self, value: int) -> None:
+        logger.debug(f"Changing console logging level to {value}.")
         assert_type(value, int)
-        self._logging_level = value
-        logger.setLevel(value)
+        if value < min(self._logging_level_file, self._logging_level_console):
+            logger.setLevel(value)
+        self._logging_level_file = value
         for handler in logger.handlers:
+            if type(handler) is logging.StreamHandler:
+                handler.setLevel(self._logging_level_console)
             if type(handler) is logging.FileHandler:
-                handler.setLevel(value)
-        logger.debug(f"Setting file logger level to {value}.")
+                handler.setLevel(self._logging_level_file)
 
     @property
     def logging_level_console(self) -> int:
@@ -102,13 +96,16 @@ class TransmorphSettings:
 
     @logging_level_console.setter
     def logging_level_console(self, value: int) -> None:
+        logger.debug(f"Changing console logging level to {value}.")
         assert_type(value, int)
-        self._logging_level = value
-        logger.setLevel(value)
+        if value < min(self._logging_level_file, self._logging_level_console):
+            logger.setLevel(value)
+        self._logging_level_console = value
         for handler in logger.handlers:
             if type(handler) is logging.StreamHandler:
-                handler.setLevel(value)
-        logger.debug(f"Setting console logger level to {value}.")
+                handler.setLevel(self._logging_level_console)
+            if type(handler) is logging.FileHandler:
+                handler.setLevel(self._logging_level_file)
 
     @property
     def verbose(self) -> str:
