@@ -6,9 +6,8 @@ from numpy.random.mtrand import RandomState
 from sklearn.utils import check_random_state
 from typing import Any, Dict, Literal, Optional, TypeVar
 
-from ._logging import logger, _DEFAULT_LEVEL_FILE, _DEFAULT_LEVEL_CONSOLE
+from ._logging import logger
 from .utils.type import assert_type
-from .engine.traits.usesneighbors import _DEFAULT_N_NEIGHBORS_MAX
 
 T = TypeVar("T")
 
@@ -31,12 +30,15 @@ class TransmorphSettings:
 
     def __init__(self):
         # Logging
-        self._logging_level_file: int = _DEFAULT_LEVEL_FILE
-        self._logging_level_console: int = _DEFAULT_LEVEL_CONSOLE
+        self._logging_level_console: int = logging.INFO
+        self._logging_level_file: int = logging.DEBUG
+        self.logging_level_console = self._logging_level_console
+        self.logging_level_file = self._logging_level_file
         # General
         self.global_random_seed: int = 42
         # Neighbors
-        self._n_neighbors: int = _DEFAULT_N_NEIGHBORS_MAX
+        self._n_neighbors_max_init: int = 50
+        self._n_neighbors_max: int = self._n_neighbors_max_init
         self._neighbors_algorithm: Literal["auto", "sklearn", "nndescent"] = "auto"
         self.neighbors_include_self_loops: bool = False
         self.neighbors_metric: str = "sqeuclidean"
@@ -51,7 +53,7 @@ class TransmorphSettings:
         self.umap_metric_kwargs: Dict[str, Any] = {}
         self.umap_min_dist: float = 0.5
         self.umap_spread: float = 1.0
-        self.umap_maxiter: Optional[int] = None
+        self.umap_maxiter: Optional[int] = None  # Automatic chhoice
         self.umap_alpha: float = 1.0
         self.umap_gamma: float = 1.0
         self.umap_negative_sample_rate: int = 5
@@ -66,10 +68,10 @@ class TransmorphSettings:
         self.mde_device: Literal["cpu", "cuda"] = "cpu"
         # Scale
         self.small_dataset_threshold: int = 100
-        self.large_dataset_threshold: int = 2048
+        self.large_dataset_threshold: int = 4096
         self.low_dimensional_threshold: int = 5
         self.high_dimensional_threshold: int = 60
-        self.large_number_edges: int = 1_000_000
+        self.large_number_edges: int = 2_000_000
         # End
         logger.debug("Transmorph settings initialized.")
 
@@ -137,13 +139,13 @@ class TransmorphSettings:
 
     @property
     def n_neighbors_max(self) -> int:
-        return self._n_neighbors
+        return self._n_neighbors_max
 
     @n_neighbors_max.setter
     def n_neighbors_max(self, n: int) -> None:
         n = int(n)
         assert n > 0, f"Invalid number of neighbors {n}"
-        self._n_neighbors = n
+        self._n_neighbors_max = n
 
     @property
     def neighbors_algorithm(self) -> Literal["auto", "sklearn", "nndescent"]:

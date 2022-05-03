@@ -141,6 +141,7 @@ class LayerChecking(
         """
         assert self.rejected_layer is not None, "A rejected layer must be specified."
         # Writing previous output for next layers to use
+        self.log(f"Retrieving data from {self.embedding_reference.repr_key}.")
         Xs = [self.embedding_reference.get_representation(adata) for adata in datasets]
         is_feature_space = self.embedding_reference.is_feature_space
         assert is_feature_space is not None

@@ -24,7 +24,7 @@ def test_merging_linearcorrection():
         representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
     )
     matching = Labels(label_obs="class")
-    matching.retrieve_labels(datasets)
+    matching.retrieve_all_labels(datasets)
     T = matching.fit([adata.X for adata in datasets])
     mg = LinearCorrection(n_neighbors=3)
     mg.retrieve_reference_index(datasets)

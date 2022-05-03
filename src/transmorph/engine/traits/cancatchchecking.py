@@ -12,16 +12,28 @@ if TYPE_CHECKING:
 
 class CanCatchChecking:
     """
-    This trait allows a Layer to be the target of
-    the rejected connection of a CheckingLayer.
-    WARNING: Only layers should inherit this trait,
-    as it uses layer attributes.
+    A layer equipped with CanCatchChcking trait can be set as
+    the rejected layer of a LayerChecking. It provides it a set
+    of attributes and methods that allow their embedding reference
+    to be safely manipulated to be temporarily set to the
+    checking layer responsible for the rejection.
+
+    Attributes
+    ----------
+    base_reference: IsRepresentable
+        Initial embedding reference of the layer.
+
+    check_reference: IsRepresentable
+        Embedding reference of the checking layer, to use in case
+        of rejection as an embedding reference.
+
+    called_by_checking: boolean property
+        Setting this attribute will switch representation
+        accordingly between true embedding reference and checking
+        reference.
     """
 
     def __init__(self):
-        # Handles two internal references. The first is
-        # used in most cases, the second is used when called
-        # by a checking layer that rejected its test.
         self.base_reference: Optional[IsRepresentable] = None
         self.check_reference: Optional[IsRepresentable] = None
         self._called_by_checking = False
@@ -43,7 +55,8 @@ class CanCatchChecking:
 
     def catch_checking_rejected(self, layer: LayerChecking) -> None:
         """
-        Registers a CheckingLayer.
+        Registers a LayerChecking to be the one which can provide
+        an alternate embedding representation.
         """
         assert isinstance(layer, IsRepresentable)
         self.base_reference = self._embedding_reference

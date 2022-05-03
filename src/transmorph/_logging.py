@@ -9,16 +9,14 @@ import string
 
 # Simple function that creates module global logger.
 
-_DEFAULT_LEVEL_CONSOLE = logging.INFO
-_DEFAULT_LEVEL_FILE = logging.DEBUG
-
 
 def create_logger():
 
-    min_level = min(_DEFAULT_LEVEL_CONSOLE, _DEFAULT_LEVEL_FILE)
+    DEFAULT_LEVEL = logging.DEBUG
+
     # create logger
     logger = logging.getLogger(__name__)
-    logger.setLevel(min_level)
+    logger.setLevel(DEFAULT_LEVEL)
 
     # create formatter
     console_formatter = logging.Formatter(
@@ -30,7 +28,7 @@ def create_logger():
 
     # create console handler, file handler and set level to debug
     ch = logging.StreamHandler()
-    ch.setLevel(_DEFAULT_LEVEL_CONSOLE)
+    ch.setLevel(logging.INFO)
     ch.setFormatter(console_formatter)
 
     # add ch to logger
@@ -45,7 +43,7 @@ def create_logger():
     if os.path.exists(file_path):
         os.remove(file_path)
     fh = logging.FileHandler(file_path)
-    fh.setLevel(_DEFAULT_LEVEL_FILE)
+    fh.setLevel(DEFAULT_LEVEL)
     fh.setFormatter(file_formatter)
     logger.addHandler(fh)
 

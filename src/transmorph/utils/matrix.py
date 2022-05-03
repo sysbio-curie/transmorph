@@ -85,7 +85,7 @@ def sort_sparse_matrix(
     nearest neighbors. If fill_empty = True, different number of elements
     between rows is allowed. Gaps are filled with np.inf.
     """
-    coef = -1 if reverse else 1
+    coef = -1.0 if reverse else 1.0
     nsamples = X.shape[0]
     if fill_empty:
         nlinks = np.max((X > 0).sum(axis=1))
@@ -95,15 +95,15 @@ def sort_sparse_matrix(
             "Inconsistent number of elements in rows detected. If "
             "this is expected, please explicitly set fill_empty to True."
         )
-    indices = np.zeros((nsamples, nlinks), dtype=int) + np.inf
-    values = np.zeros((nsamples, nlinks), dtype=X.dtype) + np.inf
+    indices = np.zeros((nsamples, nlinks), dtype=int) - 1  # No value -> -1
+    values = np.zeros((nsamples, nlinks), dtype=np.float32) + np.inf  # No value -> inf
     for i in range(X.shape[0]):
         row = X.getrow(i).tocoo()
         order = np.argsort(coef * row.data)
         k = row.data.shape[0]
         indices[i, :k] = row.col[order]
         values[i, :k] = row.data[order]
-    return indices.astype("int"), values
+    return indices, values
 
 
 def sparse_from_arrays(
@@ -119,10 +119,10 @@ def sparse_from_arrays(
     rows, cols, data = [], [], []
     for i_row, col_indices in enumerate(np_indices):
         for col_index, j_col in enumerate(col_indices):
-            if j_col == np.inf:
+            if j_col == -1:
                 continue
             rows.append(i_row)
-            cols.append(int(j_col))
+            cols.append(j_col)
             if np_data is None:
                 data.append(True)
             else:

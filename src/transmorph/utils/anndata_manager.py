@@ -37,6 +37,11 @@ def get_pairwise_feature_slices(datasets: List[AnnData]) -> _TypePairwiseSlice:
     result: _TypePairwiseSlice = {}
     for i, adata_i in enumerate(datasets):
         features_i = adata_i.var_names.to_numpy()
+        slice_ii = generate_features_slice(
+            features=adata_i.var_names.to_numpy(),
+            selected=np.sort(adata_i.var_names.to_numpy()),
+        )
+        result[i, i] = (slice_ii, slice_ii)
         for j, adata_j in enumerate(datasets):
             if j <= i:
                 continue
@@ -127,14 +132,16 @@ class AnnDataManager:
         self.keys: Dict[Union[str, AnnDataKeyIdentifiers], AnnDataKey] = {}
 
     @staticmethod
-    def gen_keystring(base: Union[str, AnnDataKeyIdentifiers]) -> str:
+    def gen_keystring(key: Union[str, AnnDataKeyIdentifiers]) -> str:
         """
         Adds a prefix to a given key to decrease collision cases
         with other packages.
         """
-        if base == "transmorph":
+        if isinstance(key, AnnDataKeyIdentifiers):
+            key = key.value
+        if key == "transmorph":
             return "transmorph"
-        return f"tr_{base}"
+        return f"tr_{key}"
 
     @staticmethod
     def to_delete(query: _TypePersistLevels, target: _TypePersistLevels) -> bool:
@@ -156,7 +163,10 @@ class AnnDataManager:
         """
         Inserts an entry to an AnnData component, and logs it.
         """
-        AnnDataManager._log(f"Inserting {field_str} {str_key}.")
+        suffix = ""
+        if isinstance(value, (np.ndarray, csr_matrix)):
+            suffix = f" shape={value.shape}, dtype={value.dtype}."
+        AnnDataManager._log(f"Inserting {field_str} {str_key}.{suffix}")
         field[str_key] = value
 
     @staticmethod

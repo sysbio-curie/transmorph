@@ -34,6 +34,8 @@ ALL_MERGINGS = [
 ]
 N_PCS = 20
 
+travaglini = list(load_bank("travaglini_10x", n_samples=1000).values())
+
 
 def test_layer_merging():
     # Tests all types of merging in a simple
@@ -50,7 +52,7 @@ def test_layer_merging():
         # Building model
         linput = LayerInput()
         matching = Labels(label_obs="class")
-        matching.retrieve_labels(datasets)
+        matching.retrieve_all_labels(datasets)
         lmatching = LayerMatching(matching=matching)
         merging: Merging = merging_algo(**kwargs)
         lmerging = LayerMerging(merging=merging)
@@ -97,13 +99,12 @@ def test_is_feature_space_propagation_1():
     # along the network.
     # Network 1: Not feature space from the beginning
     # but then only space-preserving operations
-    datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
+    UsesReference.write_is_reference(travaglini[1])
     matching = Labels(label_obs="compartment")
     UsesNeighbors.compute_neighbors_graphs(
-        datasets,
+        travaglini,
         AnnDataKeyIdentifiers.BaseRepresentation,
     )
-    UsesReference.write_is_reference(datasets[1])
     merging = LinearCorrection()
     linput = LayerInput()
     lmatching = LayerMatching(matching=matching)
@@ -113,16 +114,15 @@ def test_is_feature_space_propagation_1():
     linput.connect(lmatching)
     lmatching.connect(lmerging)
     lmerging.connect(loutput)
-    linput.fit(datasets)
+    linput.fit(travaglini)
     linput.is_feature_space = False
-    lmatching.fit(datasets)
-    lmerging.fit(datasets)
-    loutput.fit(datasets)
-    adm.clean(datasets, level="pipeline")
+    lmatching.fit(travaglini)
+    lmerging.fit(travaglini)
+    loutput.fit(travaglini)
+    adm.clean(travaglini, level="output")
     assert linput.is_feature_space is False
     assert lmerging.is_feature_space is False
     assert loutput.is_feature_space is False
-    UsesNeighbors.reset()
 
 
 def test_is_feature_space_propagation_2():
@@ -130,13 +130,12 @@ def test_is_feature_space_propagation_2():
     # along the network.
     # Network 2: Feature space from the beginning
     # and then only space-preserving operations
-    datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
+    UsesReference.write_is_reference(travaglini[1])
     matching = Labels(label_obs="compartment")
     UsesNeighbors.compute_neighbors_graphs(
-        datasets,
+        travaglini,
         AnnDataKeyIdentifiers.BaseRepresentation,
     )
-    UsesReference.write_is_reference(datasets[1])
     merging = LinearCorrection()
     linput = LayerInput()
     lmatching = LayerMatching(matching=matching)
@@ -146,15 +145,14 @@ def test_is_feature_space_propagation_2():
     linput.connect(lmatching)
     lmatching.connect(lmerging)
     lmerging.connect(loutput)
-    linput.fit(datasets)
-    lmatching.fit(datasets)
-    lmerging.fit(datasets)
-    loutput.fit(datasets)
-    adm.clean(datasets, level="pipeline")
+    linput.fit(travaglini)
+    lmatching.fit(travaglini)
+    lmerging.fit(travaglini)
+    loutput.fit(travaglini)
+    adm.clean(travaglini, level="output")
     assert linput.is_feature_space is True
     assert lmerging.is_feature_space is True
     assert loutput.is_feature_space is True
-    UsesNeighbors.reset()
 
 
 def test_is_feature_space_propagation_3():
@@ -163,13 +161,12 @@ def test_is_feature_space_propagation_3():
     # Network 3: Feature space from the beginning
     # but changes in the middle, then continues
     # with space-preserving operations.
-    datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
+    UsesReference.write_is_reference(travaglini[1])
     matching = Labels(label_obs="compartment")
     UsesNeighbors.compute_neighbors_graphs(
-        datasets,
+        travaglini,
         AnnDataKeyIdentifiers.BaseRepresentation,
     )
-    UsesReference.write_is_reference(datasets[1])
     merging = LinearCorrection()
     linput = LayerInput()
     ltran1 = LayerTransformation()
@@ -188,19 +185,18 @@ def test_is_feature_space_propagation_3():
     ltran2.connect(lmatching)
     lmatching.connect(lmerging)
     lmerging.connect(loutput)
-    linput.fit(datasets)
-    ltran1.fit(datasets)
-    ltran2.fit(datasets)
-    lmatching.fit(datasets)
-    lmerging.fit(datasets)
-    loutput.fit(datasets)
-    adm.clean(datasets, level="pipeline")
+    linput.fit(travaglini)
+    ltran1.fit(travaglini)
+    ltran2.fit(travaglini)
+    lmatching.fit(travaglini)
+    lmerging.fit(travaglini)
+    loutput.fit(travaglini)
+    adm.clean(travaglini, level="output")
     assert linput.is_feature_space is True
     assert ltran1.is_feature_space is True
     assert ltran2.is_feature_space is False
     assert lmerging.is_feature_space is False
     assert loutput.is_feature_space is False
-    UsesNeighbors.reset()
 
 
 def test_is_feature_space_propagation_4():
@@ -210,13 +206,12 @@ def test_is_feature_space_propagation_4():
     # but changes in the middle, then continues
     # with space-preserving operations. But the last
     # step uses a feature space embedding.
-    datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
+    UsesReference.write_is_reference(travaglini[1])
     matching = Labels(label_obs="compartment")
     UsesNeighbors.compute_neighbors_graphs(
-        datasets,
+        travaglini,
         AnnDataKeyIdentifiers.BaseRepresentation,
     )
-    UsesReference.write_is_reference(datasets[1])
     merging = LinearCorrection()
     linput = LayerInput()
     ltran1 = LayerTransformation()
@@ -236,19 +231,18 @@ def test_is_feature_space_propagation_4():
     ltran2.connect(lmatching)
     lmatching.connect(lmerging)
     lmerging.connect(loutput)
-    linput.fit(datasets)
-    ltran1.fit(datasets)
-    ltran2.fit(datasets)
-    lmatching.fit(datasets)
-    lmerging.fit(datasets)
-    loutput.fit(datasets)
-    adm.clean(datasets, level="pipeline")
+    linput.fit(travaglini)
+    ltran1.fit(travaglini)
+    ltran2.fit(travaglini)
+    lmatching.fit(travaglini)
+    lmerging.fit(travaglini)
+    loutput.fit(travaglini)
+    adm.clean(travaglini, level="output")
     assert linput.is_feature_space is True
     assert ltran1.is_feature_space is True
     assert ltran2.is_feature_space is False
     assert lmerging.is_feature_space is True
     assert loutput.is_feature_space is True
-    UsesNeighbors.reset()
 
 
 def test_is_feature_space_propagation_5():
@@ -259,13 +253,12 @@ def test_is_feature_space_propagation_5():
     # last merging is endowed with a space transforming
     # transformation, which should invalidate feature
     # space preservation on last layers.
-    datasets = list(load_bank("travaglini_10x", n_samples=1000).values())
+    UsesReference.write_is_reference(travaglini[1])
     matching = Labels(label_obs="compartment")
     UsesNeighbors.compute_neighbors_graphs(
-        datasets,
+        travaglini,
         AnnDataKeyIdentifiers.BaseRepresentation,
     )
-    UsesReference.write_is_reference(datasets[1])
     merging = LinearCorrection()
     linput = LayerInput()
     lmatching = LayerMatching(matching=matching)
@@ -276,20 +269,15 @@ def test_is_feature_space_propagation_5():
     linput.connect(lmatching)
     lmatching.connect(lmerging)
     lmerging.connect(loutput)
-    linput.fit(datasets)
-    lmatching.fit(datasets)
-    lmerging.fit(datasets)
-    loutput.fit(datasets)
-    adm.clean(datasets, level="pipeline")
+    linput.fit(travaglini)
+    lmatching.fit(travaglini)
+    lmerging.fit(travaglini)
+    loutput.fit(travaglini)
+    adm.clean(travaglini, level="output")
     assert linput.is_feature_space is True
     assert lmerging.is_feature_space is False
     assert loutput.is_feature_space is False
-    UsesNeighbors.reset()
 
 
 if __name__ == "__main__":
-    test_is_feature_space_propagation_1()
-    test_is_feature_space_propagation_2()
-    test_is_feature_space_propagation_3()
-    test_is_feature_space_propagation_4()
-    test_is_feature_space_propagation_5()
+    test_layer_merging()

@@ -6,8 +6,6 @@ from anndata import AnnData
 from scipy.sparse import csr_matrix
 from typing import List, Optional
 
-from .issubsamplable import IsSubsamplable
-
 
 class UsesSampleLabels:
     """
@@ -32,13 +30,13 @@ class UsesSampleLabels:
         if self.label_obs is None:
             raise RuntimeError("Label obs was not specified.")
         if not self.fitted:
-            raise RuntimeError("self.retrieve_labels not called.")
+            raise RuntimeError("self.retrieve_all_labels not called.")
         if idx >= len(self.labels):
             raise IndexError(
                 f"Index {idx} out of range for list " f"of size {len(self.labels)}."
             )
 
-    def retrieve_labels(self, datasets: List[AnnData]) -> None:
+    def retrieve_all_labels(self, datasets: List[AnnData]) -> None:
         """
         Retrieves and stores labels from AnnData objects.
         """
@@ -67,13 +65,3 @@ class UsesSampleLabels:
         labels_1 = self.get_dataset_labels(idx_1)
         labels_2 = self.get_dataset_labels(idx_2)
         return csr_matrix(labels_1[:, None] == labels_2)
-
-    def apply_subsampling_to_labels(
-        self,
-        subsampled: IsSubsamplable,
-        datasets: List[AnnData],
-    ) -> None:
-        """
-        If datasets have been subsampled, slice stored labels.
-        """
-        self.labels = subsampled.slice_matrices(datasets, self.labels)

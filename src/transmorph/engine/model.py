@@ -39,7 +39,7 @@ class Model(CanLog):
     ) -> None:
         from .. import settings
 
-        CanLog.__init__(self, str_identifier="PIPELINE")
+        CanLog.__init__(self, str_identifier="MODEL")
         self.output_layers = []
         self.layers: List[Layer] = []
         assert isinstance(
@@ -152,14 +152,14 @@ class Model(CanLog):
         self.info("Transmorph model is initializing.")
 
         # Flags reference dataset as such if any
-        for adata in datasets:
-            self.log("Flagging reference dataset.")
+        for i, adata in enumerate(datasets):
+            self.log(f"Flagging dataset {i} as reference: {adata is reference}.")
             if adata is reference:
                 UsesReference.write_is_reference(adata)
 
         # Setting base representation if needed
         if use_representation is not None:
-            self.log("Setting base representation.")
+            self.log(f"Setting base representation to {use_representation}.")
             for adata in datasets:
                 adm.set_value(
                     adata=adata,

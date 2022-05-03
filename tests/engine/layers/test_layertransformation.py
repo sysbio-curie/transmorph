@@ -19,13 +19,14 @@ ALL_TRANSFORMATIONS = [
     (Standardize, {"center": True, "scale": True}),
 ]
 
+datasets = list(load_travaglini_10x().values())
+
 
 def test_layer_transformation():
     # Test input -> transformation with the
     # various transformations available. We
     # trust transformation unit tests, and
     # focus on information passing here.
-    datasets = list(load_travaglini_10x().values())
     for transformation_algo, kwargs in ALL_TRANSFORMATIONS:
         # Loading datasets with base representation
         # Creating and fitting test network
@@ -57,7 +58,6 @@ def test_layer_transformation_order():
     # Tests transformations are applied in the
     # appending order.
     # Loading datasets with base representation
-    datasets = list(load_travaglini_10x().values())
     linput = LayerInput()
     ltrans = LayerTransformation()
     # Creating and fitting test network

@@ -2,20 +2,18 @@
 
 import numpy as np
 
-from anndata import AnnData
 from ot.gromov import fused_gromov_wasserstein
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
-from typing import Any, Dict, Hashable, Literal, List, Optional
+from typing import Dict, Literal, List, Optional
 
 from ..matching import Matching, _TypeMatchingSet
-from ...traits.hasmetadata import HasMetadata
 from ...traits.isprofilable import profile_method
 from ...traits.usescommonfeatures import UsesCommonFeatures
 from ...traits.usesmetric import UsesMetric
 
 
-class FusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
+class FusedGW(Matching, UsesCommonFeatures, UsesMetric):
     """
     Fused Gromov-Wasserstein-based [1] matching. Embeds the
     ot.gromov.fused_gromov_wasserstein method from POT
@@ -74,35 +72,11 @@ class FusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
     ):
         Matching.__init__(self, str_identifier="FUSEDGW")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
-        UsesMetric.__init__(self)
-        default_metric_kwargs = (
-            {} if default_GW_metric_kwargs is None else default_GW_metric_kwargs
-        )
-        default_metadata = {
-            "metric": default_GW_metric,
-            "metric_kwargs": default_metric_kwargs,
-        }
-        HasMetadata.__init__(self, default_metadata)
+        UsesMetric.__init__(self, default_GW_metric, default_GW_metric_kwargs)
         self.OT_metric = OT_metric
         self.OT_metric_kwargs = {} if OT_metric_kwargs is None else OT_metric_kwargs
         self.alpha = alpha
         self.GW_loss = GW_loss
-
-    def retrieve_metadatata(self, adata: AnnData) -> Dict[Hashable, Any]:
-        """
-        Retrieves custom metric contained in AnnData if any.
-        """
-        metric_and_kwargs = UsesMetric.get_metric(adata)
-        if metric_and_kwargs is None:
-            return {}
-        else:
-            metric, metric_kwargs = metric_and_kwargs
-        metadata = {}
-        if metric is not None:
-            metadata["metric"] = metric
-        if metric_kwargs is not None:
-            metadata["metric_kwargs"] = metric_kwargs
-        return metadata
 
     @profile_method
     def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
@@ -111,14 +85,10 @@ class FusedGW(Matching, UsesCommonFeatures, HasMetadata, UsesMetric):
         """
         # Precomputes weights and internal distances
         all_w = [np.ones(X.shape[0]) / X.shape[0] for X in datasets]
+        all_metrics = [self.get_metric(i) for i in range(len(datasets))]
         all_C = [
-            cdist(
-                Xi,
-                Xi,
-                self.get_metadata(i, "metric"),
-                **self.get_metadata(i, "metric_kwargs"),
-            )
-            for i, Xi in enumerate(datasets)
+            cdist(Xi, Xi, metric, **kwargs)
+            for Xi, (metric, kwargs) in zip(datasets, all_metrics)
         ]
         all_C = [C / C.max() for C in all_C]
 

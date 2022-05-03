@@ -37,6 +37,7 @@ class LayerOutput(Layer, CanCatchChecking, IsRepresentable):
         datasets: List[AnnData]
             Datasets to write results in.
         """
+        self.log(f"Retrieving data from {self.embedding_reference.repr_key}.")
         for adata in datasets:
             self.write_representation(
                 adata,

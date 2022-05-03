@@ -6,7 +6,7 @@ import pymde
 from pymde.preprocess import Graph
 from umap.umap_ import simplicial_set_embedding, find_ab_params
 from scipy.sparse import csr_matrix
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from ..merging import Merging
 from ...matching import _TypeMatchingSet
@@ -43,7 +43,7 @@ class GraphEmbedding(Merging, UsesNeighbors):
     optimizer: Literal["umap", "mde"] = "umap"
         Graph embedding method to use
 
-    n_neighbors: int = 15
+    n_neighbors: int = 10
         Number of neighbors to include in inner knn graphs.
 
     embedding_dimension: int, default = 2
@@ -71,15 +71,15 @@ class GraphEmbedding(Merging, UsesNeighbors):
     def __init__(
         self,
         optimizer: Literal["umap", "mde"] = "umap",
-        n_neighbors: int = 15,
+        n_neighbors: int = 10,
         embedding_dimension: int = 2,
-        matching_strength: float = 10.0,
+        matching_strength: Optional[float] = None,
     ):
         Merging.__init__(
             self,
             preserves_space=False,
             str_identifier="GRAPH_EMBEDDING",
-            matching_mode="normalized",
+            matching_mode="bool",
         )
         UsesNeighbors.__init__(self)
         assert optimizer in ("umap", "mde"), f"Unknown optimizer {optimizer}."
@@ -112,20 +112,36 @@ class GraphEmbedding(Merging, UsesNeighbors):
                 datasets[i],
                 datasets[i],
             )
-            inner_graphs[i] = G / self.matching_strength
+            inner_graphs[i] = G
             self.log(f"Internal graph {i}: {(G > 0).sum()} edges.")
+            self.log(f"min: {G.data.min()}, max: {G.data.max()}, mean: {G.data.mean()}")
 
         # Matching matrix is already row-normalized
         matchings: _TypeMatchingSet = {}
         for i in range(ndatasets):
             for j in range(i + 1, ndatasets):
-                G = self.get_matching(i, j)
-                matchings[i, j] = generate_membership_matrix(
-                    G,
+                G = generate_membership_matrix(
+                    self.get_matching(i, j),
                     datasets[i],
                     datasets[j],
                 )
+                matchings[i, j] = G
                 self.log(f"Matching graph {i, j}: {(G > 0).sum()} edges.")
+                self.log(
+                    f"min: {G.data.min()}, max: {G.data.max()}, mean: {G.data.mean()}"
+                )
+
+        edges_inner = sum(G.count_nonzero() for G in inner_graphs)
+        edges_match = sum(G.count_nonzero() for G in matchings.values())
+        matching_strength = edges_inner / edges_match
+
+        self.log(f"Guessed matching strength: {matching_strength}.")
+
+        if self.matching_strength is not None:
+            matching_strength *= self.matching_strength
+
+        for i in range(ndatasets):
+            inner_graphs[i] /= matching_strength
 
         # Combining all those in a big edges matrix
         edges = combine_matchings(
@@ -135,11 +151,12 @@ class GraphEmbedding(Merging, UsesNeighbors):
 
         # Checking total number of edges
         n_edges = (edges > 0).sum()
+        self.log(
+            f"Embedding a graph of {n_edges} edges in "
+            f"{self.embedding_dimension} dimensions."
+        )
+        f"min: {edges.data.min()}, max: {edges.data.max()}, mean: {edges.data.mean()}"
         if n_edges > settings.large_number_edges:
-            self.log(
-                f"Embedding a graph of {n_edges} edges in "
-                f"{self.embedding_dimension} dimensions."
-            )
             self.warn(
                 f"High number of edges detected ({n_edges} > "
                 f"{settings.large_number_edges}). This may take some "

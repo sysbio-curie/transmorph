@@ -110,8 +110,12 @@ class MNN(Matching, UsesCommonFeatures):
         results: _TypeMatchingSet = {}
         for i in range(ndatasets):
             for j in range(i + 1, ndatasets):
-                Xi, Xj = datasets[i], datasets[j]
-                Xi, Xj = self.slice_features(X1=Xi, X2=Xj, idx_1=i, idx_2=j)
+                Xi, Xj = self.slice_features(
+                    X1=datasets[i],
+                    X2=datasets[j],
+                    idx_1=i,
+                    idx_2=j,
+                )
                 if self.solver == "nndescent":
                     Tij = qtree_mutual_nearest_neighbors(
                         Xi,

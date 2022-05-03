@@ -10,7 +10,14 @@ from ... import logger
 
 class CanLog:
     """
-    This trait allows a class to send messages to the logging system.
+    This trait allows a class to send messages to the logging system,
+    and attributes it a name. It gives access to a set of logging
+    methods that can then be used at any moment by the objects.
+
+    Parameters
+    ----------
+    str_identifier: str
+        String identifier of the object to use duing logging.
     """
 
     def __init__(self, str_identifier: str):

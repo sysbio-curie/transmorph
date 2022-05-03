@@ -2,8 +2,6 @@
 
 import numpy as np
 
-from numba import njit
-
 from ..utils import sort_sparse_matrix
 from ..utils.graph import nearest_neighbors
 
@@ -52,7 +50,6 @@ def compute_lisi(
     return 1.0 / simpson
 
 
-@njit(fastmath=True)
 def compute_simpson(
     distances: np.ndarray,
     indices: np.ndarray,

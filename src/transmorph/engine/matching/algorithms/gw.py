@@ -2,19 +2,17 @@
 
 import numpy as np
 
-from anndata import AnnData
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
-from typing import Any, Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 from ot.gromov import gromov_wasserstein, entropic_gromov_wasserstein
 
 from ..matching import Matching, _TypeMatchingSet
-from ...traits.hasmetadata import HasMetadata
 from ...traits.isprofilable import profile_method
 from ...traits.usesmetric import UsesMetric
 
 
-class GW(Matching, UsesMetric, HasMetadata):
+class GW(Matching, UsesMetric):
     """
     Gromov-Wasserstein-based matching. Embeds the gromov_wasserstein class of
     methods from POT:
@@ -76,15 +74,11 @@ class GW(Matching, UsesMetric, HasMetadata):
         max_iter: int = int(1e6),
     ):
         Matching.__init__(self, str_identifier="GW")
-        UsesMetric.__init__(self)
-        default_metric_kwargs = (
-            {} if default_metric_kwargs is None else default_metric_kwargs
+        UsesMetric.__init__(
+            self,
+            default_metric=default_metric,
+            default_kwargs=default_metric_kwargs,
         )
-        default_metadata = {
-            "metric": default_metric,
-            "metric_kwargs": default_metric_kwargs,
-        }
-        HasMetadata.__init__(self, default_metadata)
         assert optimizer in ("gw", "entropic_gw"), f"Unknown optimizer: {optimizer}."
         self.optimizer = optimizer
         self.GW_loss = GW_loss
@@ -95,22 +89,6 @@ class GW(Matching, UsesMetric, HasMetadata):
         self.entropy_epsilon = entropy_epsilon
         self.max_iter = int(max_iter)
 
-    def retrieve_metadatata(self, adata: AnnData) -> Dict[str, Any]:
-        """
-        Retrieves custom metric contained in AnnData if any.
-        """
-        metric_and_kwargs = UsesMetric.get_metric(adata)
-        if metric_and_kwargs is None:
-            return {}
-        else:
-            metric, metric_kwargs = metric_and_kwargs
-        metadata = {}
-        if metric is not None:
-            metadata["metric"] = metric
-        if metric_kwargs is not None:
-            metadata["metric_kwargs"] = metric_kwargs
-        return metadata
-
     @profile_method
     def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
         """
@@ -119,14 +97,10 @@ class GW(Matching, UsesMetric, HasMetadata):
         """
         # Precomputes weights and internal distances
         all_w = [np.ones(X.shape[0]) / X.shape[0] for X in datasets]
+        all_metrics = [self.get_metric(i) for i in range(len(datasets))]
         all_C = [
-            cdist(
-                Xi,
-                Xi,
-                self.get_metadata(i, "metric"),
-                **self.get_metadata(i, "metric_kwargs"),
-            )
-            for i, Xi in enumerate(datasets)
+            cdist(Xi, Xi, metric, **kwargs)
+            for Xi, (metric, kwargs) in zip(datasets, all_metrics)
         ]
         all_C = [C / C.max() for C in all_C]
         # Selects optimizer

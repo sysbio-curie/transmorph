@@ -9,24 +9,20 @@ from transmorph.utils import plot_result
 
 def test_matching_gw_accuracy():
     # Tests matching quality of GW on small controlled dataset
-    datasets = load_test_datasets_small()
-    src, ref = datasets["src"], datasets["ref"]
-    UsesMetric.set_metric(src, "cosine")
-    UsesMetric.set_metric(ref, "minkowski", {"p": 3})
     for optimizer in ("gw", "entropic_gw"):
+        datasets = list(load_test_datasets_small().values())
         # Without custom metric
         mt = GW(optimizer=optimizer)
-        assert mt.get_metadata(0, "metric") == "sqeuclidean"
-        assert mt.get_metadata(1, "metric") == "sqeuclidean"
-        assert mt.get_metadata(0, "metric_kwargs") == {}
-        assert mt.get_metadata(1, "metric_kwargs") == {}
-        results = mt.fit([src.X, ref.X])
+        mt.retrieve_all_metrics(datasets)
+        assert mt.get_metric(0) == ("sqeuclidean", {})
+        assert mt.get_metric(1) == ("sqeuclidean", {})
+        results = mt.fit([adata.X for adata in datasets])
         T = results[0, 1]
-        accuracy = edge_accuracy(src, ref, T, "class")
+        accuracy = edge_accuracy(datasets[0], datasets[1], T, "class")
         time = mt.get_time_spent() * 1000
         assert accuracy >= -1
         plot_result(
-            datasets=[src, ref],
+            datasets=datasets,
             matching_mtx=T,
             color_by="class",
             title="Gromov-Wasserstein matching\n"
@@ -41,22 +37,22 @@ def test_matching_gw_accuracy():
         )
 
         # With custom metrics
+        UsesMetric.set_adata_metric(datasets[0], "cosine")
+        UsesMetric.set_adata_metric(datasets[1], "minkowski", {"p": 3})
         mt = GW(optimizer=optimizer)
-        mt.retrieve_all_metadata([src, ref])
-        assert mt.get_metadata(0, "metric") == "cosine"
-        assert mt.get_metadata(1, "metric") == "minkowski"
-        assert mt.get_metadata(0, "metric_kwargs") == {}
-        mt_kwargs = mt.get_metadata(1, "metric_kwargs")
-        assert mt_kwargs is not None
-        assert "p" in mt_kwargs
-        assert mt_kwargs["p"] == 3
-        results = mt.fit([src.X, ref.X])
+        mt.retrieve_all_metrics(datasets)
+        assert mt.get_metric(0) == ("cosine", {})
+        metric, kwargs = mt.get_metric(1)
+        assert metric == "minkowski"
+        assert "p" in kwargs
+        assert kwargs["p"] == 3
+        results = mt.fit([adata.X for adata in datasets])
         T = results[0, 1]
-        accuracy = edge_accuracy(src, ref, T, "class")
+        accuracy = edge_accuracy(datasets[0], datasets[1], T, "class")
         time = mt.get_time_spent() * 1000
         assert accuracy >= -1
         plot_result(
-            datasets=[src, ref],
+            datasets=datasets,
             matching_mtx=T,
             color_by="class",
             title="Gromov-Wasserstein matching\n"

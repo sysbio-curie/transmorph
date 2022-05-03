@@ -12,7 +12,7 @@ def test_merging_barycenter():
     datasets = list(load_test_datasets_small().values())
     UsesReference.write_is_reference(datasets[1])
     matching = Labels(label_obs="class")
-    matching.retrieve_labels(datasets)
+    matching.retrieve_all_labels(datasets)
     T = matching.fit([adata.X for adata in datasets])
     mg = Barycenter()
     mg.retrieve_reference_index(datasets)

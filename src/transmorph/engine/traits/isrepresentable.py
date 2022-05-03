@@ -18,13 +18,29 @@ from ...utils.anndata_manager import (
 class IsRepresentable:
     """
     A representable object is able to provide a matrix
-    representation of an AnnData object. It keeps track whether
-    its representation is in the initial feature space.
+    representation of an AnnData object, and knows if this
+    representation is in the same space and basis as the
+    original features space.
+
+    Prameters
+    ---------
+    repr_key: Union[str, AnnDataKeyIdentifiers]
+        String representation that will be used to save
+        the matrix representation in AnnData objects.
+        IsRepresentable will ensure this representation is unique,
+        by appending a suffix if necessary.
+
+    Attributes
+    ----------
+    is_feature_space: bool
+        Whether the matrix representation is in the same features
+        space than initial datasets, with the same basis.
     """
 
     def __init__(self, repr_key: Union[str, AnnDataKeyIdentifiers]):
+        # Finds a suffix so that representation is unique
         self.repr_key = repr_key
-        self.is_feature_space = True
+        self.is_feature_space: bool = True
 
     def write_representation(
         self,
@@ -34,7 +50,25 @@ class IsRepresentable:
         persist: _TypePersistLevels = "pipeline",
     ) -> None:
         """
-        Inserts a new AnnData representation.
+        Inserts a new representation of a dataset in the .obsm
+        field of an AnnData object.
+
+        Parameters
+        ----------
+        adata: AnnData
+            AnnData object to write in
+
+        X: Union[np.ndarray, csr_matrix]
+            Representation matrix to write in adata
+
+        is_feature_space: bool
+            Matrix representation is expressed in the initial features
+            space, with the initial basis.
+
+        persist: Literal["output", "pipeline", "layer"]
+            Life duration of the matrix. If "output", won't be erased. If
+            "pipeline", will be erased at the end of a Model. If "layer",
+            will be erased at the end of the next layer fit().
         """
         self.is_feature_space = is_feature_space
         adm.set_value(
@@ -47,7 +81,13 @@ class IsRepresentable:
 
     def get_representation(self, adata: AnnData) -> np.ndarray:
         """
-        Returns a matrix view of a given AnnData.
+        Retrieves matrix representation of an AnnData object that
+        has already been written.
+
+        Parameters
+        ----------
+        adata: AnnData
+            AnnData object to retrieve representation from.
         """
         X = adm.get_value(adata=adata, key=self.repr_key)
         assert X is not None, "Representation has not been computed."
@@ -61,7 +101,8 @@ class IsRepresentable:
         datasets: List[AnnData],
     ) -> None:
         """
-        For testing purposes. Raises an exception if
+        For testing purposes. Tests if a list of IsRepresentable objects
+        have similar representations of a set of AnnData datasets.
         """
         if len(representers) == 0:
             return

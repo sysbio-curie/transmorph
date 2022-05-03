@@ -20,7 +20,7 @@ def profile_method(method):
         tid = profiler.task_start(tstr)
         result = method(*args)
         elapsed = profiler.task_end(tid)
-        self.elapsed[tstr] = elapsed
+        self.time_elapsed[tstr] = elapsed
         return result
 
     return wrapper
@@ -32,13 +32,18 @@ class IsProfilable:
     to profile must be decorated by @profile_method.
     TODO: add a self.set_stop() allowing to monitor particular
     function parts
+
+    Attributes
+    ----------
+    time_elapsed: Dict[str, float]
+        Dictionary containing for each profiled method the latest time recorded.
     """
 
     def __init__(self):
-        self.elapsed: Dict[str, float] = {}
+        self.time_elapsed: Dict[str, float] = {}
 
     def get_time_spent(self) -> float:
         """
-        Returns the total time of all methods profiled.
+        Returns the total time of all tasks profiled.
         """
-        return sum(self.elapsed.values())
+        return sum(self.time_elapsed.values())

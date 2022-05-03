@@ -23,7 +23,7 @@ def test_merging_umap():
         representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
     )
     matching = Labels(label_obs="class")
-    matching.retrieve_labels(datasets)
+    matching.retrieve_all_labels(datasets)
     T = matching.fit([adata.X for adata in datasets])
     mg = GraphEmbedding(optimizer="umap", n_neighbors=3)
     mg.set_matchings(T)
@@ -65,7 +65,7 @@ def test_merging_mde():
         representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
     )
     matching = Labels(label_obs="class")
-    matching.retrieve_labels(datasets)
+    matching.retrieve_all_labels(datasets)
     T = matching.fit([adata.X for adata in datasets])
     mg = GraphEmbedding(optimizer="mde", n_neighbors=3)
     mg.set_matchings(T)

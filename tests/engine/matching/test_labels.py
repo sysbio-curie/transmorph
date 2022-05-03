@@ -11,7 +11,7 @@ def test_matching_labels_accuracy():
     datasets = load_test_datasets_small()
     src, ref = datasets["src"], datasets["ref"]
     mt = Labels(label_obs="class")
-    mt.retrieve_labels([src, ref])
+    mt.retrieve_all_labels([src, ref])
     results = mt.fit([src.X, ref.X])
     T = results[0, 1]
     time = mt.get_time_spent() * 1000

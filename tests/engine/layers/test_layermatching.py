@@ -7,7 +7,12 @@ from transmorph.engine.layers import LayerInput, LayerMatching
 from transmorph.engine.matching import Matching, Labels, OT, GW, FusedGW, MNN
 from transmorph.engine.subsampling import VertexCover
 from transmorph.engine.transforming import CommonFeatures, Standardize, PCA
-from transmorph.engine.traits import HasMetadata, UsesSampleLabels, UsesNeighbors
+from transmorph.engine.traits import (
+    HasMetadata,
+    UsesMetric,
+    UsesSampleLabels,
+    UsesNeighbors,
+)
 
 ALL_MATCHINGS = [
     # constructor, parameters
@@ -19,6 +24,8 @@ ALL_MATCHINGS = [
 ]
 N_PCS = 20
 
+travaglini = list(load_travaglini_10x().values())
+
 
 def test_layer_matching():
     # Tests all types of matchings in a layer to ensure
@@ -29,6 +36,12 @@ def test_layer_matching():
     for matching_algo, kwargs in ALL_MATCHINGS:
         linput = LayerInput()
         matching_lay: Matching = matching_algo(**kwargs)
+        if isinstance(matching_lay, HasMetadata):
+            matching_lay.retrieve_all_metadata(datasets)
+        if isinstance(matching_lay, UsesSampleLabels):
+            matching_lay.retrieve_all_labels(datasets)
+        if isinstance(matching_lay, UsesMetric):
+            matching_lay.retrieve_all_metrics(datasets)
         lmatching = LayerMatching(matching=matching_lay)
         linput.connect(lmatching)
         linput.fit(datasets)
@@ -38,7 +51,9 @@ def test_layer_matching():
         if isinstance(matching_ref, HasMetadata):
             matching_ref.retrieve_all_metadata(datasets)
         if isinstance(matching_ref, UsesSampleLabels):
-            matching_ref.retrieve_labels(datasets)
+            matching_ref.retrieve_all_labels(datasets)
+        if isinstance(matching_ref, UsesMetric):
+            matching_ref.retrieve_all_metrics(datasets)
         dict_true = matching_ref.fit([adata.X for adata in datasets])
         dict_test = lmatching.matching_matrices
 
@@ -58,7 +73,6 @@ def test_layer_matching_contains_transformations():
     # TODO: find a way to test the internal state of
     # layermatching in a better way. For now we
     # only trust the logs and absence of crash :(
-    datasets = list(load_travaglini_10x().values())
     linput = LayerInput()
     matching = Labels(label_obs="class")
     lmatching = LayerMatching(matching=matching)
@@ -66,8 +80,8 @@ def test_layer_matching_contains_transformations():
     lmatching.add_transformation(Standardize(center=True, scale=True))
     lmatching.add_transformation(PCA(n_components=N_PCS))
     linput.connect(lmatching)
-    linput.fit(datasets)
-    lmatching.fit(datasets)
+    linput.fit(travaglini)
+    lmatching.fit(travaglini)
 
 
 def test_layer_matching_subsampling():
@@ -84,8 +98,7 @@ def test_layer_matching_subsampling():
 
 def test_layer_matching_mnn_qtree():
     # Testing MNN <-> UsesNeighbors qtree interface
-    datasets = list(load_travaglini_10x().values())
-    UsesNeighbors.compute_neighbors_graphs(datasets)
+    UsesNeighbors.compute_neighbors_graphs(travaglini)
     linput = LayerInput()
     matching = MNN(n_neighbors=20)
     lmatching = LayerMatching(matching=matching)
@@ -93,8 +106,8 @@ def test_layer_matching_mnn_qtree():
     lmatching.add_transformation(Standardize(True, True))
     lmatching.add_transformation(PCA(n_components=30))
     linput.connect(lmatching)
-    linput.fit(datasets)
-    lmatching.fit(datasets)
+    linput.fit(travaglini)
+    lmatching.fit(travaglini)
 
 
 if __name__ == "__main__":

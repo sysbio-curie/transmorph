@@ -93,3 +93,29 @@ class UsesCommonFeatures:
             return X1[:, self.total_feature_slices[idx_1]].copy()
         s1, s2 = self.get_common_features(idx_1, idx_2)
         return X1[:, s1].copy(), X2[:, s2].copy()
+
+    def assert_common_features(self, datasets: List[AnnData]) -> None:
+        """
+        For testing purposes, asserts a list of AnnData objects is correctly
+        sliced in a common features space.
+        """
+        if self.mode == "total":
+            com_features: Optional[np.ndarray] = None
+            for adata, fslice in zip(datasets, self.total_feature_slices):
+                if com_features is None:
+                    com_features = adata.var_names[fslice].to_numpy()
+                else:
+                    np.testing.assert_array_equal(
+                        com_features,
+                        adata.var_names[fslice].to_numpy(),
+                    )
+        elif self.mode == "pairwise":
+            for i, adata_i in enumerate(datasets):
+                for j, adata_j in enumerate(datasets):
+                    slice_i, slice_j = self.pairwise_feature_slices[i, j]
+                    np.testing.assert_array_equal(
+                        adata_i.var_names[slice_i].to_numpy(),
+                        adata_j.var_names[slice_j].to_numpy(),
+                    )
+        else:
+            raise ValueError(f"Unrecognized mode: {self.mode}.")

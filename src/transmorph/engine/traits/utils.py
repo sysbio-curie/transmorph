@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 
-from typing import Any, Tuple, Type, Union
+from anndata import AnnData
+from typing import Any, List, Tuple, Type, Union
+
+
+from .hasmetadata import HasMetadata
+from .usescommonfeatures import UsesCommonFeatures
+from .usesreference import UsesReference
+from .usessamplelabels import UsesSampleLabels
 
 
 def assert_trait(obj: Any, traits: Union[Type, Tuple[Type, ...]]):
@@ -18,3 +25,21 @@ def assert_trait(obj: Any, traits: Union[Type, Tuple[Type, ...]]):
         f"Object {obj} of type {type(obj)} is not endowed"
         f" with trait(s) {all_traits}."
     )
+
+
+def preprocess_traits(
+    obj: Any,
+    datasets: List[AnnData],
+    is_feature_space: bool,
+) -> None:
+    """
+    Helper function to ensure all traits are preprocessed.
+    """
+    if isinstance(obj, HasMetadata):
+        obj.retrieve_all_metadata(datasets)
+    if isinstance(obj, UsesCommonFeatures):
+        obj.retrieve_common_features(datasets, is_feature_space)
+    if isinstance(obj, UsesReference):
+        obj.retrieve_reference_index(datasets)
+    if isinstance(obj, UsesSampleLabels):
+        obj.retrieve_all_labels(datasets)

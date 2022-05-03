@@ -3,8 +3,6 @@
 from anndata import AnnData
 from typing import List
 
-from transmorph.engine.traits import UsesReference
-
 from . import Layer, LayerMatching
 from ..merging import Merging
 from ..traits import (
@@ -12,8 +10,8 @@ from ..traits import (
     IsProfilable,
     profile_method,
     IsRepresentable,
-    HasMetadata,
 )
+from ..traits.utils import preprocess_traits
 
 
 class LayerMerging(
@@ -59,25 +57,22 @@ class LayerMerging(
         datasets: List[AnnData]
             Datasets to run merging on.
         """
-        # Pleases the type checker
+        self.log(f"Retrieving data from {self.embedding_reference.repr_key}.")
         Xs = self.transform(
             datasets=datasets,
             representer=self.embedding_reference,
             log_callback=self.log,
         )
-        self.info(f"Running merging {self.merging}...")
-        if isinstance(self.merging, HasMetadata):
-            self.merging.retrieve_all_metadata(datasets)
-        if isinstance(self.merging, UsesReference):
-            self.merging.retrieve_reference_index(datasets)
-        assert isinstance(self.input_layer, LayerMatching)
-        self.merging.set_matchings(self.input_layer.get_matchings())
-        Xs_transform = self.merging.transform(Xs)
         is_feature_space = (
             self.embedding_reference.is_feature_space  # Original matrices
             and self.preserves_space  # Internal transformations
             and self.merging.preserves_space  # Internal matching
         )
+        preprocess_traits(self.merging, datasets, is_feature_space)
+        assert isinstance(self.input_layer, LayerMatching)
+        self.merging.set_matchings(self.input_layer.get_matchings())
+        self.info(f"Running merging {self.merging}...")
+        Xs_transform = self.merging.transform(Xs)
         for adata, X_after in zip(datasets, Xs_transform):
             self.write_representation(adata, X_after, is_feature_space=is_feature_space)
         return self.output_layers

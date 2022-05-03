@@ -411,20 +411,19 @@ def generate_membership_matrix(
     # Retrieving distances is possible, otherwise guessing them
     if X1.shape[1] != X2.shape[1]:  # Not same space
         G_dist = G / G.max()
-        G_dist.data = 1.0 / (1.0 + G_dist.data)
+        G_dist.data = 1.0 / (1.0 + G_dist.data)  # FIXME?
     else:  # Same space
         G_dist = sparse_cdist(X1, X2, G, metric="euclidean")
 
     # Initialization
-    k = np.min((G_dist > 0).sum(axis=1))
     indices, distances = sort_sparse_matrix(G_dist, fill_empty=True)
     distances = _generate_membership_matrix_njit(
         distances,
-        k,
         max_iter,
         tol,
     )
     membership = sparse_from_arrays(indices, distances, n_cols=X2.shape[0])
+    assert membership.max() != np.inf, "np.inf deteceted in $membership."
     membership.data[membership.data < low_thr] = 0.0
     membership.eliminate_zeros()
     return membership
@@ -433,7 +432,6 @@ def generate_membership_matrix(
 @njit(fastmath=True)
 def _generate_membership_matrix_njit(
     distances: np.ndarray,
-    k: int,
     max_iter: int,
     tol: float,
 ) -> np.ndarray:
@@ -441,11 +439,10 @@ def _generate_membership_matrix_njit(
     Numba accelerated helper
     """
     n1 = distances.shape[0]
-    target_log2k = np.log2(k)
     # Binary search
     for row_i in range(n1):
 
-        # Skip the line
+        # Skip the line if empty
         if distances[row_i, 0] == np.inf:
             continue
 
@@ -454,11 +451,21 @@ def _generate_membership_matrix_njit(
         high = np.inf
 
         rhos_i = distances[row_i, 0]
+        k = 0
+        for r in distances[row_i]:
+            if r != np.inf:
+                k += 1
+        target_log2k = np.log2(k)
 
         for _ in range(max_iter):
 
             cand_log2k = 0.0
             for j in range(k):
+
+                # End of neighbors
+                if distances[row_i, j] == np.inf:
+                    continue
+
                 d = distances[row_i, j] - rhos_i
                 if d <= 0:
                     cand_log2k += 1

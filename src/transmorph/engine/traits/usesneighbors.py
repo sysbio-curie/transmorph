@@ -6,14 +6,13 @@ from anndata import AnnData
 from scipy.sparse import csr_matrix
 from typing import List, Literal, Optional, Tuple, Union
 
-from ...utils import (
+from ...utils.anndata_manager import (
     anndata_manager as adm,
     AnnDataKeyIdentifiers,
-    nearest_neighbors,
 )
+from ...utils.graph import nearest_neighbors
 from ...utils.matrix import sort_sparse_matrix, sparse_from_arrays
 
-_DEFAULT_N_NEIGHBORS_MAX = 15
 _ModeNeighborsMatrix = Literal["csr", "arrays"]
 _TypeNeighborsMatrix = Union[csr_matrix, Tuple[np.ndarray, Optional[np.ndarray]]]
 
@@ -41,7 +40,7 @@ class UsesNeighbors:
         UsesNeighbors.Used = False
         UsesNeighbors.NeighborsDistances = []
         UsesNeighbors.NeighborsIndices = []
-        settings.n_neighbors_max = _DEFAULT_N_NEIGHBORS_MAX
+        settings.n_neighbors_max = settings._n_neighbors_max_init
 
     @staticmethod
     def compute_neighbors_graphs(

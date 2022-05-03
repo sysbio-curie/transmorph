@@ -2,8 +2,10 @@
 
 import numpy as np
 
+from scipy.sparse import csr_matrix
+
 from transmorph.datasets import load_test_datasets_small
-from transmorph.engine.traits import UsesNeighbors
+from transmorph.engine.traits import IsSubsamplable, UsesNeighbors
 from transmorph.engine.subsampling import VertexCover
 from transmorph.utils import AnnDataKeyIdentifiers
 
@@ -35,5 +37,33 @@ def test_subsampling_vertexcover():
         np.testing.assert_array_equal(r_true, r_test)
 
 
+def test_subsample_unsubsample():
+    # Tests unsubsample o subsample = identity
+    datasets = list(load_test_datasets_small().values())
+    UsesNeighbors.compute_neighbors_graphs(
+        datasets=datasets, representation_key=AnnDataKeyIdentifiers.BaseRepresentation
+    )
+    subsampling = VertexCover(n_neighbors=2)
+    issub = IsSubsamplable(subsampling=subsampling)
+    issub.compute_subsampling(datasets, [adata.X for adata in datasets], True)
+    # ndarray
+    T = np.random.random((datasets[0].n_obs, datasets[1].n_obs))
+    T_after = issub.unsubsample_matrix(issub.subsample_matrix(T, 0, 1, False), 0, 1)
+    assert isinstance(T_after, np.ndarray)
+    np.testing.assert_array_equal(
+        issub.subsample_matrix(T, 0, 1),
+        issub.subsample_matrix(T_after, 0, 1),
+    )
+    # csr
+    T = csr_matrix(np.random.random((datasets[0].n_obs, datasets[1].n_obs)))
+    T_after = issub.unsubsample_matrix(issub.subsample_matrix(T, 0, 1, False), 0, 1)
+    assert isinstance(T_after, csr_matrix)
+    np.testing.assert_array_equal(
+        issub.subsample_matrix(T.toarray(), 0, 1),
+        issub.subsample_matrix(T_after.toarray(), 0, 1),
+    )
+
+
 if __name__ == "__main__":
     test_subsampling_vertexcover()
+    test_subsample_unsubsample()

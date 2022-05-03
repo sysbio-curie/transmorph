@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from anndata import AnnData
+from scipy.sparse import csr_matrix
 from typing import List, Optional
 
 from . import Layer
@@ -11,15 +12,13 @@ from ..subsampling import Subsampling
 from ..traits import (
     CanCatchChecking,
     ContainsTransformations,
-    HasMetadata,
     IsProfilable,
     profile_method,
     IsSubsamplable,
     IsRepresentable,
-    UsesCommonFeatures,
-    UsesReference,
     UsesSampleLabels,
 )
+from ..traits.utils import preprocess_traits
 
 
 class LayerMatching(
@@ -89,43 +88,47 @@ class LayerMatching(
             Datasets to run matching on.
         """
         self.datasets = datasets.copy()  # Keeping a copy to preserve order
+
+        self.log(f"Retrieving data from {self.embedding_reference.repr_key}.")
         # Preprocessing
         Xs = self.transform(
             datasets=datasets,
             representer=self.embedding_reference,
             log_callback=self.log,
         )
+
+        # Loading anndata information
+        is_feature_space = (
+            self.embedding_reference.is_feature_space and self.preserves_space
+        )
+        assert is_feature_space is not None
+        preprocess_traits(self.matching, datasets, is_feature_space)
+
         # Subsampling
         if self.has_subsampling:
             self.info("Subsampling datasets...")
-        self.subsample(datasets=datasets, matrices=Xs, log_callback=self.log)
-        Xs = self.slice_matrices(datasets=datasets, matrices=Xs)
-        # Matching
-        self.info(f"Calling matching {self.matching}.")
-        if isinstance(self.matching, HasMetadata):  # Metadata gathering
-            self.matching.retrieve_all_metadata(datasets)
-        if isinstance(self.matching, UsesCommonFeatures):  # Common features slicing
-            is_feature_space = (
-                self.embedding_reference.is_feature_space and self.preserves_space
-            )
-            self.matching.retrieve_common_features(
-                datasets,
-                is_feature_space=is_feature_space,
-            )
-        # Checks if there is a reference dataset
-        if isinstance(self.matching, UsesReference):
-            self.matching.retrieve_reference_index(datasets)
+        self.compute_subsampling(
+            datasets=datasets,
+            matrices=Xs,
+            is_feature_space=is_feature_space,
+            log_callback=self.log,
+        )
+        Xs = self.subsample_matrices(matrices=Xs)
         if isinstance(self.matching, UsesSampleLabels):
-            self.matching.retrieve_labels(datasets)
-            self.matching.apply_subsampling_to_labels(self, datasets)
+            # FIXME this will cause trouble if we update USL trait
+            self.matching.labels = self.subsample_matrices(self.matching.labels)
+
         self.matching.check_input(Xs)
 
-        # Supersampling matrices
+        # Matching then supersampling matrices
+        self.info(f"Calling matching {self.matching}.")
         self.matching_matrices = {}
         for key, T in self.matching.fit(Xs).items():
             i, j = key
-            T = self.supersample_matrix(datasets[i], T, datasets[j])
+            T = self.unsubsample_matrix(T, i, j)
+            assert isinstance(T, csr_matrix)
             self.matching_matrices[i, j] = T
+            self.log(f"Datasets {key}, found {T.data.shape[0]} edges.")
 
         # Trimming? Extrapolating?
         return self.output_layers
