@@ -32,6 +32,9 @@ def scatter_plot(
     title: str = "",
     xlabel: str = "",
     ylabel: str = "",
+    show_title: bool = True,
+    show_legend: bool = True,
+    plot_cluster_names: bool = False,
     show: bool = True,
     save: bool = False,
     extension: str = "png",
@@ -90,6 +93,15 @@ def scatter_plot(
 
     ylabel: str, default = ""
         Labeling of the y axis.
+
+    show_title: bool, default = True
+        Shows plot title.
+
+    show_legend: bool, default = True
+        Shows the legend panel.
+
+    plot_cluster_names: bool, default = False
+        Shows cluster names on the plot, gathered from color_by.
 
     show: bool, default = True
         Call plt.show() at the end to display the figure in a separate
@@ -274,6 +286,24 @@ def scatter_plot(
                     color=color,
                 )
 
+    # Plotting cluster names if necessary
+    if plot_cluster_names:
+        for label in all_labels:
+            nobs, cl_pos = 0, np.zeros((2,), dtype=np.float32)
+            for i, adata in enumerate(datasets):
+                selector = adata.obs[color_by] == label
+                nobs += selector.sum()
+                cl_pos += representations[i][selector].sum(axis=0)
+            cl_pos /= nobs
+            plt.text(
+                *cl_pos,
+                s=str(label),
+                bbox={"edgecolor": "none", "facecolor": "white", "alpha": 0.5},
+                fontsize=12,
+                ha="center",
+                va="center",
+            )
+
     # Drawing matching if necessary
     if matching_mtx is not None:
         Tcoo = matching_mtx.tocoo()
@@ -287,19 +317,20 @@ def scatter_plot(
             )
 
     # Reordering legend
-    handles, labels = plt.gca().get_legend_handles_labels()
-    if len(handles) < 5:
-        legendsize = 12
-    elif len(handles) < 10:
-        legendsize = 8
-    else:
-        legendsize = 5
-    order = np.argsort(labels)
-    plt.legend(
-        [handles[idx] for idx in order],
-        [labels[idx] for idx in order],
-        fontsize=legendsize,
-    )
+    if show_legend:
+        handles, labels = plt.gca().get_legend_handles_labels()
+        if len(handles) < 5:
+            legendsize = 12
+        elif len(handles) < 10:
+            legendsize = 8
+        else:
+            legendsize = 5
+        order = np.argsort(labels)
+        plt.legend(
+            [handles[idx] for idx in order],
+            [labels[idx] for idx in order],
+            fontsize=legendsize,
+        )
 
     # Adding text pieces
     plt.xlabel(xlabel, fontsize=16)
@@ -308,7 +339,8 @@ def scatter_plot(
     plt.yticks([])
     if color_by == "__dataset__":
         color_by = "dataset"
-    plt.title(title + f" -- Color: {color_by}", fontsize=18)
+    if show_title:
+        plt.title(title + f" -- Color: {color_by}", fontsize=18)
 
     # Saving, showing and closing
     if save:

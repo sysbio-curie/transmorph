@@ -1,26 +1,86 @@
 #!/usr/bin/env python3
 
+import igraph as ig
+import leidenalg as la
 import numpy as np
 import warnings
 
+from anndata import AnnData
 from numba import njit
 from numpy.random import RandomState
 from pynndescent import NNDescent
 from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix, diags
 from sklearn.neighbors import NearestNeighbors
-
-
 from typing import Dict, List, Literal, Optional, Tuple
 
+from .anndata_manager import anndata_manager as adm
 from .dimred import pca
 from .geometry import sparse_cdist
 from .matrix import (
-    perturbate,
+    extract_chunks,
     contains_duplicates,
+    perturbate,
     sort_sparse_matrix,
     sparse_from_arrays,
 )
+
+
+def cluster_anndatas(
+    datasets: List[AnnData],
+    use_rep: Optional[str] = None,
+    cluster_key: str = "cluster",
+    n_neighbors: int = 10,
+    resolution: float = 1.0,
+) -> None:
+    """
+    Runs Leiden algorithm on a set of concatenated anndatas objects embedded in a
+    common space. Writes clustering results in the AnnData objects.
+
+    Parameters
+    ----------
+    datasets: List[AnnData]
+        AnnData objects to concatenante and cluster.
+
+    use_rep: Optional[str], default = None
+        Embedding to use, if None will use .obsm["transmorph"] in priority or raise
+        an error if it is not found.
+
+    cluster_key: str, default = "cluster"
+        Key to save clusters in .obs
+
+    n_neighbors: int, default = 10
+        Number of neighbors to build the kNN graph.
+
+    resolution: float, default = 1.0
+        Leiden algorithm parameter.
+    """
+    if use_rep is None:
+        use_rep = "transmorph"
+    assert all(
+        adm.isset_value(adata, key=use_rep, transmorph_key=False, field="obsm")
+        for adata in datasets
+    ), f"{use_rep} missing in .obsm of some AnnDatas."
+    X = np.concatenate(
+        [
+            adm.get_value(adata, key=use_rep, transmorph_key=False, field="obsm")
+            for adata in datasets
+        ],
+        axis=0,
+    )
+    adj_matrix = nearest_neighbors(X, mode="edges", n_neighbors=n_neighbors)
+    sources, targets = adj_matrix.nonzero()
+    edgelist = zip(sources.tolist(), targets.tolist())
+    partition = np.array(
+        la.find_partition(
+            ig.Graph(edgelist),
+            la.RBConfigurationVertexPartition,
+            resolution_parameter=resolution,
+        ).membership
+    )
+    cluster_obs = extract_chunks(partition, [adata.n_obs for adata in datasets])
+    for adata, obs in zip(datasets, cluster_obs):
+        adm.set_value(adata, key=cluster_key, field="obs", value=obs, persist="output")
 
 
 def fsymmetrize(A: csr_matrix) -> csr_matrix:

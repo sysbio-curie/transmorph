@@ -124,7 +124,7 @@ def sparse_from_arrays(
             rows.append(i_row)
             cols.append(j_col)
             if np_data is None:
-                data.append(True)
+                data.append(1.0)
             else:
                 data.append(np_data[i_row, col_index])
     if n_cols is None:

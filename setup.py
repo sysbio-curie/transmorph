@@ -24,6 +24,8 @@ setuptools.setup(
     include_package_data=True,
     install_requires=[
         "anndata",
+        "igraph",
+        "leidenalg",
         "numpy<1.21,>=1.17",
         "pre-commit",
         "pot",
