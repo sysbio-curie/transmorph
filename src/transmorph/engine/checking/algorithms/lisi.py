@@ -11,7 +11,7 @@ from ....stats.lisi import compute_lisi
 class LISI(Checking):
     """
     LISI statistic measures how heterogeneous a sample neighborhood
-    is for a certain label. Is is notably used in the Harmony
+    is for a certain label. Is is notably used in the Harmony [1]
     integration pipeline to measure how well integrated datasets
     are. Here, we use it to measure how many batches are found
     on average in each sample's neighborhood.
@@ -25,6 +25,11 @@ class LISI(Checking):
 
     perplexity: float, default = 30.0
         Scales the neighborhood size to consider.
+
+    References
+    ----------
+    [1] Korsunsky, Ilya, et al. "Fast, sensitive and accurate integration
+        of single-cell data with Harmony." Nature methods 16.12 (2019): 1289-1296.
     """
 
     def __init__(self, threshold: float = 0.5, perplexity: float = 30.0):

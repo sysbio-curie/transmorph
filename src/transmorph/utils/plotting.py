@@ -22,7 +22,7 @@ from ..utils.anndata_manager import (
 MARKERS = "osv^<>pP*hHXDd"
 
 
-def plot_result(
+def scatter_plot(
     datasets: Union[AnnData, List[AnnData]],
     matching_mtx: Optional[csr_matrix] = None,
     reducer: str = "umap",
@@ -139,7 +139,7 @@ def plot_result(
         continuous = (n_labels > 20) and all(isinstance(y, Number) for y in all_labels)
 
     # Reducing dimension if necessary
-    if all(
+    if use_cache and all(
         adm.isset_value(adata, AnnDataKeyIdentifiers.PlotRepresentation)
         for adata in datasets
     ):
@@ -194,6 +194,7 @@ def plot_result(
                 adm.set_value(
                     adata=adata,
                     key=AnnDataKeyIdentifiers.PlotRepresentation,
+                    field="obsm",
                     value=representations[i],
                     persist="output",
                 )

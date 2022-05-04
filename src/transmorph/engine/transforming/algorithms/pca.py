@@ -55,6 +55,8 @@ class PCA(Transformation, UsesCommonFeatures):
         to_reduce = []
         for i, X in enumerate(datasets):
             to_reduce.append(self.slice_features(X1=X, idx_1=i))
+        if to_reduce[0].shape[1] <= self.n_components:
+            return to_reduce
         return pca_multi(
             to_reduce,
             n_components=self.n_components,
