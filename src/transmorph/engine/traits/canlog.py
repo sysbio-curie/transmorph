@@ -5,7 +5,7 @@ import warnings
 
 from typing import Type
 
-from ... import logger
+from ..._logging import logger
 
 
 class CanLog:
@@ -58,7 +58,10 @@ class CanLog:
         msg: str
             Message to print
         """
-        warnings.warn(msg)
+        from ..._settings import settings
+
+        if settings.logging_level_console < logging.ERROR:
+            warnings.warn(msg)
         self.log(msg)
 
     def raise_error(self, error_type: Type, msg: str = "") -> None:

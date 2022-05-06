@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from anndata import AnnData
-from typing import List, Literal, Optional, TypeVar
+from typing import List, Optional, TypeVar
 
 from .layers import Layer, LayerChecking, LayerInput, LayerOutput
 from .traits import CanLog, CanCatchChecking, IsProfilable, UsesNeighbors, UsesReference
@@ -24,23 +24,12 @@ class Model(CanLog):
         connected. The Model will then automatically gather all
         layers connected to the network, which is expected to have
         exactly one output layer.
-
-    verbose: Literal["DEBUG", "INFO", "WARNING", "ERROR"], default = "INFO"
-        Level of verbose of console logging.
-
-        - "DEBUG": All loggings are printed to the console
-        - "INFO": Only important informations are printed (default)
-        - "WARNING": Only warnings and errors are printed
-        - "ERROR": No information is printed, except for runtime errors
     """
 
     def __init__(
         self,
         input_layer: LayerInput,
-        verbose: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO",
     ) -> None:
-        from .. import settings
-
         CanLog.__init__(self, str_identifier="MODEL")
         self.output_layers = []
         self.layers: List[Layer] = []
@@ -49,7 +38,6 @@ class Model(CanLog):
         ), f"LayerInput expected, {type(input_layer)} found."
         self.input_layer = input_layer
         self._initialize()
-        settings.verbose = verbose
 
     def _initialize(self):
         """

@@ -81,6 +81,9 @@ class LayerMatching(
         IsSubsamplable.__init__(self, subsampling)
         self.matching = matching
         self.matching_matrices: Optional[_TypeMatchingSet] = None
+        assert all(
+            isinstance(ev, Tuple) for ev in evaluators
+        ), "Expected evaluators to be provided as (name: str, f: Callable)."
         self.evaluators = evaluators
         self.evaluator_results: Dict[str, np.ndarray] = {}
 
