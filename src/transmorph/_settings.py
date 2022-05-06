@@ -72,6 +72,7 @@ class TransmorphSettings:
         self.low_dimensional_threshold: int = 5
         self.high_dimensional_threshold: int = 60
         self.large_number_edges: int = 2_000_000
+        self.low_features_ratio_threshold: float = 0.005
         # End
         logger.debug("Transmorph settings initialized.")
 

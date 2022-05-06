@@ -66,29 +66,45 @@ class EmbedMNN:
         verbose: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO",
     ):
         self.n_components = n_components
-        self.preprocessings = [
+        self.verbose = verbose
+
+        # Loading algorithms
+        preprocessings = [
             CommonFeatures(),
             Standardize(center=True, scale=True),
             PCA(n_components=n_components, strategy="concatenate"),
         ]
-        self.subsampling = None
+        subsampling = None
         if use_subsampling:
             self.subsampling = VertexCover(n_neighbors=3)
             mnn_n_neighbors /= 3
-        self.matching = MNN(
+        matching = MNN(
             metric=mnn_metric,
             metric_kwargs=mnn_kwargs,
             n_neighbors=mnn_n_neighbors,
             common_features_mode="total",
             solver="auto",
         )
-        self.merging = GraphEmbedding(
+        merging = GraphEmbedding(
             optimizer=embedding_optimizer,
             n_neighbors=inner_n_neighbors,
             embedding_dimension=embedding_dimension,
             matching_strength=matching_strength,
         )
-        self.verbose = verbose
+
+        # Building model
+        linput = LayerInput()
+        ltransform = LayerTransformation()
+        for transformation in preprocessings:
+            ltransform.add_transformation(transformation=transformation)
+        lmatching = LayerMatching(matching=matching, subsampling=subsampling)
+        lmerging = LayerMerging(merging=merging)
+        loutput = LayerOutput()
+        linput.connect(ltransform)
+        ltransform.connect(lmatching)
+        lmatching.connect(lmerging)
+        lmerging.connect(loutput)
+        self.model = Model(input_layer=linput, verbose=self.verbose)
 
     def transform(
         self,
@@ -104,19 +120,7 @@ class EmbedMNN:
         datasets: List[AnnData]
             List of anndata objects, must have at least one common feature.
         """
-        linput = LayerInput()
-        ltransform = LayerTransformation()
-        for transformation in self.preprocessings:
-            ltransform.add_transformation(transformation=transformation)
-        lmatching = LayerMatching(matching=self.matching, subsampling=self.subsampling)
-        lmerging = LayerMerging(merging=self.merging)
-        loutput = LayerOutput()
-        linput.connect(ltransform)
-        ltransform.connect(lmatching)
-        lmatching.connect(lmerging)
-        lmerging.connect(loutput)
-        model = Model(input_layer=linput, verbose=self.verbose)
-        model.fit(
+        self.model.fit(
             datasets=datasets,
             reference=None,
             use_representation=use_representation,

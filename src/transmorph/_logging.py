@@ -6,6 +6,7 @@ import os
 import logging
 import random
 import string
+import sys
 
 # Simple function that creates module global logger.
 
@@ -27,7 +28,7 @@ def create_logger():
     )
 
     # create console handler, file handler and set level to debug
-    ch = logging.StreamHandler()
+    ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.INFO)
     ch.setFormatter(console_formatter)
 

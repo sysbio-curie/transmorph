@@ -63,7 +63,7 @@ def contains_duplicates(X: np.ndarray) -> bool:
     return X.shape[0] != np.unique(X, axis=0).shape[0]
 
 
-def perturbate(X: np.ndarray, std: float = 0.01) -> np.ndarray:
+def perturbate(X: np.ndarray, std: float = 0.01, inplace: bool = False) -> np.ndarray:
     """
     Perturbates X row samples by a small amount, useful to unstick
     points.

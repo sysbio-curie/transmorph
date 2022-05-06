@@ -58,9 +58,9 @@
         "name": "zhou_10x",
         "reference": "https://www.nature.com/articles/s41467-020-20059-6",
         "type": "single-cell RNA-seq 10X",
-        "zip_link": "https://1drv.ms/u/s!Al03Ky07bKkGheMJOEgNgR3b29vTQA?e=C3Yp2S",
+        "zip_link": "https://1drv.ms/u/s!Al03Ky07bKkGheM8Au3yD77IRpeUcQ?e=xiOP4W",
         "zip_name": "zhou_10x.zip",
-        "md5_hash": "a7c8c1080b9898086df977e91e197a71",
+        "md5_hash": "9a677456e5b97e03e2170d950d71052b",
         "n_files": 11,
         "files": [
             "BC2.h5ad",

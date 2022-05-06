@@ -24,6 +24,7 @@ from .matrix import (
     sort_sparse_matrix,
     sparse_from_arrays,
 )
+from .._logging import logger
 
 
 def cluster_anndatas(
@@ -285,7 +286,12 @@ def nearest_neighbors(
     assert use_pcs is None or use_pcs > 0, f"Invalid PC number: {use_pcs}"
 
     if use_pcs is not None and use_pcs < X.shape[1]:
+        logger.debug(f"nearest_neighbors > Computing PCA {X.shape[1]} -> {use_pcs}")
         X = pca(X, n_components=use_pcs)
+
+    if contains_duplicates(X):
+        logger.debug("nearest_neighbors > Duplicates detected. Jittering.")
+        X = perturbate(X, std=0.01)
 
     # If overlapping points, adds a light noise to guarantee
     # NN algorithms proper functioning.
@@ -300,6 +306,7 @@ def nearest_neighbors(
         # PyNNDescent provides a high speed implementation of kNN
         # Parameters borrowed from UMAP's implementation
         # https://github.com/lmcinnes/umap
+        logger.debug("nearest_neighbors > Computing nearest neighbors using nndescent.")
         q_tree = NNDescent(
             X,
             n_neighbors=n_neighbors,
@@ -314,8 +321,7 @@ def nearest_neighbors(
             connectivity = sparse_from_arrays(knn_indices)
     else:
         # Standard exact kNN using sklearn implementation
-        if contains_duplicates(X):
-            X = perturbate(X, std=0.01)
+        logger.debug("nearest_neighbors > Computing nearest neighbors using sklearn.")
 
         nn = NearestNeighbors(
             n_neighbors=n_neighbors,
@@ -334,6 +340,10 @@ def nearest_neighbors(
 
     if symmetrize:
         connectivity = fsymmetrize(connectivity)
+
+    ks = (connectivity > 0).sum(axis=1)
+    kmin, kmax = ks.min(), ks.max()
+    logger.debug(f"nearest_neighbors > n: {X.shape[0]}, kmin: {kmin}, kmax: {kmax}")
     return connectivity
 
 

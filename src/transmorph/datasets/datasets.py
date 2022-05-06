@@ -365,7 +365,7 @@ def load_zhou_10x(
         time. Data bank size: 3.1G
     """
     datasets = load_bank("zhou_10x", keep_sparse=keep_sparse)
-    return datasets
+
     # Formatting adata properly, removing scanpy leftovers
     for adata in datasets.values():
         adata.obs["class_type"] = adata.obs["cell_type"]

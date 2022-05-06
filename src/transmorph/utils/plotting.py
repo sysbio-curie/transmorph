@@ -11,8 +11,9 @@ from numbers import Number
 from os.path import exists
 from scipy.sparse import csr_matrix
 from sklearn.decomposition import PCA
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
+from ..engine.layers import LayerMatching
 from ..utils.anndata_manager import (
     anndata_manager as adm,
     AnnDataKeyIdentifiers,
@@ -356,3 +357,71 @@ def scatter_plot(
     if show:
         plt.show()
     plt.close()
+
+
+def plot_matching_eval(
+    layer_matching: LayerMatching,
+    evaluator: str,
+    dataset_keys: Optional[List[str]] = None,
+    title: Optional[str] = None,
+    matshow_kwargs: Dict = {},
+) -> None:
+    """
+    Plots matching evaluation between datasets as a heatmap.
+
+    Parameters
+    ----------
+    layer_matching: LayerMatching
+        LayerMatching that has been evaluated.
+
+    evaluator: str
+        String identifier of the evaluator.
+
+    dataset_keys: Optional[List[str]], default = None
+        Dataset labels to add to the plot.
+
+    title: Optional[str], default = None
+        Title to use for the plot. If None, generates one.
+
+    matshow_kwargs: Dict[str, Any], default = {}
+        Additional matshow parameters.
+    """
+    scores = layer_matching.get_matching_eval(evaluator)
+    ndatasets = scores.shape[0]
+    if dataset_keys is not None:
+        assert len(dataset_keys) == ndatasets, (
+            f"Inconsistent number of datasets in dataset_keys, expected {ndatasets}, "
+            f"found {len(dataset_keys)}."
+        )
+    for i in range(ndatasets):
+        scores[i, i] = 1.0
+
+    plt.matshow(scores, **matshow_kwargs)
+    for i in range(ndatasets):
+        for j in range(ndatasets):
+            if scores[i, j] > 0.5:
+                fontcolor = "k"
+            else:
+                fontcolor = "w"
+            plt.text(
+                i,
+                j,
+                "{:.1f}".format(scores[i, j]),
+                va="center",
+                ha="center",
+                c=fontcolor,
+            )
+        values = [scores[i, k] for k in range(ndatasets) if k != i]
+        plt.text(ndatasets, i, "{:.1f}".format(np.mean(values)), va="center")
+        plt.text(ndatasets + 1, i, "{:.1f}".format(np.std(values)), va="center")
+    plt.text(ndatasets, -1, "Mean", rotation=60)
+    plt.text(ndatasets + 1, -1, "STD", rotation=60)
+    if dataset_keys is not None:
+        plt.xticks(range(ndatasets), dataset_keys, rotation=60)
+        plt.yticks(range(ndatasets), dataset_keys)
+    else:
+        plt.xticks([])
+        plt.yticks([])
+    if title is None:
+        title = f"Pairwise matching {evaluator}"
+    plt.title(title)

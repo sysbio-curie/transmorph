@@ -14,7 +14,7 @@ from transmorph.engine.matching import Labels, MNN
 from transmorph.engine.merging import Barycenter, LinearCorrection, GraphEmbedding
 from transmorph.engine.model import Model
 from transmorph.engine.transforming import Standardize, PCA, CommonFeatures
-from transmorph.utils import plot_result
+from transmorph.utils.plotting import scatter_plot
 
 
 def test_model_initialization():
@@ -55,7 +55,7 @@ def test_model_smalldata_simple():
     model = Model(linput)
     model.fit(datasets, reference=datasets[1])
     testname = "smalldata_simple"
-    plot_result(
+    scatter_plot(
         datasets,
         color_by="class",
         title=testname,
@@ -88,7 +88,7 @@ def test_model_smalldata_complex():
     model = Model(linput)
     model.fit(datasets, reference=datasets[1])
     testname = "smalldata_complex"
-    plot_result(
+    scatter_plot(
         datasets,
         color_by="class",
         title=testname,
@@ -121,7 +121,7 @@ def test_model_largedata_simple():
     model = Model(linput)
     model.fit(datasets)
     testname = "largedatasets_simple"
-    plot_result(
+    scatter_plot(
         datasets,
         color_by="class",
         title=testname,
@@ -133,7 +133,7 @@ def test_model_largedata_simple():
         suffix=f"{testname}_class",
         use_cache=True,
     )
-    plot_result(
+    scatter_plot(
         datasets,
         title=testname,
         xlabel="UMAP1",

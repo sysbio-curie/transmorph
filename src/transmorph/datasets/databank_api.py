@@ -129,7 +129,7 @@ def download_dataset(dataset_name: str) -> str:
         logger.log(logging.INFO, f"databank_api > Retrying in {CALLBACK} seconds.")
         logger.log(
             logging.INFO,
-            "databank_api > Please make sure you're running the"
+            "databank_api > Please make sure you're running the "
             "latest package version.",
         )
         time.sleep(CALLBACK)

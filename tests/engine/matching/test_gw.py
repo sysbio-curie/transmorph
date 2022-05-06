@@ -4,7 +4,7 @@ from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.matching import GW
 from transmorph.engine.traits import UsesMetric
 from transmorph.stats import edge_accuracy
-from transmorph.utils import plot_result
+from transmorph.utils.plotting import scatter_plot
 
 
 def test_matching_gw_accuracy():
@@ -21,7 +21,7 @@ def test_matching_gw_accuracy():
         accuracy = edge_accuracy(datasets[0], datasets[1], T, "class")
         time = mt.get_time_spent() * 1000
         assert accuracy >= -1
-        plot_result(
+        scatter_plot(
             datasets=datasets,
             matching_mtx=T,
             color_by="class",
@@ -51,7 +51,7 @@ def test_matching_gw_accuracy():
         accuracy = edge_accuracy(datasets[0], datasets[1], T, "class")
         time = mt.get_time_spent() * 1000
         assert accuracy >= -1
-        plot_result(
+        scatter_plot(
             datasets=datasets,
             matching_mtx=T,
             color_by="class",

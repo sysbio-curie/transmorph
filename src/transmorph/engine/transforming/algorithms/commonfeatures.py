@@ -28,7 +28,19 @@ class CommonFeatures(Transformation, UsesCommonFeatures):
         """
         Uses the power of UsesCommonFeatures trait to solve the case.
         """
+        from ...._settings import settings
+
         results = []
         for i, X in enumerate(datasets):
-            results.append(self.slice_features(X, i))
+            initial_dim = X.shape[1]
+            X_sliced = self.slice_features(X, i)
+            final_dim = X_sliced.shape[1]
+            if (final_dim / initial_dim) < settings.low_features_ratio_threshold:
+                self.warn(
+                    "Low number of common features detected "
+                    f"({initial_dim} features -> {final_dim} features, "
+                    f"ratio < {settings.low_features_ratio_threshold}). "
+                    "This can cause unexpected issues."
+                )
+            results.append(X_sliced)
         return results

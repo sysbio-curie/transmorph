@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 
-import numpy as np
-
 from anndata import AnnData
 from scipy.sparse import csr_matrix
-from typing import Optional
 
 
 def base_edge_quality(
@@ -14,7 +11,6 @@ def base_edge_quality(
     label: str,
     tp_cost: float,
     fp_cost: float,
-    custom_nsamples: Optional[int] = None,
 ) -> float:
     """
     Computes a quality metric for a matching between two datasets whose
@@ -54,36 +50,30 @@ def base_edge_quality(
 
     fp_cost: float
         Cost associated to an edge matching two samples of different classes.
-
-    custom_nsamples: int, Optional
-        By default, normalizes the cost by total number of samples. In case
-        data has been subsampled, provide the subsample size using this parameter.
     """
     # Sanity checks
-    assert label in adata1.obs
-    assert label in adata2.obs
+    assert label in adata1.obs, f"Label {label} missing in anndata 1."
+    assert label in adata2.obs, f"Label {label} missing in anndata 2."
 
     n1, n2 = adata1.n_obs, adata2.n_obs
-    assert matching.shape == (n1, n2)
+    assert matching.shape == (
+        n1,
+        n2,
+    ), f"Unexpected matching shape, {matching.shape} != {(n1, n2)}"
+
+    if matching.count_nonzero() == 0:
+        return 0.0
 
     label1 = adata1.obs[label].to_numpy()
     label2 = adata2.obs[label].to_numpy()
-    counts1 = np.array(matching.sum(axis=1))[:, 0]
-    counts2 = np.array(matching.sum(axis=0))[0]
-    accuracy = np.zeros(n1 + n2)
-    matching = matching.tocoo().astype(float)
-    for i1, i2, v in zip(matching.row, matching.col, matching.data):
+    matching_coo = matching.tocoo().astype(float)
+    score = 0.0
+    for i1, i2, v in zip(matching_coo.row, matching_coo.col, matching_coo.data):
         if label1[i1] != label2[i2]:
-            v = fp_cost * v
+            score += fp_cost * v
         else:
-            v = tp_cost * v
-        # Normalizing by row/col marginals
-        accuracy[i1] += v / counts1[i1]
-        accuracy[n1 + i2] += v / counts2[i2]
-    if custom_nsamples is None:
-        # By default, use all samples
-        custom_nsamples = accuracy.shape[0]
-    return accuracy.sum() / custom_nsamples
+            score += tp_cost * v
+    return score / matching_coo.sum()
 
 
 def edge_accuracy(
@@ -91,7 +81,6 @@ def edge_accuracy(
     adata2: AnnData,
     matching: csr_matrix,
     label: str,
-    custom_nsamples: Optional[int] = None,
 ) -> float:
     """
     Computes an accuracy metric for a matching between two datasets whose
@@ -125,9 +114,5 @@ def edge_accuracy(
     label: str
         adata.obs key for labels to compare. Must be the same for
         adata1 and adata2.
-
-    custom_nsamples: int, Optional
-        By default, normalizes the cost by total number of samples. In case
-        data has been subsampled, provide the subsample size using this parameter.
     """
-    return base_edge_quality(adata1, adata2, matching, label, 1, 0, custom_nsamples)
+    return base_edge_quality(adata1, adata2, matching, label, 1, 0)

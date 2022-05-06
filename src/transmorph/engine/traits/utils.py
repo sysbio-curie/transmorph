@@ -6,6 +6,7 @@ from typing import Any, List, Tuple, Type, Union
 
 from .hasmetadata import HasMetadata
 from .usescommonfeatures import UsesCommonFeatures
+from .usesmetric import UsesMetric
 from .usesreference import UsesReference
 from .usessamplelabels import UsesSampleLabels
 
@@ -39,6 +40,8 @@ def preprocess_traits(
         obj.retrieve_all_metadata(datasets)
     if isinstance(obj, UsesCommonFeatures):
         obj.retrieve_common_features(datasets, is_feature_space)
+    if isinstance(obj, UsesMetric):
+        obj.retrieve_all_metrics(datasets)
     if isinstance(obj, UsesReference):
         obj.retrieve_reference_index(datasets)
     if isinstance(obj, UsesSampleLabels):

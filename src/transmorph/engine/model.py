@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
 from anndata import AnnData
-from typing import List, Literal, Optional
+from typing import List, Literal, Optional, TypeVar
 
 from .layers import Layer, LayerChecking, LayerInput, LayerOutput
 from .traits import CanLog, CanCatchChecking, IsProfilable, UsesNeighbors, UsesReference
 from .. import profiler
 from ..utils import anndata_manager as adm, AnnDataKeyIdentifiers
+
+T = TypeVar("T")
 
 
 class Model(CanLog):
@@ -89,13 +91,18 @@ class Model(CanLog):
                 "write results in AnnData objects."
             )
 
-        # TODO: Could we allow this?
         noutputs = len(self.output_layers)
-        assert noutputs == 1, f"Exactly one output allowed, found {noutputs}."
+        assert noutputs <= 1, f"At most one output allowed, found {noutputs}."
         self.log(
             f"Pipeline initialized -- {len(self.layers)} layers found, "
             f"{len(self.output_layers)} outputs found.",
         )
+
+    def get_layers_by_type(self, layer_type: T) -> List[T]:
+        """
+        Returns all layers whose type if layer_type.
+        """
+        return [layer for layer in self.layers if isinstance(layer, layer_type)]
 
     def fit(
         self,
@@ -139,7 +146,6 @@ class Model(CanLog):
         # Sanity checks
         assert len(datasets) > 0, "No dataset provided."
         assert self.input_layer is not None, "Pipeline must be initialized first."
-        assert len(self.output_layers) == 1, "No output layer found."
         assert all(isinstance(adata, AnnData) for adata in datasets), (
             "Only AnnData objects can be processed by a Model. "
             "You can create one from a numpy ndarray using "
@@ -212,11 +218,11 @@ class Model(CanLog):
         adm.clean(datasets, "pipeline")
 
         # Logging summary
-
-        loutput = self.output_layers[0]
-        npoints = sum(adata.n_obs for adata in datasets)
-        ndims = loutput.get_representation(datasets[0]).shape[1]
-        self.info(f"Terminated. Total embedding shape: {(npoints, ndims)}")
+        if len(self.output_layers) >= 1:
+            loutput = self.output_layers[0]
+            npoints = sum(adata.n_obs for adata in datasets)
+            ndims = loutput.get_representation(datasets[0]).shape[1]
+            self.info(f"Terminated. Total embedding shape: {(npoints, ndims)}")
         self.log(
             "### REPORT_START ###\n"
             + profiler.log_stats()
