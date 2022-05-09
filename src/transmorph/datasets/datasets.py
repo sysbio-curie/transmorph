@@ -369,6 +369,10 @@ def load_zhou_10x(
     # Formatting adata properly, removing scanpy leftovers
     for adata in datasets.values():
         adata.obs["class_type"] = adata.obs["cell_type"]
+        adata.obs["class_type"] = adata.obs["class_type"].replace(
+            "Osteoblast_proli",
+            "Osteoblast",
+        )
         adata.obs["class_iscancer"] = adata.obs["malignant"]
         if keep_scanpy_leftovers:
             continue
