@@ -375,6 +375,8 @@ def load_zhou_10x(
         del adata.obs["sample"]
         del adata.obs["cell_type"]
         del adata.obs["malignant"]
+        del adata.obs["n_genes"]
+        del adata.var["n_counts"]
         del adata.var["highly_variable"]
         del adata.var["means"]
         del adata.var["dispersions"]
