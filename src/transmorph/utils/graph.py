@@ -558,3 +558,54 @@ def _generate_membership_matrix_njit(
         distances[row_i] = np.exp(-np.clip(distances[row_i] - rhos_i, 0, None) / mid)
 
     return distances
+
+
+def get_nearest_vertex_from_set(
+    indices: np.ndarray,
+    distances: np.ndarray,
+    vset: np.ndarray,
+) -> np.ndarray:
+    """
+    Returns for each vertex the closest vertex from vset along graph G edges.
+    If the connected component of a vertex contains no vertex from vset,
+    its nearest vertex from vset if set to -1.
+
+    Parameters
+    ----------
+    indices, distances: np.ndarray
+        Edge/Distance matrices of shape (n, k) representing the knn graph.
+
+    vset: np.ndarray
+        Boolean vector representing vertices of the target set.
+
+    TODO: This could be done more intelligenlty without redundant pathing.
+          It will do the job for now.
+    """
+    nvertices = indices.shape[0]
+    # Default is -1
+    result = np.zeros((nvertices,), dtype=int) - 1
+    for i in range(nvertices):
+        # List of (idx, dist to vi)
+        to_visit = [(i, 0.0)]
+        visited = set([i])
+        while len(to_visit) > 0:
+            current_v, dv = to_visit.pop(0)
+            # Vertex from vset is found
+            if vset[current_v]:
+                result[i] = current_v
+                break
+            # Adds unvisited vertices to to_visit, sorted
+            for nb, dnb in zip(indices[current_v], distances[current_v]):
+                if nb == -1 or nb in visited:
+                    continue
+                visited.add(nb)
+                dnb += dv
+                inserted = False
+                for k, (_, tot_d) in enumerate(to_visit):
+                    if tot_d >= dnb:
+                        inserted = True
+                        to_visit.insert(k, (nb, dnb))
+                        break
+                if not inserted:
+                    to_visit.append((nb, dnb))
+    return result

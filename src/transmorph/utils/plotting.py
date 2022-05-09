@@ -19,6 +19,12 @@ from ..utils.anndata_manager import (
     AnnDataKeyIdentifiers,
     slice_common_features,
 )
+from ..utils.matrix import (
+    contains_duplicates,
+    perturbate,
+    scale_matrix,
+    center_matrix,
+)
 
 MARKERS = "osv^<>pP*hHXDd"
 
@@ -181,9 +187,12 @@ def scatter_plot(
     assert all(X.shape[1] == repr_dim for X in representations)
     if repr_dim > 2:
         all_X = np.concatenate(representations, axis=0)
+        all_X = scale_matrix(center_matrix(all_X))
         if reducer == "umap":
             if repr_dim > 30:
                 all_X = PCA(n_components=30).fit_transform(all_X)
+                if contains_duplicates(all_X):
+                    all_X = perturbate(all_X)
             all_X = umap.UMAP(min_dist=0.5).fit_transform(all_X)
             if xlabel == "":
                 xlabel = "UMAP1"
