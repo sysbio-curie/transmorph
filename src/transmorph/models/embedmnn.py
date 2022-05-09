@@ -104,7 +104,7 @@ class EmbedMNN:
         ltransform.connect(lmatching)
         lmatching.connect(lmerging)
         lmerging.connect(loutput)
-        self.model = Model(input_layer=linput, verbose=self.verbose)
+        self.model = Model(input_layer=linput)
 
     def transform(
         self,
