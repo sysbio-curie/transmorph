@@ -54,6 +54,14 @@ class LayerChecking(
         layer. Model execution will then continue according to
         the result.
 
+    min_score_variation: float, default = 0.01
+        Minimum score improvement between two checkings necessary
+        to avoid early exit.
+
+    n_checks_min: int, default = 3
+        Minuimum number of checkings to be carried out by the layer
+        before taking into account score improvement.
+
     n_checks_max: int, default = 10
         Maximum number of checkings to be carried out by the layer.
         Beyond this number, it will automatically accept to avoid
@@ -89,6 +97,8 @@ class LayerChecking(
     def __init__(
         self,
         checking: Checking,
+        min_score_variation: float = 0.01,
+        n_checks_min: int = 3,
         n_checks_max: int = 10,
         subsampling: Optional[Subsampling] = None,
     ) -> None:
@@ -104,10 +114,13 @@ class LayerChecking(
         CanCatchChecking.__init__(self)
         self.check_is_valid: Optional[bool] = None
         self.checking = checking
+        self.min_score_variation = min_score_variation
+        self.n_checks_min = n_checks_min  # Min checks before early stop
         self.n_checks_max = n_checks_max  # Max checks allowed
         self.n_checks = 0  # Numbers of checkings done
         self.rejected_layer: Optional[CanCatchChecking] = None
         self.rejected_layer_ref: Optional[IsRepresentable] = None
+        self.scores: List[float] = []
 
     def connect_rejected(self, layer: CanCatchChecking):
         """
@@ -168,13 +181,33 @@ class LayerChecking(
         preprocess_traits(self.checking, datasets, is_feature_space)
         # Performing actual checking
         self.n_checks += 1
-        self.check_is_valid = self.n_checks >= self.n_checks_max or self.checking.check(
-            Xs
+        check_passed = self.checking.check(Xs)
+
+        self.scores.append(self.checking.score)
+
+        insufficient_variation, variation = False, 0.0
+        if len(self.scores) > 1:
+            variation = abs(self.scores[-1] - self.scores[-2]) / self.scores[-2]
+            insufficient_variation = variation < self.min_score_variation
+
+        self.info(f"Checking score: {self.scores[-1]}")
+
+        self.check_is_valid = (
+            check_passed
+            or insufficient_variation
+            and self.n_checks >= self.n_checks_min
+            or self.n_checks >= self.n_checks_max
         )
+
         # Routing accordingly
         if self.check_is_valid:
             if self.n_checks >= self.n_checks_max:
-                self.log("Maximum number of checks reached.", level=logging.INFO)
+                self.info("Maximum number of checks reached. Continuing.")
+            if insufficient_variation:
+                self.info(
+                    f"Insufficient improvement ({variation} < "
+                    f"{self.min_score_variation}). Continuing."
+                )
             return self.output_layers
         else:
             self.log("Checking failed. Continuing.", level=logging.INFO)

@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from typing import List
+from typing import List, Optional
 
 from ..subsampling import Subsampling, _TypeSubsampling
 from ...traits.usesneighbors import UsesNeighbors
@@ -28,11 +28,13 @@ class VertexCover(Subsampling, UsesNeighbors):
         will have a subsampled size of n / n_neighbors.
     """
 
-    def __init__(self, n_hops: int = 1, n_neighbors: int = 5):
+    def __init__(self, n_hops: int = 1, n_neighbors: Optional[int] = None):
+        from .... import settings, use_setting
+
         Subsampling.__init__(self, str_identifier="VERTEX_COVER")
         UsesNeighbors.__init__(self)
         self.n_hops = n_hops
-        self.n_neighbors = n_neighbors
+        self.n_neighbors = use_setting(n_neighbors, settings.vertexcover_n_neighbors)
 
     def subsample(self, datasets: List[np.ndarray]) -> List[_TypeSubsampling]:
         """

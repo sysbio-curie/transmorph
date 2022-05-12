@@ -23,7 +23,7 @@ setuptools.setup(
     package_dir={"": "src"},
     include_package_data=True,
     install_requires=[
-        "anndata",
+        "anndata>=0.8.0",
         "igraph",
         "leidenalg",
         "numpy<1.21,>=1.17",

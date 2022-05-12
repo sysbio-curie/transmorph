@@ -29,8 +29,9 @@ class Model(CanLog):
     def __init__(
         self,
         input_layer: LayerInput,
+        str_identifier: str = "CUSTOM_MODEL",
     ) -> None:
-        CanLog.__init__(self, str_identifier="MODEL")
+        CanLog.__init__(self, str_identifier=str_identifier)
         self.output_layers = []
         self.layers: List[Layer] = []
         assert isinstance(

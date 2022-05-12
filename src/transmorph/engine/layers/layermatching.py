@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import numpy as np
-
 from anndata import AnnData
 from scipy.sparse import csr_matrix
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import List, Optional
 
 from . import Layer
 from ..matching import Matching, _TypeMatchingSet
@@ -50,10 +48,6 @@ class LayerMatching(
         for performance when dealing with large datasets. Note it
         tends to greatly reduce the number of matching edges.
 
-    evaluators: List[Tuple[str, Callable]], default = []
-        List of evaluation metrics f : AnnData, AnnData, csr_matrix -> float,
-        endowed with a string key. They can then be accessed via get_metric(str, i, j).
-
     Attributes
     ----------
     matching_matrices: _TypeMatchingSet = Dict[Tuple[int, int], csr_matrix]
@@ -68,7 +62,6 @@ class LayerMatching(
         self,
         matching: Matching,
         subsampling: Optional[Subsampling] = None,
-        evaluators: List[Tuple[str, Callable]] = [],
     ) -> None:
         Layer.__init__(
             self,
@@ -81,11 +74,6 @@ class LayerMatching(
         IsSubsamplable.__init__(self, subsampling)
         self.matching = matching
         self.matching_matrices: Optional[_TypeMatchingSet] = None
-        assert all(
-            isinstance(ev, Tuple) for ev in evaluators
-        ), "Expected evaluators to be provided as (name: str, f: Callable)."
-        self.evaluators = evaluators
-        self.evaluator_results: Dict[str, np.ndarray] = {}
 
     @profile_method
     def fit(self, datasets: List[AnnData]) -> List[Layer]:
@@ -142,23 +130,6 @@ class LayerMatching(
             self.matching_matrices[i, j] = T
             self.log(f"Datasets {key}, found {T.data.shape[0]} edges.")
 
-        # Running evaluators if needed
-        ndatasets = len(datasets)
-        if len(self.evaluators) > 0:
-            self.log(f"Running {len(self.evaluators)} matching evaluators.")
-        for key, evaluator in self.evaluators:
-            results = np.zeros((ndatasets, ndatasets), dtype=np.float32)
-            for i, adata_i in enumerate(datasets):
-                for j, adata_j in enumerate(datasets):
-                    if i >= j:  # Evaluators are assumed symmetrical
-                        continue
-                    results[i, j] = results[j, i] = evaluator(
-                        adata_i,
-                        adata_j,
-                        self.matching_matrices[i, j],
-                    )
-            self.evaluator_results[key] = results
-
         # Trimming? Extrapolating?
         return self.output_layers
 
@@ -170,32 +141,3 @@ class LayerMatching(
         """
         assert self.matching_matrices is not None, "Layer is not fit."
         return self.matching_matrices
-
-    def get_matching_eval(self, evaluator: str) -> np.ndarray:
-        """
-        Returns the evaluation result of matching between two datasets indices.
-
-        Parameters
-        ----------
-        evaluator: str
-            Identifier of the evaluator to choose.
-        """
-        assert evaluator in self.evaluator_results, f"Unknown evaluator: {evaluator}"
-        return self.evaluator_results[evaluator].copy()
-
-    def get_pairwise_matching_eval(self, evaluator: str, i: int, j: int) -> float:
-        """
-        Returns the evaluation result of matching between two datasets indices.
-
-        Parameters
-        ----------
-        evaluator: str
-            Identifier of the evaluator to choose.
-
-        i: int
-            Index of the first dataset, as provided in fit()
-
-        j: int
-            Index of the second dataset, as provided in fit()
-        """
-        return self.get_matching_eval(evaluator)[i, j]

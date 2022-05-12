@@ -68,4 +68,4 @@ def test_matching_mnn_commonfeatures():
 
 if __name__ == "__main__":
     test_matching_mnn_accuracy()
-    test_matching_mnn_commonfeatures()
+    # test_matching_mnn_commonfeatures()

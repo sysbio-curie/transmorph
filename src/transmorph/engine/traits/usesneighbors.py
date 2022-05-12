@@ -66,9 +66,7 @@ class UsesNeighbors:
         if any(adata.n_obs > settings.large_dataset_threshold for adata in datasets):
             algorithm = "nndescent"
         for adata in datasets:
-            matrix = None
             X = adm.get_value(adata, representation_key)
-            # Settings parameters are used as default
             matrix = nearest_neighbors(
                 X=X,
                 include_self_loops=False,

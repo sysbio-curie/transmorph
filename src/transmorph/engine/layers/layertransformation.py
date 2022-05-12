@@ -52,6 +52,7 @@ class LayerTransformation(
         datasets: List[AnnData]
             Datasets to run merging on.
         """
+        self.log(f"Retrieving data from {self.embedding_reference.repr_key}.")
         Xs = self.transform(
             datasets=datasets,
             representer=self.embedding_reference,

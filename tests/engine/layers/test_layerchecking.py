@@ -15,7 +15,7 @@ from transmorph.engine.traits import IsRepresentable, UsesNeighbors, UsesReferen
 from transmorph.utils import anndata_manager as adm
 
 N_STEPS_MAX = 100
-N_CHECKS_MAX = 5
+N_CHECKS_MAX = 3
 
 
 def test_layer_checking_simple():

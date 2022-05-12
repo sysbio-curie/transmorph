@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import numba
 import numpy as np
 
 from ..utils import sort_sparse_matrix
@@ -11,7 +12,7 @@ from ..utils.graph import nearest_neighbors
 def compute_lisi(
     X: np.ndarray,
     labels: np.ndarray,
-    perplexity: float = 30.0,
+    perplexity: float = 15.0,
 ) -> np.ndarray:
     """
     LISI statistic measures how heterogeneous a sample neighborhood
@@ -30,91 +31,37 @@ def compute_lisi(
     perplexity: float, default = 30.0
         Neighborhood size.
     """
+
     # n_neighbors >= 3*perplexity
     connectivity = nearest_neighbors(
         X,
         n_neighbors=int(perplexity * 3),
         include_self_loops=False,
     )
-    indices, distances = sort_sparse_matrix(connectivity)
+    indices, _ = sort_sparse_matrix(connectivity)
+    label_per_nb = labels[indices]
 
-    # Compute Simpson index
-    n_categories = len(set(labels))
-    simpson = compute_simpson(
-        distances.T,
-        indices.T,
-        labels,
-        n_categories,
-        perplexity,
-    )
+    all_labels = np.unique(labels)
+    simpson = compute_simpson(label_per_nb, all_labels)
+
     return 1.0 / simpson
 
 
-def compute_simpson(
-    distances: np.ndarray,
-    indices: np.ndarray,
-    labels: np.ndarray,
-    perplexity: float,
-    tol: float = 1e-5,
-):
+@numba.njit(fastmath=True)
+def compute_simpson(label_per_nb: np.ndarray, labels_set: np.ndarray) -> np.ndarray:
     """
     Helper function for compute_lisi, returns simpson index for
     each sample, for one label
     """
-    n = distances.shape[1]
-    simpson = np.zeros(n)
-    logU = np.log(perplexity)
-    # Loop through each cell.
-    for i in range(n):
-        beta = 1
-        betamin = -np.inf
-        betamax = np.inf
-        # Compute Hdiff
-        P = np.exp(-distances[:, i] * beta)
-        P_sum = np.sum(P)
-        if P_sum == 0:
-            H = 0
-            P = np.zeros(distances.shape[0])
-        else:
-            H = np.log(P_sum) + beta * np.sum(distances[:, i] * P) / P_sum
-            P = P / P_sum
-        Hdiff = H - logU
-        n_tries = 50
-        for _ in range(n_tries):
-            # Stop when we reach the tolerance
-            if abs(Hdiff) < tol:
-                break
-            # Update beta
-            if Hdiff > 0:
-                betamin = beta
-                if not np.isfinite(betamax):
-                    beta *= 2
-                else:
-                    beta = (beta + betamax) / 2
-            else:
-                betamax = beta
-                if not np.isfinite(betamin):
-                    beta /= 2
-                else:
-                    beta = (beta + betamin) / 2
-            # Compute Hdiff
-            P = np.exp(-distances[:, i] * beta)
-            P_sum = np.sum(P)
-            if P_sum == 0:
-                H = 0
-                P = np.zeros(distances.shape[0])
-            else:
-                H = np.log(P_sum) + beta * np.sum(distances[:, i] * P) / P_sum
-                P = P / P_sum
-            Hdiff = H - logU
-        # distancesefault value
-        if H == 0:
-            simpson[i] = -1
-        # Simpson's index
-        for label_category in np.unique(labels):
-            ix = indices[:, i]
-            q = labels[ix] == label_category
-            if np.any(q):
-                P_sum = np.sum(P[q])
-                simpson[i] += P_sum * P_sum
-    return simpson
+    nlabels = labels_set.shape[0]
+    nsamples, n_neighbors = label_per_nb.shape
+    label_frequencies = np.zeros((nsamples, nlabels), dtype=np.float32)
+
+    for i in range(nsamples):
+        labels_i = label_per_nb[i]
+        for lj, l in enumerate(labels_set):
+            label_frequencies[i, lj] = (labels_i == l).sum()
+
+    label_frequencies /= n_neighbors
+    label_frequencies *= label_frequencies
+    return np.sum(label_frequencies, axis=1)

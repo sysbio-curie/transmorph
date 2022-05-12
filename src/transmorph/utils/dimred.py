@@ -6,8 +6,10 @@ import numpy as np
 
 from sica.base import StabilizedICA
 from sklearn.decomposition import PCA
+from umap.umap_ import UMAP, find_ab_params
 
-from .matrix import extract_chunks
+from .matrix import extract_chunks, contains_duplicates, perturbate
+from .._logging import logger
 
 
 def pca(
@@ -144,7 +146,10 @@ def pca_multi(
 
 
 def ica(
-    X: np.ndarray, n_components: int = 30, max_iter: int = 1000, n_runs: int = 10
+    X: np.ndarray,
+    n_components: int = 30,
+    max_iter: int = 1000,
+    n_runs: int = 10,
 ) -> np.ndarray:
     """
     Computes an ICA representation of the data using StablilizedICA.
@@ -159,3 +164,41 @@ def ica(
         pca_solver="auto",
     )
     return sica.A_
+
+
+def umap(X: np.ndarray, embedding_dimension: int = 2) -> np.ndarray:
+    """
+    Computes a UMAP representation of dataset X.
+    """
+    from .._settings import settings
+
+    nsamples = X.shape[0]
+    n_epochs = (
+        settings.umap_maxiter
+        if settings.umap_maxiter is not None
+        else 500
+        if nsamples < settings.large_dataset_threshold
+        else 200
+    )
+    if settings.umap_a is None or settings.umap_b is None:
+        a, b = find_ab_params(settings.umap_spread, settings.umap_min_dist)
+    else:
+        a, b = settings.umap_a, settings.umap_b
+
+    X_red = pca(X, n_components=settings.neighbors_n_pcs)
+    if contains_duplicates(X_red):
+        logger.debug("umap > Duplicates detected. Jittering data.")
+        X_red = perturbate(X_red, std=0.04)
+
+    return UMAP(
+        n_neighbors=settings.umap_n_neighbors,
+        n_components=embedding_dimension,
+        metric=settings.umap_metric,
+        metric_kwds=settings.umap_metric_kwargs,
+        n_epochs=n_epochs,
+        a=a,
+        b=b,
+        random_state=settings.umap_random_state,
+        negative_sample_rate=settings.umap_negative_sample_rate,
+        learning_rate=settings.umap_alpha,
+    ).fit_transform(X_red)

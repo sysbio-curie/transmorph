@@ -10,7 +10,7 @@ from typing import List
 
 from ..traits.canlog import CanLog
 from ..traits.isprofilable import IsProfilable
-from ...utils.type import assert_type
+from ...utils.misc import assert_type
 
 
 class Transformation(ABC, CanLog, IsProfilable):

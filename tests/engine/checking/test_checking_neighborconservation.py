@@ -23,7 +23,7 @@ def test_checking_neighborconservation():
     mg.retrieve_reference_index(datasets)
     mg.set_matchings(T)
     Xs_out = mg.transform([adata.X for adata in datasets])
-    check = NeighborConservation(n_neighbors=5, threshold=0.95)
+    check = NeighborConservation(n_neighbors=5, threshold=0.9)
     assert check.check(Xs_out)
 
 

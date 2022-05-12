@@ -39,4 +39,4 @@ def neighborhood_preservation(
     assert all(n_neighbors_all == n_neighbors), "Non-constant number of neighbors."
     final_neighbors = nearest_neighbors(X, n_neighbors=int(n_neighbors), mode="edges")
     correct_nbs = initial_neighbors + final_neighbors
-    return (correct_nbs.data == 2.0).sum() / (n_neighbors * X.shape[0])
+    return (correct_nbs == 2.0).sum() / initial_neighbors.count_nonzero()

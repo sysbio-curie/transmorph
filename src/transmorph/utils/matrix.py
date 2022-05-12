@@ -71,7 +71,7 @@ def perturbate(X: np.ndarray, std: float = 0.01, inplace: bool = False) -> np.nd
     assert std >= 0.0, "Negative std is not allowed."
     if std == 0.0:
         return X
-    return X + np.random.normal(loc=0.0, scale=std, size=X.shape)
+    return X * (1.0 + np.random.normal(loc=0.0, scale=std, size=X.shape))
 
 
 def sort_sparse_matrix(
@@ -140,3 +140,13 @@ def pooling(X: np.ndarray, indices: np.ndarray) -> np.ndarray:
     of outliers or artifacts.
     """
     return X[indices].mean(axis=1)
+
+
+def guess_is_discrete(X: np.ndarray) -> bool:
+    """
+    Returns True if X content is compatible with a discrete
+    label.
+    """
+    from .._settings import settings
+
+    return np.unique(X).shape[0] < settings.is_discrete_unique_thr

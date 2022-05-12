@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from anndata import AnnData
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Optional
 
 from transmorph.engine import Model
 from transmorph.engine.layers import (
@@ -12,17 +12,14 @@ from transmorph.engine.layers import (
     LayerOutput,
 )
 from transmorph.engine.matching import MNN
-from transmorph.engine.merging import GraphEmbedding
+from transmorph.engine.merging import LinearCorrection
 from transmorph.engine.subsampling import VertexCover
-from transmorph.engine.transforming import CommonFeatures, Standardize, PCA
+from transmorph.engine.transforming import CommonFeatures, PCA, Pooling
 
 
-class EmbedMNN(Model):
+class MNNCorrection(Model):
     """
-    This model performs preprocessing steps, then carries out mutual nearest
-    neighbors (MNN) between pairs of datasets. It eventually embeds a combination
-    of datasets kNN graphs and pairwise MNN graphs into a low dimensional space,
-    in which further analyzes such as clustering can be carried out.
+    Performs MNN, then linear correction given selected anchors.
 
     Parameters
     ----------
@@ -35,26 +32,22 @@ class EmbedMNN(Model):
     mnn_kwargs: Optional[Dict], default = None
         Additional metric parameters.
 
-    inner_n_neighbors: int, default = 10
-        Number of neighbors to use in the kNN step.
+    n_components: int, default = 30
+        Number of principal components to use if data dimensionality is
+        greater.
 
     use_subsampling: bool, default = False
         Run MNN and LISI on a subsample of points to spare performance.
         Useful for large datasets.
 
-    embedding_optimizer: Literal["umap", "mde"], default = "umap"
-        Graph embedding algorithm to use.
+    lc_n_neighbors: int, default = 10
+        Number of neighbors to use for inferrence of correction vectors
+        in linear correction. The higher, the easier samples are corrected
+        but the more approximate it is.
 
-    embedding_dimension: int, default = 2
-        Number of dimensions in the final embedding.
-
-    matching_strength: float, default = 1.0
-        Increase this value to tune MNN edges strength during graph
-        embedding algorithm.
-
-    n_components: int, default = 30
-        Number of principal components to use if data dimensionality is
-        greater.
+    use_feature_space: bool, default = True
+        Do the integration in feature space. Otherwise, do it in PC space.
+        Increases computational complexity.
 
     verbose: bool, default = True
         Logs runtime information in console.
@@ -65,14 +58,14 @@ class EmbedMNN(Model):
         mnn_n_neighbors: int = 30,
         mnn_metric: str = "sqeuclidean",
         mnn_kwargs: Optional[Dict] = None,
-        inner_n_neighbors: int = 10,
-        embedding_optimizer: Literal["umap", "mde"] = "umap",
-        embedding_dimension: int = 2,
-        matching_strength: float = 1.0,
         n_components: int = 30,
         use_subsampling: bool = False,
+        lc_n_neighbors: int = 10,
+        use_feature_space: bool = True,
+        use_pooling: bool = True,
+        pooling_n_neighbors: int = 5,
         verbose: bool = True,
-    ):
+    ) -> None:
         from .. import settings
 
         if verbose:
@@ -80,17 +73,10 @@ class EmbedMNN(Model):
         else:
             settings.verbose = "WARNING"
 
-        self.n_components = n_components
-
         # Loading algorithms
-        preprocessings = [
-            CommonFeatures(),
-            Standardize(center=True, scale=True),
-            PCA(n_components=n_components, strategy="concatenate"),
-        ]
         subsampling = None
         if use_subsampling:
-            self.subsampling = VertexCover()
+            subsampling = VertexCover()
             mnn_n_neighbors = max(5, int(mnn_n_neighbors / 3))
         matching = MNN(
             metric=mnn_metric,
@@ -99,31 +85,56 @@ class EmbedMNN(Model):
             common_features_mode="total",
             solver="auto",
         )
-        merging = GraphEmbedding(
-            optimizer=embedding_optimizer,
-            n_neighbors=inner_n_neighbors,
-            embedding_dimension=embedding_dimension,
-            matching_strength=matching_strength,
-        )
+        merging = LinearCorrection(n_neighbors=lc_n_neighbors)
+
+        # Initializing layers
+        linput = LayerInput()
+
+        ltransform_features = LayerTransformation()
+        ltransform_features.add_transformation(CommonFeatures())
+
+        ltransform_dimred = LayerTransformation()
+        ltransform_dimred.add_transformation(PCA(n_components=n_components))
+
+        lmatching = LayerMatching(matching=matching, subsampling=subsampling)
+
+        lmerging = LayerMerging(merging=merging)
+
+        if use_pooling:
+            ltransform_pooling = LayerTransformation()
+            ltransform_pooling.add_transformation(
+                Pooling(
+                    n_neighbors=pooling_n_neighbors,
+                    per_dataset=False,
+                )
+            )
+
+        loutput = LayerOutput()
 
         # Building model
-        linput = LayerInput()
-        ltransform = LayerTransformation()
-        for transformation in preprocessings:
-            ltransform.add_transformation(transformation=transformation)
-        lmatching = LayerMatching(matching=matching, subsampling=subsampling)
-        lmerging = LayerMerging(merging=merging)
-        loutput = LayerOutput()
-        linput.connect(ltransform)
-        ltransform.connect(lmatching)
+        linput.connect(ltransform_features)
+        ltransform_features.connect(ltransform_dimred)
+        ltransform_dimred.connect(lmatching)
         lmatching.connect(lmerging)
-        lmerging.connect(loutput)
 
-        Model.__init__(self, input_layer=linput, str_identifier="EMBED_MNN")
+        # Select the right structure
+        if use_pooling:
+            lmerging.connect(ltransform_pooling)
+            ltransform_pooling.connect(loutput)
+        else:
+            lmerging.connect(loutput)
+
+        if use_feature_space:
+            lmerging.embedding_reference = ltransform_features
+        else:
+            lmerging.embedding_reference = ltransform_dimred
+
+        Model.__init__(self, input_layer=linput, str_identifier="MNN_CORRECTION")
 
     def transform(
         self,
         datasets: List[AnnData],
+        reference: AnnData,
         use_representation: Optional[str] = None,
     ) -> None:
         """
@@ -135,11 +146,14 @@ class EmbedMNN(Model):
         datasets: List[AnnData]
             List of anndata objects, must have at least one common feature.
 
+        reference: AnnData
+            Reference dataset for the correction.
+
         use_representation: Optional[str]
             .obsm to use as input.
         """
         self.fit(
-            datasets=datasets,
-            reference=None,
+            datasets,
+            reference=reference,
             use_representation=use_representation,
         )

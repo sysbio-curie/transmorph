@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from typing import List, Optional
+from typing import List
 
 from ..checking import Checking
 from ...traits.isprofilable import profile_method
@@ -40,8 +40,6 @@ class NeighborEntropy(Checking):
         Checking.__init__(self, str_identifier="NEIGHBOR_ENTROPY")
         self.n_neighbors = n_neighbors
         self.threshold = threshold
-        # Can be used to retrieve result
-        self.score: Optional[float] = None
 
     def check_input(self, datasets: List[np.ndarray]) -> None:
         """

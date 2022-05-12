@@ -3,42 +3,115 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import umap
 
 from anndata import AnnData
 from matplotlib import cm
 from numbers import Number
 from os.path import exists
 from scipy.sparse import csr_matrix
-from sklearn.decomposition import PCA
-from typing import Dict, List, Optional, Union
+from typing import Callable, Dict, List, Literal, Optional, Union
 
+from ..engine.evaluators import evaluate_matching_layer
 from ..engine.layers import LayerMatching
 from ..utils.anndata_manager import (
     anndata_manager as adm,
     AnnDataKeyIdentifiers,
     slice_common_features,
 )
-from ..utils.matrix import (
-    contains_duplicates,
-    perturbate,
-    scale_matrix,
-    center_matrix,
-)
+from ..utils.dimred import pca, umap
+from ..utils.matrix import extract_chunks
 
 MARKERS = "osv^<>pP*hHXDd"
+
+
+def reduce_dimension(
+    datasets: Union[AnnData, List[AnnData]],
+    reducer: Literal["umap", "pca"] = "umap",
+    input_obsm: Optional[str] = None,
+    output_obsm: Optional[str] = None,
+) -> None:
+    """
+    Applies a dimensionality reduction algorithm to a list of AnnData objects
+    that must have a non-empty common feature space, for plotting purposes.
+
+    Parameters
+    ----------
+    datasets: Union[AnnData, List[AnnData]]
+        List of AnnData objects to embed in a plottable 2D space.
+
+    reducer: Literal["umap", "pca"]
+        Dimension reduction algorithm to use.
+
+    input_obsm: str, default = "tr_plot"
+        .obsm key to save representation in. Can then be provided
+        to scatter_plot.
+    """
+    if isinstance(datasets, AnnData):
+        datasets = [datasets]
+
+    if input_obsm is None:
+        representations = slice_common_features(datasets)
+        assert (
+            representations[0].shape[1] > 0
+        ), "No common gene space found for datasets. Try providing a custom obsm."
+    else:
+        representations = [
+            adm.get_value(adata, key=input_obsm, transmorph_key=False, field="obsm")
+            for adata in datasets
+        ]
+
+    for i, X in enumerate(representations):
+        if type(X) is csr_matrix:
+            representations[i] = X.toarray()
+
+    # Dimred if necessary
+    assert all(isinstance(X, np.ndarray) for X in representations)
+    repr_dim = representations[0].shape[1]
+    assert all(X.shape[1] == repr_dim for X in representations)
+    all_X = np.concatenate(representations, axis=0)
+    if repr_dim > 2:
+        if reducer == "umap":
+            all_X = umap(all_X, embedding_dimension=2)
+        elif reducer == "pca":
+            all_X = pca(all_X, n_components=2)
+        else:
+            raise ValueError(
+                f"Unrecognized reducer: {reducer}. Expected 'umap' or 'pca'."
+            )
+
+    if output_obsm is None:
+        output_obsm = AnnDataKeyIdentifiers.PlotRepresentation
+
+    # Saving representations
+    for adata, X in zip(
+        datasets,
+        extract_chunks(all_X, [adata.n_obs for adata in datasets]),
+    ):
+        adm.set_value(
+            adata=adata,
+            key=output_obsm,
+            field="obsm",
+            value=X,
+            persist="output",
+        )
+        adm.set_value(
+            adata=adata,
+            key=f"reducer_{output_obsm}",
+            field="uns",
+            value=reducer,
+            persist="output",
+        )
 
 
 def scatter_plot(
     datasets: Union[AnnData, List[AnnData]],
     matching_mtx: Optional[csr_matrix] = None,
-    reducer: str = "umap",
-    use_cache: bool = False,
+    input_obsm: Optional[str] = None,
     color_by: str = "__dataset__",
     palette: str = "rainbow",
-    title: str = "",
-    xlabel: str = "",
-    ylabel: str = "",
+    title: Optional[str] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
     show_title: bool = True,
     show_legend: bool = True,
     plot_cluster_names: bool = False,
@@ -75,13 +148,6 @@ def scatter_plot(
         Algorithm to use if embedding dimensionality exceeds 2. Valid options
         are "pca" for linear dimensionality reduction and "umap" for embedding
         high dimensional datasets such as single-cell data.
-
-    use_cache: bool, default = True
-        If you produce several plots with different labelings of high dimensional
-        data, you want the low dimensional embedding to be the same among the
-        plots for easy comparison. In this case, use_cache=True will save in
-        AnnDatas objects their low-dimensional representation computed by the
-        method so that it is shared among all method calls.
 
     color_by: str, default = "__dataset__"
         Labeling colors to use in the figure. "__dataset__" will color each
@@ -133,16 +199,42 @@ def scatter_plot(
     dpi: int, default = 200,
         Dot per inch to use for the figure.
     """
-    if type(datasets) is AnnData:
-        datasets = list(datasets)
+    if isinstance(datasets, AnnData):
+        datasets = [datasets]
 
     # Checking parameters
     assert all(
-        type(adata) is AnnData for adata in datasets
+        isinstance(adata, AnnData) for adata in datasets
     ), "All datasets must be AnnData."
     if matching_mtx is not None:
         assert len(datasets) == 2, "Drawing matching requires exactly two datasets."
         assert type(matching_mtx) is csr_matrix, "Matching must come as a csr_matrix."
+
+    if input_obsm is None:
+        input_obsm = AnnDataKeyIdentifiers.PlotRepresentation
+
+    # Retrieving representation
+    default_xlabel = "Feature 1"
+    default_ylabel = "Feature 2"
+    if not all(adm.isset_value(adata, key=input_obsm) for adata in datasets):
+        assert all(
+            adata.X.shape[1] == 2 for adata in datasets
+        ), "Make sure to call reduce_dimension first."
+        representations = [adata.X for adata in datasets]
+    else:
+        representations = [adm.get_value(adata, key=input_obsm) for adata in datasets]
+        reducer = adm.get_value(datasets[0], key=f"reducer_{input_obsm}")
+        if reducer == "umap":
+            default_xlabel = "UMAP1"
+            default_ylabel = "UMAP2"
+        else:
+            default_xlabel = "PC1"
+            default_ylabel = "PC2"
+
+    if xlabel is None:
+        xlabel = default_xlabel
+    if ylabel is None:
+        ylabel = default_ylabel
 
     # Guessing continous or discrete labels
     if color_by == "__dataset__":
@@ -156,71 +248,6 @@ def scatter_plot(
         all_labels = sorted(all_labels)
         n_labels = len(all_labels)
         continuous = (n_labels > 20) and all(isinstance(y, Number) for y in all_labels)
-
-    # Reducing dimension if necessary
-    if use_cache and all(
-        adm.isset_value(adata, AnnDataKeyIdentifiers.PlotRepresentation)
-        for adata in datasets
-    ):
-        representations = [
-            adm.get_value(adata, AnnDataKeyIdentifiers.PlotRepresentation)
-            for adata in datasets
-        ]
-    elif all(
-        adm.isset_value(adata, AnnDataKeyIdentifiers.TransmorphRepresentation)
-        for adata in datasets
-    ):
-        representations = [
-            adm.get_value(adata, AnnDataKeyIdentifiers.TransmorphRepresentation)
-            for adata in datasets
-        ]
-    else:
-        representations = slice_common_features(datasets)
-        assert (
-            representations[0].shape[1] > 0
-        ), "No common gene space found for datasets."
-    for i, X in enumerate(representations):
-        if type(X) is csr_matrix:
-            representations[i] = X.toarray()
-    assert all(type(X) is np.ndarray for X in representations)
-    repr_dim = representations[0].shape[1]
-    assert all(X.shape[1] == repr_dim for X in representations)
-    if repr_dim > 2:
-        all_X = np.concatenate(representations, axis=0)
-        all_X = scale_matrix(center_matrix(all_X))
-        if reducer == "umap":
-            if repr_dim > 30:
-                all_X = PCA(n_components=30).fit_transform(all_X)
-                if contains_duplicates(all_X):
-                    all_X = perturbate(all_X)
-            all_X = umap.UMAP(min_dist=0.5).fit_transform(all_X)
-            if xlabel == "":
-                xlabel = "UMAP1"
-            if ylabel == "":
-                ylabel = "UMAP2"
-        elif reducer == "pca":
-            all_X = PCA(n_components=2).fit_transform(all_X)
-            if xlabel == "":
-                xlabel = "PC1"
-            if ylabel == "":
-                ylabel = "PC2"
-        else:
-            raise ValueError(
-                f"Unrecognized reducer: {reducer}. Expected 'umap' or 'pca'."
-            )
-        offset = 0
-        for i, adata in enumerate(datasets):
-            nobs = adata.n_obs
-            representations[i] = all_X[offset : offset + nobs]
-            if use_cache:
-                adm.set_value(
-                    adata=adata,
-                    key=AnnDataKeyIdentifiers.PlotRepresentation,
-                    field="obsm",
-                    value=representations[i],
-                    persist="output",
-                )
-            offset += nobs
 
     # Guess plotting parameters
     npoints = sum(X.shape[0] for X in representations)
@@ -254,7 +281,10 @@ def scatter_plot(
         X = representations[i]
         mk = MARKERS[i % len(MARKERS)]  # Loops to avoid oob error
         if color_by == "__dataset__":
-            color = cmap(i / (ndatasets - 1))
+            if ndatasets == 1:
+                color = cmap(0.5)
+            else:
+                color = cmap(i / (ndatasets - 1))
             plt.scatter(*X.T, marker=mk, s=size, alpha=alpha, color=color)
             plt.scatter(
                 [],
@@ -350,7 +380,9 @@ def scatter_plot(
     if color_by == "__dataset__":
         color_by = "dataset"
     if show_title:
-        plt.title(title + f" -- Color: {color_by}", fontsize=18)
+        if title is None:
+            title = ""
+        plt.title(title, fontsize=18)
 
     # Saving, showing and closing
     if save:
@@ -370,7 +402,8 @@ def scatter_plot(
 
 def plot_matching_eval(
     layer_matching: LayerMatching,
-    evaluator: str,
+    datasets: List[AnnData],
+    evaluator: Callable,
     dataset_keys: Optional[List[str]] = None,
     title: Optional[str] = None,
     matshow_kwargs: Dict = {},
@@ -395,20 +428,20 @@ def plot_matching_eval(
     matshow_kwargs: Dict[str, Any], default = {}
         Additional matshow parameters.
     """
-    scores = layer_matching.get_matching_eval(evaluator)
+    scores = evaluate_matching_layer(layer_matching, datasets, evaluator)
     ndatasets = scores.shape[0]
     if dataset_keys is not None:
         assert len(dataset_keys) == ndatasets, (
             f"Inconsistent number of datasets in dataset_keys, expected {ndatasets}, "
             f"found {len(dataset_keys)}."
         )
-    for i in range(ndatasets):
-        scores[i, i] = 1.0
 
     plt.matshow(scores, **matshow_kwargs)
+    vmin, vmax = plt.gci().get_clim()
+    mid = 0.5 * (vmax - vmin)
     for i in range(ndatasets):
         for j in range(ndatasets):
-            if scores[i, j] > 0.5:
+            if scores[i, j] > mid:
                 fontcolor = "k"
             else:
                 fontcolor = "w"
@@ -423,8 +456,9 @@ def plot_matching_eval(
         values = [scores[i, k] for k in range(ndatasets) if k != i]
         plt.text(ndatasets, i, "{:.1f}".format(np.mean(values)), va="center")
         plt.text(ndatasets + 1, i, "{:.1f}".format(np.std(values)), va="center")
-    plt.text(ndatasets, -1, "Mean", rotation=60)
-    plt.text(ndatasets + 1, -1, "STD", rotation=60)
+
+    plt.text(ndatasets, -0.5, "Mean", rotation=60, va="bottom")
+    plt.text(ndatasets + 1, -0.5, "STD", rotation=60, va="bottom")
     if dataset_keys is not None:
         plt.xticks(range(ndatasets), dataset_keys, rotation=60)
         plt.yticks(range(ndatasets), dataset_keys)
@@ -432,5 +466,51 @@ def plot_matching_eval(
         plt.xticks([])
         plt.yticks([])
     if title is None:
-        title = f"Pairwise matching {evaluator}"
+        title = "Pairwise matching evaluation"
     plt.title(title)
+
+
+def plot_label_distribution_heatmap(
+    datasets: List[AnnData],
+    label: str,
+    dataset_keys: Optional[List[str]] = None,
+    title: Optional[str] = None,
+) -> None:
+    """ """
+    all_labels = set()
+    for adata in datasets:
+        all_labels = all_labels | set(adata.obs[label])
+    all_labels = list(sorted(all_labels))
+
+    ndatasets, nlabels = len(datasets), len(all_labels)
+
+    labels_counts = np.zeros(nlabels, dtype=int)
+    labels_dist = np.zeros((ndatasets, nlabels), dtype=np.float32)
+    for i, adata in enumerate(datasets):
+        nsamples = adata.n_obs
+        for j, lb in enumerate(all_labels):
+            v = np.sum(adata.obs[label] == lb)
+            labels_dist[i, j] = v / nsamples
+            labels_counts[j] += v
+
+    vmin, vmax = 0.0, 1 / nlabels
+    plt.matshow(labels_dist, vmin=vmin, vmax=vmax)
+
+    for i, adata in enumerate(datasets):
+        nsamples = adata.n_obs
+        for j, lb in enumerate(all_labels):
+            val = np.sum(adata.obs[label] == lb) / nsamples
+            fc = "k" if val > vmax / 2 else "w"
+            plt.text(j, i, f"{int(val*100)}%", ha="center", va="center", c=fc)
+
+    for i, adata in enumerate(datasets):
+        plt.text(nlabels, i, adata.n_obs, ha="left", va="center")
+
+    for j, lb in enumerate(all_labels):
+        plt.text(j, ndatasets, labels_counts[j], ha="center", va="top", rotation=30)
+
+    plt.xticks(np.arange(nlabels), all_labels, rotation=60)
+    if dataset_keys is not None:
+        plt.yticks(np.arange(ndatasets), dataset_keys)
+    if title is not None:
+        plt.title(title)

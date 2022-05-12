@@ -92,7 +92,7 @@ def test_cluster_anndatas():
             value=adata.X,
             persist="pipeline",
         )
-    cluster_anndatas(datasets, use_rep="tr_repr", n_neighbors=3)
+    cluster_anndatas(datasets, use_rep="repr", n_neighbors=3)
 
 
 def test_get_nearest_vertex_from_set():

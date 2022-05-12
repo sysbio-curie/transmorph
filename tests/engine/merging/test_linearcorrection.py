@@ -34,6 +34,7 @@ def test_merging_linearcorrection():
     mg.retrieve_reference_index(datasets)
     mg.set_matchings(T)
     Xs_out = mg.transform([adata.X for adata in datasets])
+    print(Xs_out)
     for adata, X_out in zip(datasets, Xs_out):
         adm.set_value(
             adata=adata,

@@ -7,7 +7,7 @@ from sklearn.utils import check_random_state
 from typing import Any, Dict, Literal, Optional, TypeVar
 
 from ._logging import logger
-from .utils.type import assert_type
+from .utils.misc import assert_type
 
 T = TypeVar("T")
 
@@ -29,13 +29,16 @@ class TransmorphSettings:
     """
 
     def __init__(self):
+
         # Logging
         self._logging_level_console: int = logging.INFO
         self._logging_level_file: int = logging.DEBUG
         self.logging_level_console = self._logging_level_console
         self.logging_level_file = self._logging_level_file
+
         # General
         self.global_random_seed: int = 42
+
         # Neighbors
         self._n_neighbors_max_init: int = 50
         self._n_neighbors_max: int = self._n_neighbors_max_init
@@ -43,10 +46,9 @@ class TransmorphSettings:
         self.neighbors_include_self_loops: bool = False
         self.neighbors_metric: str = "sqeuclidean"
         self._neighbors_metric_kwargs: Dict[str, Any] = {}
-        self._neighbors_n_pcs: Optional[int] = 30
+        self._neighbors_n_pcs: int = 15
         self.neighbors_random_seed: int = 42
         self.neighbors_symmetrize: bool = False
-        self.neighbors_use_scanpy: bool = True
 
         # UMAP
         self.umap_metric: str = "euclidean"
@@ -62,10 +64,13 @@ class TransmorphSettings:
         self.umap_random_state: RandomState = check_random_state(
             self.global_random_seed
         )
+        self.umap_n_neighbors: int = 15
+
         # MDE
         self.mde_initialization: str = "quadratic"
         self.mde_repulsive_fraction: float = 1.0
         self.mde_device: Literal["cpu", "cuda"] = "cpu"
+
         # Scale
         self.small_dataset_threshold: int = 100
         self.large_dataset_threshold: int = 4096
@@ -73,6 +78,9 @@ class TransmorphSettings:
         self.high_dimensional_threshold: int = 60
         self.large_number_edges: int = 2_000_000
         self.low_features_ratio_threshold: float = 0.005
+        self.is_discrete_unique_thr: int = 50
+        self.vertexcover_n_neighbors: int = 5
+
         # End
         logger.debug("Transmorph settings initialized.")
 

@@ -7,7 +7,7 @@ from anndata import AnnData
 from typing import List, Optional, Type
 
 from ..traits import CanLog, IsRepresentable, assert_trait
-from ...utils.type import assert_type
+from ...utils.misc import assert_type
 
 
 class Layer(ABC, CanLog):

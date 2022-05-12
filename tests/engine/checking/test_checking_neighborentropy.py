@@ -23,7 +23,7 @@ def test_checking_neighborentropy():
     mg.retrieve_reference_index(datasets)
     mg.set_matchings(T)
     Xs_out = mg.transform([adata.X for adata in datasets])
-    check = NeighborEntropy(n_neighbors=5, threshold=0.6)
+    check = NeighborEntropy(n_neighbors=5, threshold=0.29)
     assert check.check(Xs_out)
 
 

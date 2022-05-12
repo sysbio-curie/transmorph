@@ -9,7 +9,7 @@ from .utils import assert_trait
 from .isrepresentable import IsRepresentable
 from ..transforming.transformation import Transformation
 from ..traits.utils import preprocess_traits
-from ...utils.type import assert_type
+from ...utils.misc import assert_type
 
 
 class ContainsTransformations:

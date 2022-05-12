@@ -3,7 +3,7 @@
 import numpy as np
 
 from scipy.sparse import csr_matrix
-from typing import List, Literal, Optional
+from typing import List, Literal
 
 from ..checking import Checking
 from ...traits.usesneighbors import UsesNeighbors
@@ -51,8 +51,6 @@ class NeighborConservation(Checking, UsesNeighbors):
         self.threshold = threshold
         assert mode in ("min", "max", "mean"), f"Unknown mode {mode}."
         self.mode = mode
-        # Can be used to retrieve result
-        self.score: Optional[float] = None
 
     def check_input(self, datasets: List[np.ndarray]) -> None:
         """

@@ -14,7 +14,7 @@ from transmorph.engine.matching import Labels, MNN
 from transmorph.engine.merging import Barycenter, LinearCorrection, GraphEmbedding
 from transmorph.engine.model import Model
 from transmorph.engine.transforming import Standardize, PCA, CommonFeatures
-from transmorph.utils.plotting import scatter_plot
+from transmorph.utils.plotting import scatter_plot, reduce_dimension
 
 
 def test_model_initialization():
@@ -120,6 +120,7 @@ def test_model_largedata_simple():
     lmerging.connect(loutput)
     model = Model(linput)
     model.fit(datasets)
+    reduce_dimension(datasets, reducer="pca", input_obsm="transmorph")
     testname = "largedatasets_simple"
     scatter_plot(
         datasets,
@@ -131,7 +132,6 @@ def test_model_largedata_simple():
         show=False,
         caller_path=__file__,
         suffix=f"{testname}_class",
-        use_cache=True,
     )
     scatter_plot(
         datasets,
@@ -142,7 +142,6 @@ def test_model_largedata_simple():
         show=False,
         caller_path=__file__,
         suffix=f"{testname}_dataset",
-        use_cache=True,
     )
 
 

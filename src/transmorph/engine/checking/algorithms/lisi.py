@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from typing import List, Optional
+from typing import List
 
 from ..checking import Checking
 from ....stats.lisi import compute_lisi
@@ -32,11 +32,10 @@ class LISI(Checking):
         of single-cell data with Harmony." Nature methods 16.12 (2019): 1289-1296.
     """
 
-    def __init__(self, threshold: float = 0.5, perplexity: float = 30.0):
+    def __init__(self, threshold: float = 0.5, perplexity: float = 15.0):
         Checking.__init__(self, str_identifier="LISI")
         self.threshold = threshold
         self.perplexity = perplexity
-        self.score: Optional[float] = None
 
     def check(self, datasets: List[np.ndarray]) -> bool:
         """

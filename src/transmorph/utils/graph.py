@@ -10,7 +10,7 @@ from numba import njit
 from numpy.random import RandomState
 from pynndescent import NNDescent
 from scipy.spatial.distance import cdist
-from scipy.sparse import csr_matrix, diags
+from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
 from typing import Dict, List, Literal, Optional, Tuple
 
@@ -289,17 +289,19 @@ def nearest_neighbors(
         logger.debug(f"nearest_neighbors > Computing PCA {X.shape[1]} -> {use_pcs}")
         X = pca(X, n_components=use_pcs)
 
+    # If overlapping points, adds a light noise to guarantee
+    # NN algorithms proper functioning.
     if contains_duplicates(X):
         logger.debug("nearest_neighbors > Duplicates detected. Jittering.")
         X = perturbate(X, std=0.01)
 
-    # If overlapping points, adds a light noise to guarantee
-    # NN algorithms proper functioning.
+    # By default, self loops are included in algorithms
     if not include_self_loops:
         n_neighbors += 1
         n_neighbors = min(n_neighbors, nx - 1)
     else:
         n_neighbors = min(n_neighbors, nx)
+
     # Nearest neighbors
     connectivity = None
     if use_nndescent:
@@ -315,6 +317,9 @@ def nearest_neighbors(
             random_state=RandomState(random_seed),
         )
         knn_indices, knn_distances = q_tree.neighbor_graph
+        if not include_self_loops:  # Removes self-loops
+            knn_indices = knn_indices[:, 1:]
+            knn_distances = knn_distances[:, 1:]
         if mode == "distances":
             connectivity = sparse_from_arrays(knn_indices, knn_distances)
         else:
@@ -335,8 +340,9 @@ def nearest_neighbors(
             nnmode = "connectivity"
         connectivity = nn.kneighbors_graph(X, mode=nnmode)
 
-    if not include_self_loops:
-        connectivity = connectivity - diags(connectivity.diagonal())
+        if not include_self_loops:
+            connectivity.setdiag(0)
+            connectivity.eliminate_zeros()
 
     if symmetrize:
         connectivity = fsymmetrize(connectivity)

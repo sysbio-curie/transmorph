@@ -146,6 +146,8 @@ def load_chen_10x(
     # Formatting adata properly, removing scanpy leftovers
     for adata in datasets.values():
         adata.obs["class"] = adata.obs["cell_type"]
+        cl = adata.obs["class"]
+        adata.obs["class"] = cl.cat.add_categories("n/a").fillna("n/a")
         if keep_scanpy_leftovers:
             continue
         del adata.obs["sample"]
