@@ -19,12 +19,15 @@ def center_matrix(X: np.ndarray, axis: int = 0) -> np.ndarray:
         return X - X.mean(axis=axis)[:, None]
 
 
-def scale_matrix(X: np.ndarray, axis: int = 0) -> np.ndarray:
+def scale_matrix(X: np.ndarray, axis: int = 0, std_mode: bool = True) -> np.ndarray:
     """
     Scales an array to std 1 along the given axis.
     Ignores empty rows/cols.
     """
-    normalizer = np.std(X, axis=axis)
+    if std_mode:  # std mode
+        normalizer = np.std(X, axis=axis)
+    else:  # sum mode
+        normalizer = np.sum(X, axis=axis)
     normalizer[normalizer == 0.0] = 1.0
     if axis == 0:
         return X / normalizer

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import anndata
 import numpy as np
 import pytest
 import random
@@ -13,44 +12,12 @@ from transmorph.utils.anndata_manager import (
     get_total_feature_slices,
     slice_common_features,
 )
-from transmorph.utils.misc import rand_str
+from transmorph.utils.misc import generate_anndata, generate_features
 
 NADATAS = 5
 NTRIES = 100
-MAX_ITER = 500
 
 adm = Adm()
-
-
-def generate_features(
-    n: int = 100,
-    ln: int = 8,
-    leave_duplicates: bool = False,
-) -> np.ndarray:
-    # Helper function generating random features
-    features = np.array([rand_str(ln) for _ in range(n)])
-    if leave_duplicates:
-        return features
-    return np.unique(features)
-
-
-def generate_anndata(
-    nobs: int,
-    nvars: int,
-    features_set: np.ndarray,
-    force_shape: bool = False,
-):
-    # Helper function generating random anndatas of size approx.
-    # nobs x nvars
-    for _ in range(MAX_ITER):
-        features = np.unique(random.choices(features_set, k=nvars))
-        X = np.random.random(size=(nobs, features.shape[0]))
-        adata = anndata.AnnData(X, dtype=X.dtype)
-        adata.var[None] = features
-        adata.var = adata.var.set_index(None)
-        if not force_shape or adata.X.shape == (nobs, nvars):
-            return adata
-    raise ValueError("Could not generate an AnnData of the requested shape.")
 
 
 def test_generate_feature_slice_success():

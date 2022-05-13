@@ -11,6 +11,7 @@ from numpy.random import RandomState
 from pynndescent import NNDescent
 from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import dijkstra
 from sklearn.neighbors import NearestNeighbors
 from typing import Dict, List, Literal, Optional, Tuple
 
@@ -27,79 +28,157 @@ from .matrix import (
 from .._logging import logger
 
 
-def cluster_anndatas(
-    datasets: List[AnnData],
-    use_rep: Optional[str] = None,
-    cluster_key: str = "cluster",
-    n_neighbors: int = 10,
-    resolution: float = 1.0,
-) -> None:
+def nearest_neighbors(
+    X: np.ndarray,
+    mode: Literal["distances", "edges"] = "distances",
+    algorithm: Literal["auto", "sklearn", "nndescent"] = "auto",
+    n_neighbors: Optional[int] = None,
+    metric: Optional[str] = None,
+    metric_kwargs: Optional[Dict] = None,
+    use_pcs: Optional[int] = None,
+    random_seed: Optional[int] = None,
+) -> csr_matrix:
     """
-    Runs Leiden algorithm on a set of concatenated anndatas objects embedded in a
-    common space. Writes clustering results in the AnnData objects.
+    Encapsulates k-nearest neighbors algorithms.
 
     Parameters
     ----------
-    datasets: List[AnnData]
-        AnnData objects to concatenante and cluster.
+    X: np.ndarray
+        Vectorized dataset to compute nearest neighbors from.
 
-    use_rep: Optional[str], default = None
-        Embedding to use, if None will use .obsm["transmorph"] in priority or raise
-        an error if it is not found.
+    metric: str or Callable, default = "sqeuclidean"
+        scipy-compatible metric used to compute nearest neighbors.
 
-    cluster_key: str, default = "cluster"
-        Key to save clusters in .obs
+    metric_kwargs: dict, default = {}
+        Additional metric arguments for scipy.spatial.distance.cdist.
 
     n_neighbors: int, default = 10
-        Number of neighbors to build the kNN graph.
+        Number of neighbors to use between datasets.
 
-    resolution: float, default = 1.0
-        Leiden algorithm parameter.
+    mode: Literal["distances", "edges"], default = "distances"
+        Type of data contained in the returned matrix.
+
+    use_pcs: int, default = 30
+        If X.shape[1] > use_pcs, a PC view will be used instead of X.
+        Set it to None to disable this functionality.
+
+    algorithm: str, default = "auto"
+        Solver to use in "auto", "sklearn" and "nndescent". Use "sklearn"
+        for small datasets or if the solution must be exact, use "nndescent"
+        for large datasets if an approached solution is enough. With "auto",
+        the function will adapt to dataset size.
+
     """
-    if use_rep is None:
-        use_rep = "transmorph"
-    assert all(
-        adm.isset_value(adata, key=use_rep, transmorph_key=False, field="obsm")
-        for adata in datasets
-    ), f"{use_rep} missing in .obsm of some AnnDatas."
-    X = np.concatenate(
-        [
-            adm.get_value(adata, key=use_rep, transmorph_key=False, field="obsm")
-            for adata in datasets
-        ],
-        axis=0,
-    )
-    adj_matrix = nearest_neighbors(X, mode="edges", n_neighbors=n_neighbors)
-    sources, targets = adj_matrix.nonzero()
-    edgelist = zip(sources.tolist(), targets.tolist())
-    partition = np.array(
-        la.find_partition(
-            ig.Graph(edgelist),
-            la.RBConfigurationVertexPartition,
-            resolution_parameter=resolution,
-        ).membership
-    )
-    cluster_obs = extract_chunks(partition, [adata.n_obs for adata in datasets])
-    for adata, obs in zip(datasets, cluster_obs):
-        adm.set_value(adata, key=cluster_key, field="obs", value=obs, persist="output")
+    # Retrieves default parameters if needed
+    from .. import settings, use_setting
 
+    n_neighbors = use_setting(n_neighbors, settings.n_neighbors_max)
+    metric = use_setting(metric, settings.neighbors_metric)
+    metric_kwargs = use_setting(metric_kwargs, settings.neighbors_metric_kwargs)
+    use_pcs = use_setting(use_pcs, settings.neighbors_n_pcs)
+    random_seed = use_setting(random_seed, settings.neighbors_random_seed)
 
-def fsymmetrize(A: csr_matrix) -> csr_matrix:
-    # Symmetrizes a probabilistic matching matrix, given
-    # the rule P(AUB) = P(A) + P(B) - P(A)P(B), assuming
-    # A and B independent events.
-    return A + A.T - A.multiply(A.T)
+    # Checks parameters
+    nx = X.shape[0]
+    if algorithm == "nndescent":
+        use_nndescent = True
+    elif algorithm == "sklearn":
+        use_nndescent = False
+    elif algorithm == "auto":
+        use_nndescent = nx > settings.large_dataset_threshold
+    else:
+        raise ValueError(
+            f"Unrecognized algorithm: {algorithm}. Valid options are 'auto',"
+            " 'nndescent', 'sklearn'."
+        )
+    assert mode in ("edges", "distances"), f"Unknown mode: {mode}."
+    assert use_pcs is None or use_pcs > 0, f"Invalid PC number: {use_pcs}"
+
+    if use_pcs is not None and use_pcs < X.shape[1]:
+        logger.debug(f"nearest_neighbors > Computing PCA {X.shape[1]} -> {use_pcs}")
+        X = pca(X, n_components=use_pcs)
+
+    # If overlapping points, adds a light noise to guarantee
+    # NN algorithms proper functioning.
+    if contains_duplicates(X):
+        logger.debug("nearest_neighbors > Duplicates detected. Jittering.")
+        X = perturbate(X, std=0.01)
+
+    # By default, self loops are included in algorithms
+    n_neighbors += 1
+    n_neighbors = min(n_neighbors, nx - 1)
+
+    # Nearest neighbors
+    connectivity = None
+    if use_nndescent:
+        # PyNNDescent provides a high speed implementation of kNN
+        # Parameters borrowed from UMAP's implementation
+        # https://github.com/lmcinnes/umap
+        logger.debug("nearest_neighbors > Computing nearest neighbors using nndescent.")
+        q_tree = NNDescent(
+            X,
+            n_neighbors=n_neighbors,
+            metric=metric,
+            metric_kwds=metric_kwargs,
+            random_state=RandomState(random_seed),
+        )
+        knn_indices, knn_distances = q_tree.neighbor_graph
+        knn_indices = knn_indices[:, 1:]
+        knn_distances = knn_distances[:, 1:]
+        if mode == "distances":
+            connectivity = sparse_from_arrays(knn_indices, knn_distances)
+        else:
+            connectivity = sparse_from_arrays(knn_indices)
+    else:
+        # Standard exact kNN using sklearn implementation
+        logger.debug("nearest_neighbors > Computing nearest neighbors using sklearn.")
+
+        nn = NearestNeighbors(
+            n_neighbors=n_neighbors,
+            metric=metric,
+            metric_params=metric_kwargs,
+        )
+        nn.fit(X)
+        if mode == "distances":
+            nnmode = "distance"
+        else:
+            nnmode = "connectivity"
+        connectivity = nn.kneighbors_graph(X, mode=nnmode)
+
+        connectivity.setdiag(0)
+        connectivity.eliminate_zeros()
+
+    ks = (connectivity > 0).sum(axis=1)
+    kmin, kmax = ks.min(), ks.max()
+    logger.debug(f"nearest_neighbors > n: {X.shape[0]}, kmin: {kmin}, kmax: {kmax}")
+    return connectivity
 
 
 def distance_to_knn(D: np.ndarray, k: int, axis: int):
     """
     Returns the distance of each point along the specified axis to its kth
-    nearest neighbor.
+    nearest neighbor, given a distance matrix D.
     """
+    if k == 0:  # 0-th neighbor of a point is itself
+        return np.zeros(D.shape[1 - axis], dtype=np.float32)
     D_sorted = np.sort(D, axis=axis)
     if axis == 0:
         D_sorted = D_sorted.T
     return D_sorted[:, k - 1]
+
+
+def generate_qtree(
+    X: np.ndarray, metric: str, metric_kwargs: Optional[Dict] = None
+) -> NNDescent:
+    """
+    Returns a fitted tree based on points from X, which can be
+    then queried for another set of points.
+    """
+    if metric_kwargs is None:
+        metric_kwargs = {}
+    qtree = NNDescent(X, metric=metric, metric_kwds=metric_kwargs)
+    qtree.prepare()
+    return qtree
 
 
 def qtree_mutual_nearest_neighbors(
@@ -138,7 +217,7 @@ def qtree_mutual_nearest_neighbors(
         qtX.query(Y, k=n_neighbors)[0],
         n_cols=X.shape[0],
     )
-    return XYknn.multiply(YXknn.T)
+    return XYknn.multiply(YXknn.T).astype(np.float32)
 
 
 def raw_mutual_nearest_neighbors(
@@ -204,153 +283,7 @@ def raw_mutual_nearest_neighbors(
     dx = distance_to_knn(D, n_neighbors, 1)
     dy = distance_to_knn(D, n_neighbors, 0)
     Dxy = np.minimum.outer(dx, dy)
-    return csr_matrix((D <= Dxy), shape=D.shape)
-
-
-def nearest_neighbors(
-    X: np.ndarray,
-    mode: Literal["distances", "edges"] = "distances",
-    algorithm: Literal["auto", "sklearn", "nndescent"] = "auto",
-    n_neighbors: Optional[int] = None,
-    metric: Optional[str] = None,
-    metric_kwargs: Optional[Dict] = None,
-    use_pcs: Optional[int] = None,
-    include_self_loops: Optional[bool] = None,
-    symmetrize: Optional[bool] = None,
-    random_seed: Optional[int] = None,
-) -> csr_matrix:
-    """
-    Encapsulates k-nearest neighbors algorithms.
-
-    Parameters
-    ----------
-    X: np.ndarray
-        Vectorized dataset to compute nearest neighbors from.
-
-    metric: str or Callable, default = "sqeuclidean"
-        scipy-compatible metric used to compute nearest neighbors.
-
-    metric_kwargs: dict, default = {}
-        Additional metric arguments for scipy.spatial.distance.cdist.
-
-    n_neighbors: int, default = 10
-        Number of neighbors to use between datasets.
-
-    mode: Literal["distances", "edges"], default = "distances"
-        Type of data contained in the returned matrix.
-
-    use_pcs: int, default = 30
-        If X.shape[1] > use_pcs, a PC view will be used instead of X.
-        Set it to None to disable this functionality.
-
-    include_self_loops: bool, default = False
-        Whether points are neighbors of themselves.
-
-    symmetrize: bool, default = False
-        Make edges undirected
-
-    algorithm: str, default = "auto"
-        Solver to use in "auto", "sklearn" and "nndescent". Use "sklearn"
-        for small datasets or if the solution must be exact, use "nndescent"
-        for large datasets if an approached solution is enough. With "auto",
-        the function will adapt to dataset size.
-
-    """
-    # Retrieves default parameters if needed
-    from .. import settings, use_setting
-
-    n_neighbors = use_setting(n_neighbors, settings.n_neighbors_max)
-    metric = use_setting(metric, settings.neighbors_metric)
-    metric_kwargs = use_setting(metric_kwargs, settings.neighbors_metric_kwargs)
-    use_pcs = use_setting(use_pcs, settings.neighbors_n_pcs)
-    include_self_loops = use_setting(
-        include_self_loops, settings.neighbors_include_self_loops
-    )
-    symmetrize = use_setting(symmetrize, settings.neighbors_symmetrize)
-    random_seed = use_setting(random_seed, settings.neighbors_random_seed)
-
-    # Checks parameters
-    nx = X.shape[0]
-    if algorithm == "nndescent":
-        use_nndescent = True
-    elif algorithm == "sklearn":
-        use_nndescent = False
-    elif algorithm == "auto":
-        use_nndescent = nx > settings.large_dataset_threshold
-    else:
-        raise ValueError(
-            f"Unrecognized algorithm: {algorithm}. Valid options are 'auto',"
-            " 'nndescent', 'sklearn'."
-        )
-    assert mode in ("edges", "distances"), f"Unknown mode: {mode}."
-    assert use_pcs is None or use_pcs > 0, f"Invalid PC number: {use_pcs}"
-
-    if use_pcs is not None and use_pcs < X.shape[1]:
-        logger.debug(f"nearest_neighbors > Computing PCA {X.shape[1]} -> {use_pcs}")
-        X = pca(X, n_components=use_pcs)
-
-    # If overlapping points, adds a light noise to guarantee
-    # NN algorithms proper functioning.
-    if contains_duplicates(X):
-        logger.debug("nearest_neighbors > Duplicates detected. Jittering.")
-        X = perturbate(X, std=0.01)
-
-    # By default, self loops are included in algorithms
-    if not include_self_loops:
-        n_neighbors += 1
-        n_neighbors = min(n_neighbors, nx - 1)
-    else:
-        n_neighbors = min(n_neighbors, nx)
-
-    # Nearest neighbors
-    connectivity = None
-    if use_nndescent:
-        # PyNNDescent provides a high speed implementation of kNN
-        # Parameters borrowed from UMAP's implementation
-        # https://github.com/lmcinnes/umap
-        logger.debug("nearest_neighbors > Computing nearest neighbors using nndescent.")
-        q_tree = NNDescent(
-            X,
-            n_neighbors=n_neighbors,
-            metric=metric,
-            metric_kwds=metric_kwargs,
-            random_state=RandomState(random_seed),
-        )
-        knn_indices, knn_distances = q_tree.neighbor_graph
-        if not include_self_loops:  # Removes self-loops
-            knn_indices = knn_indices[:, 1:]
-            knn_distances = knn_distances[:, 1:]
-        if mode == "distances":
-            connectivity = sparse_from_arrays(knn_indices, knn_distances)
-        else:
-            connectivity = sparse_from_arrays(knn_indices)
-    else:
-        # Standard exact kNN using sklearn implementation
-        logger.debug("nearest_neighbors > Computing nearest neighbors using sklearn.")
-
-        nn = NearestNeighbors(
-            n_neighbors=n_neighbors,
-            metric=metric,
-            metric_params=metric_kwargs,
-        )
-        nn.fit(X)
-        if mode == "distances":
-            nnmode = "distance"
-        else:
-            nnmode = "connectivity"
-        connectivity = nn.kneighbors_graph(X, mode=nnmode)
-
-        if not include_self_loops:
-            connectivity.setdiag(0)
-            connectivity.eliminate_zeros()
-
-    if symmetrize:
-        connectivity = fsymmetrize(connectivity)
-
-    ks = (connectivity > 0).sum(axis=1)
-    kmin, kmax = ks.min(), ks.max()
-    logger.debug(f"nearest_neighbors > n: {X.shape[0]}, kmin: {kmin}, kmax: {kmax}")
-    return connectivity
+    return csr_matrix((D <= Dxy), shape=D.shape, dtype=np.float32)
 
 
 def vertex_cover(adjacency: csr_matrix, hops: int = 1) -> Tuple[np.ndarray, np.ndarray]:
@@ -365,7 +298,7 @@ def vertex_cover(adjacency: csr_matrix, hops: int = 1) -> Tuple[np.ndarray, np.n
     Parameters
     ----------
     adjacency: csr_matrix
-        Adjacency matrix of the graph to subsample, must be symmetrical.
+        Adjacency matrix of the graph to subsample, treated as symmetrical.
 
     hops: int, default = 1
         Maximal distance to a selected node to be considered covered.
@@ -382,14 +315,18 @@ def vertex_cover(adjacency: csr_matrix, hops: int = 1) -> Tuple[np.ndarray, np.n
         cover, mapping = np.ones(n), np.arange(n)
     else:  # use a numba-accelerated function
         cover, mapping = vertex_cover_njit(
-            adjacency.indptr, adjacency.indices, hops=hops
+            adjacency.indptr,
+            adjacency.indices,
+            hops=hops,
         )
     return cover.astype(bool), mapping.astype(int)
 
 
 @njit
 def vertex_cover_njit(
-    ptr: np.ndarray, ind: np.ndarray, hops: int = 1
+    ptr: np.ndarray,
+    ind: np.ndarray,
+    hops: int = 1,
 ) -> Tuple[np.ndarray, np.ndarray]:
     # ptr, ind: CSR matrix representation
     # of an adjacency matrix
@@ -420,7 +357,8 @@ def vertex_cover_njit(
 
 def combine_matchings(
     matchings: Dict[Tuple[int, int], csr_matrix],
-    knn_graphs: List[csr_matrix],
+    knn_graphs: Optional[List[csr_matrix]] = None,
+    symmetrize: bool = True,
 ) -> csr_matrix:
     """
     Concatenates any number of matchings Mij and knn-graph
@@ -431,40 +369,41 @@ def combine_matchings(
     matching: MatchingABC
         A fitted MatchingABC object with no reference.
 
-    knn_graph: List[csr_matrix]
+    knn_graph: Optional[List[csr_matrix]]
         List of knn-graphs, where knn-graph[i] is the knn-graph
-        associated to matching.datasets[i].
+        associated to matching.datasets[i]. Ignored if left empty.
     """
-    # Yuk
+    # Retrieves information in case knn_graph is missing
+    assert matchings.get((0, 1), None) is not None, "No matching provided."
     ndatasets = max(max(matchings.keys(), key=lambda k: max(k))) + 1
-    sizes = [X.shape[0] for X in knn_graphs]
+    sizes = [matchings[0, 1].shape[0]]
+    sizes += [matchings[0, i].shape[1] for i in range(1, ndatasets)]
     # Loading these containers
     rows, cols, data = [], [], []
     offset_i: int = 0
     for i in range(ndatasets):
         # Initial relations
-        knn_graph = knn_graphs[i].tocoo()
-        rows += list(knn_graph.row + offset_i)
-        cols += list(knn_graph.col + offset_i)
-        data += list(knn_graph.data)
+        if knn_graphs is not None:
+            knn_graph = knn_graphs[i].tocoo()
+            rows += list(knn_graph.row + offset_i)
+            cols += list(knn_graph.col + offset_i)
+            data += list(knn_graph.data)
         offset_j = offset_i + sizes[i]
         for j in range(i + 1, ndatasets):
             T = matchings[i, j].tocoo()
             rows_k, cols_k, data_k = T.row, T.col, T.data
             rows_k += offset_i
             cols_k += offset_j
-            rows += list(rows_k)  # Keep the symmetry
-            rows += list(cols_k)
-            data += list(data_k)
-            cols += list(cols_k)
-            cols += list(rows_k)
-            data += list(data_k)
+            rows += list(rows_k) + list(cols_k)  # Keep the symmetry
+            cols += list(cols_k) + list(rows_k)
+            data += list(data_k) + list(data_k)
             offset_j += sizes[j]
         offset_i += sizes[i]
     N = sum(sizes)
     T = csr_matrix((data, (rows, cols)), shape=(N, N))
     T.data = np.clip(T.data, 0.0, 1.0)
-    T = T + T.T - T.multiply(T.T)  # symmetrize
+    if symmetrize:
+        T = T + T.T - T.multiply(T.T)  # symmetrize
     return T
 
 
@@ -615,3 +554,67 @@ def get_nearest_vertex_from_set(
                 if not inserted:
                     to_visit.append((nb, dnb))
     return result
+
+
+def cluster_anndatas(
+    datasets: List[AnnData],
+    use_rep: Optional[str] = None,
+    cluster_key: str = "cluster",
+    n_neighbors: int = 10,
+    resolution: float = 1.0,
+) -> None:
+    """
+    Runs Leiden algorithm on a set of concatenated anndatas objects embedded in a
+    common space. Writes clustering results in the AnnData objects.
+
+    Parameters
+    ----------
+    datasets: List[AnnData]
+        AnnData objects to concatenante and cluster.
+
+    use_rep: Optional[str], default = None
+        Embedding to use, if None will use .obsm["transmorph"] in priority or raise
+        an error if it is not found.
+
+    cluster_key: str, default = "cluster"
+        Key to save clusters in .obs
+
+    n_neighbors: int, default = 10
+        Number of neighbors to build the kNN graph.
+
+    resolution: float, default = 1.0
+        Leiden algorithm parameter.
+    """
+    if use_rep is None:
+        use_rep = "transmorph"
+    assert all(
+        adm.isset_value(adata, key=use_rep, field="obsm") for adata in datasets
+    ), f"{use_rep} missing in .obsm of some AnnDatas."
+    X = np.concatenate(
+        [adm.get_value(adata, key=use_rep, field_str="obsm") for adata in datasets],
+        axis=0,
+    )
+    adj_matrix = nearest_neighbors(X, mode="edges", n_neighbors=n_neighbors)
+    sources, targets = adj_matrix.nonzero()
+    edgelist = zip(sources.tolist(), targets.tolist())
+    partition = np.array(
+        la.find_partition(
+            ig.Graph(edgelist),
+            la.RBConfigurationVertexPartition,
+            resolution_parameter=resolution,
+        ).membership
+    )
+    cluster_obs = extract_chunks(partition, [adata.n_obs for adata in datasets])
+    for adata, obs in zip(datasets, cluster_obs):
+        adm.set_value(adata, key=cluster_key, field="obs", value=obs, persist="output")
+
+
+def node_geodesic_distances(adj: csr_matrix, directed: bool = True) -> np.ndarray:
+    """
+    Computes all distances between vertices of a graph
+    represented as matrix $adj, where edges are weighted
+    with length between vertices.
+
+    TODO: additional parameters?
+    """
+    return dijkstra(adj, directed=directed)

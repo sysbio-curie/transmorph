@@ -43,12 +43,10 @@ class TransmorphSettings:
         self._n_neighbors_max_init: int = 50
         self._n_neighbors_max: int = self._n_neighbors_max_init
         self._neighbors_algorithm: Literal["auto", "sklearn", "nndescent"] = "auto"
-        self.neighbors_include_self_loops: bool = False
         self.neighbors_metric: str = "sqeuclidean"
         self._neighbors_metric_kwargs: Dict[str, Any] = {}
         self._neighbors_n_pcs: int = 15
         self.neighbors_random_seed: int = 42
-        self.neighbors_symmetrize: bool = False
 
         # UMAP
         self.umap_metric: str = "euclidean"
@@ -179,14 +177,11 @@ class TransmorphSettings:
         self._neighbors_metric_kwargs = kwargs
 
     @property
-    def neighbors_n_pcs(self) -> Optional[int]:
+    def neighbors_n_pcs(self) -> int:
         return self._neighbors_n_pcs
 
     @neighbors_n_pcs.setter
-    def neighbors_n_pcs(self, n: Optional[int]) -> None:
-        if n is None:
-            self._neighbors_n_pcs = n
-            return
+    def neighbors_n_pcs(self, n: int) -> None:
         n = int(n)
         assert n > 0, f"Invalid number of pcs {n}."
         self._neighbors_n_pcs = n

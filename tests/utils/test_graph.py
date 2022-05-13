@@ -9,12 +9,186 @@ from transmorph.datasets import load_test_datasets_small
 from transmorph.utils.graph import (
     cluster_anndatas,
     combine_matchings,
+    distance_to_knn,
+    generate_qtree,
     get_nearest_vertex_from_set,
+    nearest_neighbors,
+    node_geodesic_distances,
+    qtree_mutual_nearest_neighbors,
+    raw_mutual_nearest_neighbors,
+    vertex_cover,
 )
 from transmorph.utils.anndata_manager import anndata_manager as adm
 
+NTRIES, NDIMS = 50, 10
 
-def test_combine_matchings():
+
+def test_nearest_neighbors():
+    # Tests nearest neighbors output
+    n_neighbors = 10
+    ntries = max(5, int(NTRIES / 10))
+    for _ in range(ntries):
+        nx = np.random.randint(low=100, high=500)
+        X = np.random.random((nx, NDIMS))
+
+        nnX_A = nearest_neighbors(
+            X,
+            mode="distances",
+            algorithm="sklearn",
+            n_neighbors=n_neighbors,
+            metric="minkowski",
+            metric_kwargs={"p": 2},
+            use_pcs=5,
+            random_seed=42,
+        )
+        assert nnX_A.shape[0] == nx
+        assert np.all((nnX_A > 0).sum(axis=1) == n_neighbors)
+
+        nnX_B = nearest_neighbors(
+            X,
+            mode="distances",
+            algorithm="sklearn",
+            n_neighbors=n_neighbors,
+            metric="minkowski",
+            metric_kwargs={"p": 2},
+            use_pcs=5,
+            random_seed=42,
+        )
+        assert nnX_B.shape[0] == nx
+        assert np.all((nnX_B > 0).sum(axis=1) == n_neighbors)
+        np.testing.assert_almost_equal(nnX_A.toarray(), nnX_B.toarray())
+
+        nnX = nearest_neighbors(
+            X,
+            mode="edges",
+            algorithm="sklearn",
+            n_neighbors=n_neighbors,
+            metric="minkowski",
+            metric_kwargs={"p": 2},
+            use_pcs=5,
+        )
+        assert nnX.shape[0] == nx
+        assert np.all((nnX > 0).sum(axis=1) == n_neighbors)
+        assert np.all(nnX.data == 1.0)
+
+        nnX_A = nearest_neighbors(
+            X,
+            mode="distances",
+            algorithm="nndescent",
+            n_neighbors=n_neighbors,
+            metric="minkowski",
+            metric_kwargs={"p": 2},
+            use_pcs=5,
+            random_seed=42,
+        )
+        assert nnX_A.shape[0] == nx
+        assert np.all((nnX_A > 0).sum(axis=1) == n_neighbors)
+
+        nnX_B = nearest_neighbors(
+            X,
+            mode="distances",
+            algorithm="nndescent",
+            n_neighbors=n_neighbors,
+            metric="minkowski",
+            metric_kwargs={"p": 2},
+            use_pcs=5,
+            random_seed=42,
+        )
+        assert nnX_B.shape[0] == nx
+        assert np.all((nnX_B > 0).sum(axis=1) == n_neighbors)
+        np.testing.assert_almost_equal(nnX_A.toarray(), nnX_B.toarray())
+
+        nnX = nearest_neighbors(
+            X,
+            mode="edges",
+            algorithm="nndescent",
+            n_neighbors=n_neighbors,
+            metric="minkowski",
+            metric_kwargs={"p": 2},
+            use_pcs=5,
+        )
+        assert nnX_B.shape[0] == nx
+        assert np.all((nnX > 0).sum(axis=1) == n_neighbors)
+        assert np.all(nnX.data == 1.0)
+
+
+def test_distance_to_knn():
+    # Tests distance to knn on random distance inputs
+    for _ in range(NTRIES):
+        nx = np.random.randint(low=100, high=500)
+        ny = np.random.randint(low=100, high=500)
+        D = np.random.random((nx, ny))
+        k = np.random.randint(low=2, high=min(nx, ny))
+
+        # axis 0 (v)
+        np.testing.assert_array_equal(
+            distance_to_knn(D, k, 0),
+            np.sort(D, axis=0)[k - 1, :],
+        )
+        np.testing.assert_array_equal(
+            distance_to_knn(D, 0, 0),
+            np.zeros(ny, dtype=np.float32),
+        )
+
+        # axis 1 (>)
+        np.testing.assert_array_equal(
+            distance_to_knn(D, k, 1),
+            np.sort(D, axis=1)[:, k - 1],
+        )
+        np.testing.assert_array_equal(
+            distance_to_knn(D, 0, 1),
+            np.zeros(nx, dtype=np.float32),
+        )
+
+
+def test_generate_qtree():
+    # Generates qtrees from various random datasets
+    for _ in range(NTRIES):
+        nx = np.random.randint(low=100, high=500)
+        X = np.random.random((nx, NDIMS))
+        generate_qtree(X, "sqeuclidean", {})
+
+
+def test_mutual_nearest_neighbors():
+    # Tests MNN between various random datasets
+    ntries = max(5, int(NTRIES / 10))
+    for _ in range(ntries):
+        nx = np.random.randint(low=100, high=500)
+        X = np.random.random((nx, NDIMS))
+        ny = np.random.randint(low=100, high=500)
+        Y = np.random.random((ny, NDIMS))
+        qtreex = generate_qtree(X, "sqeuclidean", {})
+        qtreey = generate_qtree(Y, "sqeuclidean", {})
+        mnn_approx = qtree_mutual_nearest_neighbors(X, Y, qtreex, qtreey, 10)
+        mnn_exact = raw_mutual_nearest_neighbors(
+            X,
+            Y,
+            metric="sqeuclidean",
+            n_neighbors=10,
+        )
+        assert mnn_approx.shape == mnn_exact.shape == (nx, ny)
+        nnbs = min(mnn_approx.count_nonzero(), mnn_exact.count_nonzero())
+        mnn_diffs = mnn_approx - mnn_exact
+        mnn_diffs.data = np.abs(mnn_diffs.data)
+        assert mnn_diffs.sum() / nnbs < 0.1
+
+
+def test_vertex_cover():
+    # Test vertex cover on random datasets
+    for _ in range(NTRIES):
+        nx = np.random.randint(low=100, high=500)
+        X = np.random.random((nx, NDIMS))
+        adj = nearest_neighbors(X, mode="edges", n_neighbors=10)
+        D = node_geodesic_distances(adj, False)
+        for n_hops in (1, 2, 3):
+            anchors, references = vertex_cover(adj, hops=n_hops)
+            assert anchors.sum() < nx
+            for i in range(nx):
+                assert D[i, references[i]] <= n_hops
+                assert bool(anchors[references[i]]) is True
+
+
+def test_combine_matchings_smallcase():
     matchings = {
         (0, 1): np.array(
             [
@@ -95,7 +269,7 @@ def test_cluster_anndatas():
     cluster_anndatas(datasets, use_rep="repr", n_neighbors=3)
 
 
-def test_get_nearest_vertex_from_set():
+def test_get_nearest_vertex_from_set_smallcase():
     G = np.array(
         [
             [1, -1, -1],
@@ -130,4 +304,4 @@ def test_get_nearest_vertex_from_set():
 
 
 if __name__ == "__main__":
-    test_get_nearest_vertex_from_set()
+    test_combine_matchings_smallcase()

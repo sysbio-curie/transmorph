@@ -69,8 +69,6 @@ class UsesNeighbors:
             X = adm.get_value(adata, representation_key)
             matrix = nearest_neighbors(
                 X=X,
-                include_self_loops=False,
-                symmetrize=False,
                 mode="distances",
                 algorithm=algorithm,
             )

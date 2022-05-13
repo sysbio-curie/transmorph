@@ -69,8 +69,6 @@ class Pooling(Transformation, UsesNeighbors):
             nn_matrix = nearest_neighbors(
                 X_all,
                 n_neighbors=self.n_neighbors,
-                include_self_loops=False,
-                symmetrize=False,
                 mode="edges",
             )
             indices, _ = sort_sparse_matrix(nn_matrix)

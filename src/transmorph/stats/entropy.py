@@ -56,9 +56,7 @@ def label_entropy(X: np.ndarray, labels: np.ndarray, n_neighbors: int) -> float:
     N = X.shape[0]
 
     # We build a kNN matrix where values are initial labels.
-    T_all = nearest_neighbors(
-        X, n_neighbors=n_neighbors, symmetrize=False, mode="edges"
-    )
+    T_all = nearest_neighbors(X, n_neighbors=n_neighbors, mode="edges")
     T_all = T_all @ diags(labels)
 
     _, origins = sort_sparse_matrix(T_all)

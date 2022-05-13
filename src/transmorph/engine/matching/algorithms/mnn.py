@@ -2,14 +2,17 @@
 
 import numpy as np
 
-from pynndescent import NNDescent
 from scipy.sparse import csr_matrix
 from typing import Dict, List, Literal, Optional
 
 from ..matching import Matching, _TypeMatchingSet
 from ...traits.isprofilable import profile_method
 from ...traits.usescommonfeatures import UsesCommonFeatures
-from ....utils.graph import raw_mutual_nearest_neighbors, qtree_mutual_nearest_neighbors
+from ....utils.graph import (
+    generate_qtree,
+    raw_mutual_nearest_neighbors,
+    qtree_mutual_nearest_neighbors,
+)
 
 
 class MNN(Matching, UsesCommonFeatures):
@@ -103,8 +106,7 @@ class MNN(Matching, UsesCommonFeatures):
         qtrees = []
         if self.solver == "nndescent":
             qtrees = [
-                NNDescent(X, metric=self.metric, metric_kwds=self.metric_kwargs)
-                for X in datasets
+                generate_qtree(X, self.metric, self.metric_kwargs) for X in datasets
             ]
         ndatasets = len(datasets)
         results: _TypeMatchingSet = {}
