@@ -5,7 +5,7 @@ from transmorph.engine.checking import NeighborConservation
 from transmorph.engine.matching import Labels
 from transmorph.engine.merging import LinearCorrection
 from transmorph.engine.traits import UsesNeighbors, UsesReference
-from transmorph.utils import AnnDataKeyIdentifiers
+from transmorph.utils.anndata_manager import AnnDataKeyIdentifiers
 
 
 def test_checking_neighborconservation():

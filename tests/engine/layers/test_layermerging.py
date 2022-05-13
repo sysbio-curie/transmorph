@@ -24,7 +24,10 @@ from transmorph.engine.traits import (
     IsRepresentable,
 )
 from transmorph.engine.transforming import Standardize, PCA
-from transmorph.utils import anndata_manager as adm, AnnDataKeyIdentifiers
+from transmorph.utils.anndata_manager import (
+    anndata_manager as adm,
+    AnnDataKeyIdentifiers,
+)
 
 ALL_MERGINGS = [
     # constructor, parameters

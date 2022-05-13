@@ -2,7 +2,7 @@
 
 from anndata import AnnData
 from typing import List, Optional, TypeVar
-from ...utils import anndata_manager as adm, AnnDataKeyIdentifiers
+from ...utils.anndata_manager import anndata_manager as adm, AnnDataKeyIdentifiers
 
 T = TypeVar("T")
 

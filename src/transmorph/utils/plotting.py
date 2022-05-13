@@ -56,8 +56,7 @@ def reduce_dimension(
         ), "No common gene space found for datasets. Try providing a custom obsm."
     else:
         representations = [
-            adm.get_value(adata, key=input_obsm, transmorph_key=False, field="obsm")
-            for adata in datasets
+            adm.get_value(adata, key=input_obsm, field_str="obsm") for adata in datasets
         ]
 
     for i, X in enumerate(representations):

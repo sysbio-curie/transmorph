@@ -5,7 +5,7 @@ from typing import List
 
 from . import Layer
 from ..traits import IsRepresentable
-from ...utils import anndata_manager as adm, AnnDataKeyIdentifiers
+from ...utils.anndata_manager import anndata_manager as adm, AnnDataKeyIdentifiers
 
 
 class LayerInput(Layer, IsRepresentable):

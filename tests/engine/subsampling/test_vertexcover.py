@@ -7,7 +7,7 @@ from scipy.sparse import csr_matrix
 from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.traits import IsSubsamplable, UsesNeighbors
 from transmorph.engine.subsampling import VertexCover
-from transmorph.utils import AnnDataKeyIdentifiers
+from transmorph.utils.anndata_manager import AnnDataKeyIdentifiers
 
 EXPECTED_RESULT = [
     (

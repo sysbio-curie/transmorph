@@ -12,7 +12,7 @@ from transmorph.engine.checking import NeighborEntropy
 from transmorph.engine.matching import Labels
 from transmorph.engine.merging import LinearCorrection
 from transmorph.engine.traits import IsRepresentable, UsesNeighbors, UsesReference
-from transmorph.utils import anndata_manager as adm
+from transmorph.utils.anndata_manager import anndata_manager as adm
 
 N_STEPS_MAX = 100
 N_CHECKS_MAX = 3

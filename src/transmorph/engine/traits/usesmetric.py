@@ -3,7 +3,7 @@
 from anndata import AnnData
 from typing import Dict, List, Optional, Tuple
 
-from ...utils import anndata_manager as adm, AnnDataKeyIdentifiers
+from ...utils.anndata_manager import anndata_manager as adm, AnnDataKeyIdentifiers
 
 _TypeMetric = Tuple[str, Dict]
 

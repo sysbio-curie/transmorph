@@ -5,7 +5,7 @@ from typing import List
 
 from . import Layer
 from ..traits import CanCatchChecking, IsRepresentable
-from ...utils import AnnDataKeyIdentifiers
+from ...utils.anndata_manager import AnnDataKeyIdentifiers
 
 
 class LayerOutput(Layer, CanCatchChecking, IsRepresentable):

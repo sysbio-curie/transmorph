@@ -6,7 +6,7 @@ from typing import List, Optional, TypeVar
 from .layers import Layer, LayerChecking, LayerInput, LayerOutput
 from .traits import CanLog, CanCatchChecking, IsProfilable, UsesNeighbors, UsesReference
 from .. import profiler
-from ..utils import anndata_manager as adm, AnnDataKeyIdentifiers
+from ..utils.anndata_manager import anndata_manager as adm, AnnDataKeyIdentifiers
 
 T = TypeVar("T")
 

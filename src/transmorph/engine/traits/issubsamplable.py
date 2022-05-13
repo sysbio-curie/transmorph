@@ -8,7 +8,7 @@ from typing import Callable, List, Optional, Union
 
 from ..subsampling import Subsampling, KeepAll
 from ..traits.utils import preprocess_traits
-from ...utils import anndata_manager as adm, AnnDataKeyIdentifiers
+from ...utils.anndata_manager import anndata_manager as adm, AnnDataKeyIdentifiers
 
 
 class IsSubsamplable:

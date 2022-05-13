@@ -11,7 +11,7 @@ from transmorph.engine.transforming import (
     Standardize,
     Transformation,
 )
-from transmorph.utils import anndata_manager as adm
+from transmorph.utils.anndata_manager import anndata_manager as adm
 
 ALL_TRANSFORMATIONS = [
     (CommonFeatures, {}),

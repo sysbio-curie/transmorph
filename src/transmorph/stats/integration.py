@@ -7,7 +7,7 @@ from ot.lp import emd
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist
 
-from ..utils import sparse_cdist
+from ..utils.geometry import sparse_cdist
 
 # TODO: update to better compare between datasets
 

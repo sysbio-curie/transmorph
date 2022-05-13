@@ -131,7 +131,10 @@ AnnDataKey = namedtuple("AnnDataKey", ["identifier", "field", "persist"])
 
 
 class AnnDataManager:
-    """ """
+    """
+    This class allows to safely handle AnnData objects, either through
+    its static methods or using the global anndata manager object.
+    """
 
     def __init__(self):
         adataid_str = AnnDataKeyIdentifiers.AnnDataId.value

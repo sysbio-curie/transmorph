@@ -3,7 +3,7 @@
 import numba
 import numpy as np
 
-from ..utils import sort_sparse_matrix
+from ..utils.matrix import sort_sparse_matrix
 from ..utils.graph import nearest_neighbors
 
 
