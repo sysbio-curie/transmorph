@@ -9,9 +9,14 @@ from matplotlib import cm
 from numbers import Number
 from os.path import exists
 from scipy.sparse import csr_matrix
-from typing import Callable, Dict, List, Literal, Optional, Union
+from typing import Dict, List, Literal, Optional, Union
 
-from ..engine.evaluators import evaluate_matching_layer
+from ..engine import Model
+from ..engine.evaluators import (
+    evaluate_matching_layer,
+    matching_edge_accuracy_discrete,
+    matching_edge_penalty_continuous,
+)
 from ..engine.layers import LayerMatching
 from ..utils.anndata_manager import (
     anndata_manager as adm,
@@ -19,7 +24,7 @@ from ..utils.anndata_manager import (
     slice_common_features,
 )
 from ..utils.dimred import pca, umap
-from ..utils.matrix import extract_chunks
+from ..utils.matrix import extract_chunks, guess_is_discrete
 
 MARKERS = "osv^<>pP*hHXDd"
 
@@ -294,8 +299,6 @@ def scatter_plot(
                 color=color,
             )
             continue
-        if ndatasets > 1:
-            plt.scatter([], [], marker=mk, s=40, c="k", label=f"Dataset {i}")
         if continuous:
             plt.scatter(
                 *X.T,
@@ -400,9 +403,9 @@ def scatter_plot(
 
 
 def plot_matching_eval(
-    layer_matching: LayerMatching,
+    model: Model,
     datasets: List[AnnData],
-    evaluator: Callable,
+    obs: str,
     dataset_keys: Optional[List[str]] = None,
     title: Optional[str] = None,
     matshow_kwargs: Dict = {},
@@ -427,6 +430,14 @@ def plot_matching_eval(
     matshow_kwargs: Dict[str, Any], default = {}
         Additional matshow parameters.
     """
+    layer_matchings = model.get_layers_by_type(LayerMatching)
+    assert len(layer_matchings) > 0, "No layer of type LayerMatching found."
+    layer_matching = layer_matchings[0]
+    is_discrete = all(guess_is_discrete(adata.obs[obs]) for adata in datasets)
+    if is_discrete:
+        evaluator = matching_edge_accuracy_discrete(obs)
+    else:
+        evaluator = matching_edge_penalty_continuous(obs)
     scores = evaluate_matching_layer(layer_matching, datasets, evaluator)
     ndatasets = scores.shape[0]
     if dataset_keys is not None:

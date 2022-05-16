@@ -112,7 +112,9 @@ class GraphEmbedding(Merging, UsesNeighbors):
         # Matching matrix is already row-normalized
         matchings: _TypeMatchingSet = {}
         for i in range(ndatasets):
-            for j in range(i + 1, ndatasets):
+            for j in range(ndatasets):
+                if i == j:
+                    continue
                 G = generate_membership_matrix(
                     self.get_matching(i, j),
                     datasets[i],

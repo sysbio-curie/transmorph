@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # Contains high level functions to load datasets.
 
+# TODO: process databanks before instead of on call
+
 import anndata as ad
+import gc
 import logging
 import numpy as np
 import os
@@ -221,9 +224,18 @@ def load_pal_10x(
     datasets = load_bank("pal_10x", keep_sparse=keep_sparse)
 
     # Formatting adata properly, removing scanpy leftovers
-    for adata in datasets.values():
+    for key in datasets:
+        adata = datasets[key]
         adata.obs["class_type"] = adata.obs["Annotation"]
         adata.obs["class_iscancer"] = adata.obs["Is_Cancer"]
+        adata = adata[adata.obs["class_type"] != "Unknown", :].copy()
+        adata.obs["class_type"] = adata.obs["class_type"].replace(
+            "Normal epithelium", "Epithelial"
+        )
+        adata.obs["class_type"] = adata.obs["class_type"].replace(
+            "Lymphiod", "Lymphoid"
+        )
+        datasets[key] = adata
         if keep_scanpy_leftovers:
             continue
         del adata.obs["Sample"]
@@ -454,6 +466,9 @@ def load_bank(
     for key in datasets:
         adata = datasets[key]
         datasets[key] = adata[np.random.random(adata.n_obs) < frequency, :].copy()
+
+    gc.collect()
+
     return datasets
 
 

@@ -74,7 +74,7 @@ class TransmorphSettings:
         self.large_dataset_threshold: int = 4096
         self.low_dimensional_threshold: int = 5
         self.high_dimensional_threshold: int = 60
-        self.large_number_edges: int = 2_000_000
+        self.large_number_edges: int = 10_000_000
         self.low_features_ratio_threshold: float = 0.005
         self.is_discrete_unique_thr: int = 50
         self.vertexcover_n_neighbors: int = 5

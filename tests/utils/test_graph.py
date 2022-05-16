@@ -210,6 +210,10 @@ def test_combine_matchings_smallcase():
             ]
         ),
     }
+    matchings[1, 0] = matchings[0, 1].T
+    matchings[2, 0] = matchings[0, 2].T
+    matchings[2, 1] = matchings[1, 2].T
+
     inner_graphs = [
         np.array(
             [

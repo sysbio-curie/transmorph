@@ -11,7 +11,7 @@ from transmorph.engine.layers import (
     LayerMerging,
     LayerOutput,
 )
-from transmorph.engine.matching import MNN
+from transmorph.engine.matching import BKNN, MNN
 from transmorph.engine.merging import GraphEmbedding
 from transmorph.engine.subsampling import VertexCover
 from transmorph.engine.transforming import CommonFeatures, PCA
@@ -72,16 +72,17 @@ class EmbedMNN(Model):
 
     def __init__(
         self,
-        mnn_n_neighbors: int = 30,
-        mnn_metric: str = "sqeuclidean",
-        mnn_kwargs: Optional[Dict] = None,
+        matching: Literal["mnn", "bknn"] = "bknn",
+        matching_n_neighbors: Optional[int] = None,
+        matching_metric: str = "sqeuclidean",
+        matching_metric_kwargs: Optional[Dict] = None,
+        matching_strength: float = 1.0,
+        include_inner_graphs: Optional[bool] = None,
+        symmetrize_edges: bool = True,
         inner_n_neighbors: int = 10,
+        n_components: int = 30,
         embedding_optimizer: Literal["umap", "mde"] = "umap",
         embedding_dimension: int = 2,
-        matching_strength: float = 1.0,
-        n_components: int = 30,
-        include_inner_graphs: bool = True,
-        symmetrize_edges: bool = True,
         use_subsampling: bool = False,
         verbose: bool = True,
     ):
@@ -99,17 +100,40 @@ class EmbedMNN(Model):
             CommonFeatures(),
             PCA(n_components=n_components, strategy="concatenate"),
         ]
+
         subsampling = None
         if use_subsampling:
             self.subsampling = VertexCover()
-            mnn_n_neighbors = max(5, int(mnn_n_neighbors / 3))
-        matching = MNN(
-            metric=mnn_metric,
-            metric_kwargs=mnn_kwargs,
-            n_neighbors=mnn_n_neighbors,
-            common_features_mode="total",
-            solver="auto",
-        )
+
+        if matching == "mnn":
+            if matching_n_neighbors is None:
+                matching_n_neighbors = 30
+            if include_inner_graphs is None:
+                include_inner_graphs = True
+            matching_alg = MNN(
+                metric=matching_metric,
+                metric_kwargs=matching_metric_kwargs,
+                n_neighbors=matching_n_neighbors,
+                common_features_mode="total",
+                solver="auto",
+            )
+        elif matching == "bknn":
+            if matching_n_neighbors is None:
+                matching_n_neighbors = 10
+            if include_inner_graphs is None:
+                include_inner_graphs = False
+            matching_alg = BKNN(
+                metric=matching_metric,
+                metric_kwargs=matching_metric_kwargs,
+                n_neighbors=matching_n_neighbors,
+                common_features_mode="total",
+                solver="auto",
+            )
+        else:
+            raise ValueError(
+                f"Unrecognized matching: {matching}. Expected 'mnn' or 'bknn'."
+            )
+
         merging = GraphEmbedding(
             optimizer=embedding_optimizer,
             n_neighbors=inner_n_neighbors,
@@ -124,7 +148,7 @@ class EmbedMNN(Model):
         ltransform = LayerTransformation()
         for transformation in preprocessings:
             ltransform.add_transformation(transformation=transformation)
-        lmatching = LayerMatching(matching=matching, subsampling=subsampling)
+        lmatching = LayerMatching(matching=matching_alg, subsampling=subsampling)
         lmerging = LayerMerging(merging=merging)
         loutput = LayerOutput()
         linput.connect(ltransform)
