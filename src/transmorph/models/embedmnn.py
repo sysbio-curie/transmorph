@@ -14,7 +14,7 @@ from transmorph.engine.layers import (
 from transmorph.engine.matching import MNN
 from transmorph.engine.merging import GraphEmbedding
 from transmorph.engine.subsampling import VertexCover
-from transmorph.engine.transforming import CommonFeatures, Standardize, PCA
+from transmorph.engine.transforming import CommonFeatures, PCA
 
 
 class EmbedMNN(Model):
@@ -56,6 +56,16 @@ class EmbedMNN(Model):
         Number of principal components to use if data dimensionality is
         greater.
 
+    include_inner_graphs: bool, default = True
+        Adds edges of the kNN graph of each dataset in the final graph
+        to embed. If false, only matching edges are embedded.
+
+    symmetrize_edges: bool, default = True
+        Symmetrize the graph to embed meaning if i matches j then j
+        matches i. Recommended for stability, though less relevant
+        with a high number of edges of good quality.
+
+
     verbose: bool, default = True
         Logs runtime information in console.
     """
@@ -70,6 +80,8 @@ class EmbedMNN(Model):
         embedding_dimension: int = 2,
         matching_strength: float = 1.0,
         n_components: int = 30,
+        include_inner_graphs: bool = True,
+        symmetrize_edges: bool = True,
         use_subsampling: bool = False,
         verbose: bool = True,
     ):
@@ -85,7 +97,6 @@ class EmbedMNN(Model):
         # Loading algorithms
         preprocessings = [
             CommonFeatures(),
-            Standardize(center=True, scale=True),
             PCA(n_components=n_components, strategy="concatenate"),
         ]
         subsampling = None
@@ -104,6 +115,8 @@ class EmbedMNN(Model):
             n_neighbors=inner_n_neighbors,
             embedding_dimension=embedding_dimension,
             matching_strength=matching_strength,
+            include_inner_graphs=include_inner_graphs,
+            symmetrize_edges=symmetrize_edges,
         )
 
         # Building model

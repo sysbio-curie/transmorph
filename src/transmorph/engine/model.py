@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import gc
+
 from anndata import AnnData
 from typing import List, Optional, TypeVar
 
@@ -219,3 +221,6 @@ class Model(CanLog):
             + profiler.log_tasks()
         )
         self.log("### REPORT_END ###")
+
+        # We let python clean what it can
+        gc.collect()
