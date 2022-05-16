@@ -181,6 +181,38 @@ def generate_qtree(
     return qtree
 
 
+def qtree_k_nearest_neighbors(
+    X: np.ndarray,
+    qtY: NNDescent,
+    n_neighbors: int = 10,
+) -> csr_matrix:
+    """
+    Returns k nearest neighbors between X and Y using a k-d tree
+    algorithm, as a csr_matrix.
+
+    Parameters
+    ----------
+    X: np.ndarray
+        First dataset, will be in rows in the final matrix
+
+    Y: np.ndarray
+        Second dataset, in columns in the final matrix
+
+    qtX: NNDescent
+        Precomputed index for X samples
+
+    qtY: NNDescent
+        Precomputed index for Y samples
+
+    n_neighbors: int, default = 10
+        Number of neighbors to use to build the intersection.
+    """
+    return sparse_from_arrays(
+        qtY.query(X, k=n_neighbors)[0],
+        n_cols=qtY._raw_data.shape[0],
+    )
+
+
 def qtree_mutual_nearest_neighbors(
     X: np.ndarray,
     Y: np.ndarray,
@@ -209,14 +241,8 @@ def qtree_mutual_nearest_neighbors(
     n_neighbors: int, default = 10
         Number of neighbors to use to build the intersection.
     """
-    XYknn = sparse_from_arrays(
-        qtY.query(X, k=n_neighbors)[0],
-        n_cols=Y.shape[0],
-    )
-    YXknn = sparse_from_arrays(
-        qtX.query(Y, k=n_neighbors)[0],
-        n_cols=X.shape[0],
-    )
+    XYknn = qtree_k_nearest_neighbors(X, qtY, n_neighbors)
+    YXknn = qtree_k_nearest_neighbors(Y, qtX, n_neighbors)
     return XYknn.multiply(YXknn.T).astype(np.float32)
 
 
@@ -388,15 +414,18 @@ def combine_matchings(
             rows += list(knn_graph.row + offset_i)
             cols += list(knn_graph.col + offset_i)
             data += list(knn_graph.data)
-        offset_j = offset_i + sizes[i]
-        for j in range(i + 1, ndatasets):
+        offset_j: int = 0
+        for j in range(ndatasets):
+            if i == j:
+                offset_j += sizes[i]
+                continue
             T = matchings[i, j].tocoo()
             rows_k, cols_k, data_k = T.row, T.col, T.data
             rows_k += offset_i
             cols_k += offset_j
-            rows += list(rows_k) + list(cols_k)  # Keep the symmetry
-            cols += list(cols_k) + list(rows_k)
-            data += list(data_k) + list(data_k)
+            rows += list(rows_k)  # Keep the symmetry
+            cols += list(cols_k)
+            data += list(data_k)
             offset_j += sizes[j]
         offset_i += sizes[i]
     N = sum(sizes)
