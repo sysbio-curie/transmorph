@@ -112,7 +112,7 @@ def test_model_largedata_simple():
     ltransformation.add_transformation(Standardize(center=True, scale=True))
     ltransformation.add_transformation(PCA(n_components=30))
     lmatching = LayerMatching(MNN(n_neighbors=30))
-    lmerging = LayerMerging(GraphEmbedding(n_neighbors=10, matching_strength=0.8))
+    lmerging = LayerMerging(GraphEmbedding(n_neighbors=10))
     loutput = LayerOutput()
     linput.connect(ltransformation)
     ltransformation.connect(lmatching)

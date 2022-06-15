@@ -38,6 +38,16 @@ class EmbedMNN(Model):
     inner_n_neighbors: int, default = 10
         Number of neighbors to use in the kNN step.
 
+    obs_class: Optional[str], default = None
+        Provides the AnnData.obs key where sample type is stored. If
+        specified, matching edges between samples of different class
+        are pruned.
+
+    edge_strictness: float, default = 0.5
+        Fraction of edges to keep during the pruning process. Decreasing
+        this value will decrease the numbers of matching edges, but can
+        help getting rid of edges between samples of different classes.
+
     use_subsampling: bool, default = False
         Run MNN and LISI on a subsample of points to spare performance.
         Useful for large datasets.
@@ -65,7 +75,6 @@ class EmbedMNN(Model):
         matches i. Recommended for stability, though less relevant
         with a high number of edges of good quality.
 
-
     verbose: bool, default = True
         Logs runtime information in console.
     """
@@ -76,12 +85,11 @@ class EmbedMNN(Model):
         matching_n_neighbors: Optional[int] = None,
         matching_metric: str = "sqeuclidean",
         matching_metric_kwargs: Optional[Dict] = None,
-        matching_strength: float = 1.0,
-        include_inner_graphs: Optional[bool] = None,
-        symmetrize_edges: bool = True,
-        inner_n_neighbors: int = 10,
-        n_components: int = 30,
+        obs_class: Optional[str] = None,
+        edge_strictness: float = 0.5,
+        embedding_n_neighbors: int = 10,
         embedding_optimizer: Literal["umap", "mde"] = "umap",
+        pca_n_components: int = 30,
         embedding_dimension: int = 2,
         use_subsampling: bool = False,
         verbose: bool = True,
@@ -93,12 +101,10 @@ class EmbedMNN(Model):
         else:
             settings.verbose = "WARNING"
 
-        self.n_components = n_components
-
         # Loading algorithms
         preprocessings = [
             CommonFeatures(),
-            PCA(n_components=n_components, strategy="concatenate"),
+            PCA(n_components=pca_n_components, strategy="concatenate"),
         ]
 
         subsampling = None
@@ -108,8 +114,6 @@ class EmbedMNN(Model):
         if matching == "mnn":
             if matching_n_neighbors is None:
                 matching_n_neighbors = 30
-            if include_inner_graphs is None:
-                include_inner_graphs = True
             matching_alg = MNN(
                 metric=matching_metric,
                 metric_kwargs=matching_metric_kwargs,
@@ -120,8 +124,6 @@ class EmbedMNN(Model):
         elif matching == "bknn":
             if matching_n_neighbors is None:
                 matching_n_neighbors = 10
-            if include_inner_graphs is None:
-                include_inner_graphs = False
             matching_alg = BKNN(
                 metric=matching_metric,
                 metric_kwargs=matching_metric_kwargs,
@@ -136,11 +138,9 @@ class EmbedMNN(Model):
 
         merging = GraphEmbedding(
             optimizer=embedding_optimizer,
-            n_neighbors=inner_n_neighbors,
+            n_neighbors=embedding_n_neighbors,
             embedding_dimension=embedding_dimension,
-            matching_strength=matching_strength,
-            include_inner_graphs=include_inner_graphs,
-            symmetrize_edges=symmetrize_edges,
+            symmetrize_edges=True,
         )
 
         # Building model
@@ -148,7 +148,12 @@ class EmbedMNN(Model):
         ltransform = LayerTransformation()
         for transformation in preprocessings:
             ltransform.add_transformation(transformation=transformation)
-        lmatching = LayerMatching(matching=matching_alg, subsampling=subsampling)
+        lmatching = LayerMatching(
+            matching=matching_alg,
+            subsampling=subsampling,
+            obs_class=obs_class,
+            edge_strictness=edge_strictness,
+        )
         lmerging = LayerMerging(merging=merging)
         loutput = LayerOutput()
         linput.connect(ltransform)

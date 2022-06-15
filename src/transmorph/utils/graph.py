@@ -385,6 +385,7 @@ def combine_matchings(
     matchings: Dict[Tuple[int, int], csr_matrix],
     knn_graphs: Optional[List[csr_matrix]] = None,
     symmetrize: bool = True,
+    target_edges: int = 10,
 ) -> csr_matrix:
     """
     Concatenates any number of matchings Mij and knn-graph
@@ -406,6 +407,10 @@ def combine_matchings(
     sizes += [matchings[0, i].shape[1] for i in range(1, ndatasets)]
     # Loading these containers
     rows, cols, data = [], [], []
+    # This mask allows to modify matching edges,
+    # in order to increase their weight to select
+    # them in priority compared to knn edges.
+    rowsm, colsm, datam = [], [], []
     offset_i: int = 0
     for i in range(ndatasets):
         # Initial relations
@@ -423,13 +428,24 @@ def combine_matchings(
             rows_k, cols_k, data_k = T.row, T.col, T.data
             rows_k += offset_i
             cols_k += offset_j
-            rows += list(rows_k)  # Keep the symmetry
+            rows += list(rows_k)
             cols += list(cols_k)
             data += list(data_k)
+            rowsm += list(rows_k)
+            colsm += list(cols_k)
+            datam += [10000] * rows_k.shape[0]
             offset_j += sizes[j]
         offset_i += sizes[i]
+
+    # We select only top weighted edges, and in priority the ones
+    # from matching matrices by scaling them by a large factor
     N = sum(sizes)
     T = csr_matrix((data, (rows, cols)), shape=(N, N))
+    T_mask = csr_matrix((data, (rows, cols)), shape=(N, N))
+    ind, val = sort_sparse_matrix(T.multiply(T_mask), fill_empty=True, reverse=True)
+    T = sparse_from_arrays(ind[:, :target_edges], val[:, :target_edges])
+    T_mask.data = 1.0 / T_mask.data
+    T = T.multiply(T_mask)
     T.data = np.clip(T.data, 0.0, 1.0)
     if symmetrize:
         T = T + T.T - T.multiply(T.T)  # symmetrize
@@ -647,3 +663,143 @@ def node_geodesic_distances(adj: csr_matrix, directed: bool = True) -> np.ndarra
     TODO: additional parameters?
     """
     return dijkstra(adj, directed=directed)
+
+
+def prune_edges_supervised(
+    matchings: Dict[Tuple[int, int], csr_matrix],
+    labels: List[np.ndarray],
+) -> Dict[Tuple[int, int], csr_matrix]:
+    """
+    Selects only matching edges connected samples from the same class.
+    """
+    results = {}
+    for i, j in matchings:
+        T = matchings[i, j].tocoo()
+        for k in range(T.data.shape[0]):
+            row, col = T.row[k], T.col[k]
+            if labels[i][row] != labels[j][col]:
+                T.data[k] = 0.0
+        T.eliminate_zeros()
+        results[i, j] = T.tocsr()
+    return results
+
+
+def count_total_matching_edges(matchings: Dict[Tuple[int, int], csr_matrix]) -> int:
+    nedges = 0
+    for key in matchings:
+        nedges += matchings[key].count_nonzero()
+    return nedges
+
+
+@njit()
+def csr_get_row(
+    indices: np.ndarray, K_indices: int, indptr: np.ndarray, K_indptrs: int, i: int
+) -> np.ndarray:
+    sj = indptr[i]
+    if i == K_indptrs - 1:
+        Sj = K_indices
+    else:
+        Sj = indptr[i + 1]
+    return indices[sj:Sj]
+
+
+@njit
+def prune_non_transitive_njit(
+    matching_indices: np.ndarray,
+    matching_indices_K: np.ndarray,
+    matching_indptrs: np.ndarray,
+    matching_indptrs_K: np.ndarray,
+    batch_i: int,
+    batch_j: int,
+    Tij_row: np.ndarray,
+    Tij_col: np.ndarray,
+    n_batches: int,
+    min_patterns: int,
+) -> np.ndarray:
+    new_edges = np.zeros(Tij_row.shape)
+    for idx in range(Tij_row.shape[0]):
+        sample_i, sample_j = Tij_row[idx], Tij_col[idx]
+        for batch_k in range(n_batches):
+            if batch_k in (batch_i, batch_j):
+                continue
+            matches_j = csr_get_row(
+                matching_indices[batch_j, batch_k],
+                matching_indices_K[batch_j, batch_k],
+                matching_indptrs[batch_j, batch_k],
+                matching_indptrs_K[batch_j, batch_k],
+                sample_j,
+            )
+            for sample_k in matches_j:
+                matches_k = csr_get_row(
+                    matching_indices[batch_k, batch_i],
+                    matching_indices_K[batch_k, batch_i],
+                    matching_indptrs[batch_k, batch_i],
+                    matching_indptrs_K[batch_k, batch_i],
+                    sample_k,
+                )
+                if sample_i in matches_k:
+                    new_edges[idx] += 1
+                    break
+    return new_edges > min_patterns
+
+
+def prune_edges_unsupervised(
+    matchings: Dict[Tuple[int, int], csr_matrix],
+    n_batches: int,
+    min_patterns: int,
+) -> Dict[Tuple[int, int], csr_matrix]:
+    """
+    Blabla
+    """
+    max_indices = np.max([matchings[key].indices.shape[0] for key in matchings])
+    max_indptrs = np.max([matchings[key].indptr.shape[0] for key in matchings])
+
+    # matching_indices[i, j] = Tij.indices, filled with -1 on the right
+    # matching_indices_K[i, j] = # of non-(-1) values
+    matching_indices = (
+        np.zeros(shape=(n_batches, n_batches, max_indices), dtype=int) - 1
+    )
+    matching_indices_K = np.zeros(shape=(n_batches, n_batches), dtype=int)
+
+    # matching_indptrs[i, j] = Tij.indptrs, filled with -1 on the right
+    # matching_indptrs_K[i, j] = # of non-(-1) values
+    matching_indptrs = (
+        np.zeros(shape=(n_batches, n_batches, max_indptrs), dtype=int) - 1
+    )
+    matching_indptrs_K = np.zeros(shape=(n_batches, n_batches), dtype=int)
+
+    for i in range(n_batches):
+        for j in range(n_batches):
+            if i == j:
+                continue
+            else:
+                Tij = matchings[i, j]
+
+                Kptr = Tij.indptr.shape[0]
+                matching_indptrs_K[i, j] = Kptr
+                matching_indptrs[i, j][0:Kptr] = Tij.indptr
+
+                Kind = Tij.indices.shape[0]
+                matching_indices_K[i, j] = Kind
+                matching_indices[i, j][0:Kind] = Tij.indices
+
+    result_matchings = {}
+    for i, j in matchings:
+        Tij_coo = matchings[i, j].tocoo()
+        new_edges = prune_non_transitive_njit(
+            matching_indices=matching_indices,
+            matching_indices_K=matching_indices_K,
+            matching_indptrs=matching_indptrs,
+            matching_indptrs_K=matching_indptrs_K,
+            batch_i=i,
+            batch_j=j,
+            Tij_col=Tij_coo.col,
+            Tij_row=Tij_coo.row,
+            n_batches=n_batches,
+            min_patterns=min_patterns,
+        )
+        result_matchings[i, j] = Tij_coo.tocsr()
+        result_matchings[i, j].data = new_edges
+        result_matchings[i, j].eliminate_zeros()
+
+    return result_matchings

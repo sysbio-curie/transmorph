@@ -30,7 +30,7 @@ MARKERS = "osv^<>pP*hHXDd"
 
 
 def reduce_dimension(
-    datasets: Union[AnnData, List[AnnData]],
+    datasets: Union[AnnData, List[AnnData], Dict[str, AnnData]],
     reducer: Literal["umap", "pca"] = "umap",
     input_obsm: Optional[str] = None,
     output_obsm: Optional[str] = None,
@@ -53,6 +53,8 @@ def reduce_dimension(
     """
     if isinstance(datasets, AnnData):
         datasets = [datasets]
+    if isinstance(datasets, Dict):
+        datasets = list(datasets.values())
 
     if input_obsm is None:
         representations = slice_common_features(datasets)
@@ -108,7 +110,7 @@ def reduce_dimension(
 
 
 def scatter_plot(
-    datasets: Union[AnnData, List[AnnData]],
+    datasets: Union[AnnData, List[AnnData], Dict[str, AnnData]],
     matching_mtx: Optional[csr_matrix] = None,
     input_obsm: Optional[str] = None,
     color_by: str = "__dataset__",
@@ -116,6 +118,7 @@ def scatter_plot(
     title: Optional[str] = None,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
+    batch_names: Optional[List[int]] = None,
     show_title: bool = True,
     show_legend: bool = True,
     plot_cluster_names: bool = False,
@@ -205,6 +208,9 @@ def scatter_plot(
     """
     if isinstance(datasets, AnnData):
         datasets = [datasets]
+    if isinstance(datasets, Dict):
+        batch_names = list(datasets.keys())
+        datasets = list(datasets.values())
 
     # Checking parameters
     assert all(
@@ -244,7 +250,10 @@ def scatter_plot(
     if color_by == "__dataset__":
         n_labels = len(datasets)
         continuous = False
-        all_labels = {}
+        if batch_names is not None:
+            all_labels = batch_names
+        else:
+            all_labels = [f"Batch {i + 1}" for i in range(n_labels)]
     else:
         all_labels = set()
         for adata in datasets:
@@ -295,11 +304,12 @@ def scatter_plot(
                 [],
                 marker=mk,
                 s=40,
-                label=f"Dataset {i}",
+                label=all_labels[i],
                 color=color,
             )
             continue
         if continuous:
+            show_legend = False
             plt.scatter(
                 *X.T,
                 c=adata.obs[color_by],
@@ -310,7 +320,10 @@ def scatter_plot(
             )
         else:
             for k, label in enumerate(all_labels):
-                color = cmap(k / (n_labels - 1))
+                if n_labels == 1:
+                    color = cmap(0.5)
+                else:
+                    color = cmap(k / (n_labels - 1))
                 if i == 0:
                     plt.scatter(
                         [],
@@ -327,13 +340,21 @@ def scatter_plot(
                     s=size,
                     color=color,
                 )
+    if continuous:
+        plt.colorbar()
 
     # Plotting cluster names if necessary
     if plot_cluster_names:
-        for label in all_labels:
+        for ilabel, label in enumerate(all_labels):
             nobs, cl_pos = 0, np.zeros((2,), dtype=np.float32)
             for i, adata in enumerate(datasets):
-                selector = adata.obs[color_by] == label
+                if color_by == "__dataset__":
+                    if i == ilabel:
+                        selector = np.ones(adata.n_obs, dtype=bool)
+                    else:
+                        selector = np.zeros(adata.n_obs, dtype=bool)
+                else:
+                    selector = adata.obs[color_by] == label
                 nobs += selector.sum()
                 cl_pos += representations[i][selector].sum(axis=0)
             cl_pos /= nobs
@@ -404,7 +425,7 @@ def scatter_plot(
 
 def plot_matching_eval(
     model: Model,
-    datasets: List[AnnData],
+    datasets: Union[List[AnnData], Dict[str, AnnData]],
     obs: str,
     dataset_keys: Optional[List[str]] = None,
     title: Optional[str] = None,
@@ -430,6 +451,9 @@ def plot_matching_eval(
     matshow_kwargs: Dict[str, Any], default = {}
         Additional matshow parameters.
     """
+    if isinstance(datasets, Dict):
+        dataset_keys = list(datasets.keys())
+        datasets = list(datasets.values())
     layer_matchings = model.get_layers_by_type(LayerMatching)
     assert len(layer_matchings) > 0, "No layer of type LayerMatching found."
     layer_matching = layer_matchings[0]
@@ -481,12 +505,15 @@ def plot_matching_eval(
 
 
 def plot_label_distribution_heatmap(
-    datasets: List[AnnData],
+    datasets: Union[List[AnnData], Dict[str, AnnData]],
     label: str,
     dataset_keys: Optional[List[str]] = None,
     title: Optional[str] = None,
 ) -> None:
     """ """
+    if isinstance(datasets, Dict):
+        dataset_keys = list(datasets.keys())
+        datasets = list(datasets.values())
     all_labels = set()
     for adata in datasets:
         all_labels = all_labels | set(adata.obs[label])

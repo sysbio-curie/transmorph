@@ -3,8 +3,72 @@
 import numba
 import numpy as np
 
-from ..utils.matrix import sort_sparse_matrix
+from anndata import AnnData
+from typing import List, Dict, Optional, Union
+
+from ..utils.dimred import pca
+from ..utils.matrix import sort_sparse_matrix, extract_chunks
 from ..utils.graph import nearest_neighbors
+
+
+def lisi(
+    datasets: Union[List[AnnData], Dict[str, AnnData]],
+    obsm: Optional[str] = None,
+    obs: Optional[str] = None,
+    perplexity: int = 15,
+    n_pcs: int = 15,
+) -> List[np.ndarray]:
+    """
+    LISI statistic measures how heterogeneous a sample neighborhood
+    is for a certain label. Is is notably used in the Harmony
+    integration pipeline to measure how well integrated datasets
+    are.
+
+    Parameters
+    ----------
+    datasets: Union[List[AnnData], Dict[str, AnnData]]
+        Set of batches.
+
+    obsm: Optional[str]
+        Representation matrix to use, by default uses AnnData.X.
+
+    obs: Optional[str]
+        Categorical observation to use. If none is provided, batches
+        are used as categories.
+
+    n_pcs: int = 15
+        Number of principal components to use if matrix representation
+        is of greater dimension.
+
+    Returns
+    -------
+    For every dataset, its point-wise LISI score.
+    """
+    if isinstance(datasets, Dict):
+        datasets = list(datasets.values())
+
+    if obsm is None:
+        X = np.concatenate([adata.X for adata in datasets], axis=0)
+    else:
+        X = np.concatenate([adata.obsm[obsm] for adata in datasets], axis=0)
+
+    if X.shape[1] > n_pcs:
+        X = pca(X, n_components=n_pcs)
+
+    if obs is None:
+        labels = np.array(
+            sum([[i] * adata.n_obs for i, adata in enumerate(datasets)], [])
+        )
+    else:
+        labels_raw = np.concatenate([adata.obs[obs] for adata in datasets])
+        labels = np.zeros(labels_raw.shape, dtype=int)
+        for i, lb in enumerate(set(labels_raw)):
+            labels[labels_raw == lb] = i
+
+    return extract_chunks(
+        compute_lisi(X, labels, perplexity),
+        [adata.n_obs for adata in datasets],
+    )
 
 
 # Adapted from harmonypy:

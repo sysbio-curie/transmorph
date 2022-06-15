@@ -3,7 +3,7 @@
 import gc
 
 from anndata import AnnData
-from typing import List, Optional, TypeVar
+from typing import Dict, List, Optional, TypeVar, Union
 
 from .layers import Layer, LayerChecking, LayerInput, LayerOutput
 from .traits import CanLog, CanCatchChecking, IsProfilable, UsesNeighbors, UsesReference
@@ -97,7 +97,7 @@ class Model(CanLog):
 
     def fit(
         self,
-        datasets: List[AnnData],
+        datasets: Union[List[AnnData], Dict[str, AnnData]],
         reference: Optional[AnnData] = None,
         use_representation: Optional[str] = None,
     ):
@@ -134,6 +134,9 @@ class Model(CanLog):
         fit() will write the datasets at entry .obsm["transmorph"] with
         integrated embeddings.
         """
+        if isinstance(datasets, Dict):
+            datasets = list(datasets.values())
+
         # Sanity checks
         assert len(datasets) > 0, "No dataset provided."
         assert self.input_layer is not None, "Pipeline must be initialized first."
@@ -214,6 +217,7 @@ class Model(CanLog):
             npoints = sum(adata.n_obs for adata in datasets)
             ndims = loutput.get_representation(datasets[0]).shape[1]
             self.info(f"Terminated. Total embedding shape: {(npoints, ndims)}")
+            self.info("Results have been written in AnnData.obsm['transmorph'].")
         self.log(
             "### REPORT_START ###\n"
             + profiler.log_stats()

@@ -147,10 +147,18 @@ def load_chen_10x(
     datasets = load_bank("chen_10x", keep_sparse=keep_sparse)
 
     # Formatting adata properly, removing scanpy leftovers
-    for adata in datasets.values():
+    for key, adata in datasets.items():
         adata.obs["class"] = adata.obs["cell_type"]
         cl = adata.obs["class"]
         adata.obs["class"] = cl.cat.add_categories("n/a").fillna("n/a")
+        # Cleaning artifactual labels
+        adata = adata[adata.obs["class"] != "n/a", :]
+        adata = adata[adata.obs["class"] != "Mast", :]
+        adata = adata[adata.obs["class"] != "Myofibroblast", :]
+        adata = adata[adata.obs["class"] != "Lymphovascular", :]
+        adata = adata[adata.obs["class"] != "Fibroblast", :]
+        adata = adata[adata.obs["class"] != "Dendritic", :]
+        datasets[key] = adata
         if keep_scanpy_leftovers:
             continue
         del adata.obs["sample"]
@@ -453,6 +461,8 @@ def load_bank(
             adata.X = adata.X.toarray()
         pid = fname.split(".")[0]
         datasets[pid] = adata
+
+    logger.log(logging.INFO, f"databank_api > Bank {dataset_name} successfully loaded.")
 
     # Subsampling if necessary
     if n_samples is None:

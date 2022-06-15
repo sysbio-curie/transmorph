@@ -6,7 +6,7 @@ import pymde
 from pymde.preprocess import Graph
 from umap.umap_ import simplicial_set_embedding, find_ab_params
 from scipy.sparse import csr_matrix
-from typing import List, Literal, Optional
+from typing import List, Literal
 
 from ..merging import Merging
 from ...matching import _TypeMatchingSet
@@ -82,8 +82,6 @@ class GraphEmbedding(Merging, UsesNeighbors):
         optimizer: Literal["umap", "mde"] = "umap",
         n_neighbors: int = 10,
         embedding_dimension: int = 2,
-        matching_strength: Optional[float] = None,
-        include_inner_graphs: bool = True,
         symmetrize_edges: bool = True,
     ):
         Merging.__init__(
@@ -97,8 +95,6 @@ class GraphEmbedding(Merging, UsesNeighbors):
         self.optimizer = optimizer
         self.n_neighbors = n_neighbors
         self.embedding_dimension = embedding_dimension
-        self.matching_strength = matching_strength
-        self.include_inner_graphs = include_inner_graphs
         self.symmetrize_edges = symmetrize_edges
 
     def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
@@ -127,45 +123,31 @@ class GraphEmbedding(Merging, UsesNeighbors):
                 )
 
         # We retrieve and scale boolean kNN-graphs
-        inner_graphs = None
-        if self.include_inner_graphs:
-            inner_graphs = [
-                self.get_neighbors_graph(
-                    i,
-                    mode="edges",
-                    n_neighbors=self.n_neighbors,
-                )
-                for i in range(ndatasets)
-            ]
-            for i, G in enumerate(inner_graphs):
-                assert isinstance(G, csr_matrix)
-                G = generate_membership_matrix(
-                    G,
-                    datasets[i],
-                    datasets[i],
-                )
-                inner_graphs[i] = G
-                self.log(f"Internal graph {i}: {(G > 0).sum()} edges.")
-                self.log(
-                    f"min: {G.data.min()}, max: {G.data.max()}, mean: {G.data.mean()}"
-                )
-            edges_inner = sum(G.count_nonzero() for G in inner_graphs)
-            edges_match = sum(G.count_nonzero() for G in matchings.values())
-            matching_strength = edges_inner / edges_match
-
-            self.log(f"Guessed matching strength: {matching_strength}.")
-
-            if self.matching_strength is not None:
-                matching_strength *= self.matching_strength
-
-            for i in range(ndatasets):
-                inner_graphs[i] /= matching_strength
+        inner_graphs = [
+            self.get_neighbors_graph(
+                i,
+                mode="edges",
+                n_neighbors=self.n_neighbors,
+            )
+            for i in range(ndatasets)
+        ]
+        for i, G in enumerate(inner_graphs):
+            assert isinstance(G, csr_matrix)
+            G = generate_membership_matrix(
+                G,
+                datasets[i],
+                datasets[i],
+            )
+            inner_graphs[i] = G
+            self.log(f"Internal graph {i}: {(G > 0).sum()} edges.")
+            self.log(f"min: {G.data.min()}, max: {G.data.max()}, mean: {G.data.mean()}")
 
         # Combining all those in a big edges matrix
         edges = combine_matchings(
             matchings=matchings,
             knn_graphs=inner_graphs,
             symmetrize=self.symmetrize_edges,
+            target_edges=self.n_neighbors,
         )
 
         # Checking total number of edges

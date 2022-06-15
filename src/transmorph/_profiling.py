@@ -75,6 +75,8 @@ class Profiler:
         )
 
     def log_stats(self) -> str:
+        if len(self.tasks) == 0:
+            return ""
         ntask = len(self.tasks)
         ntask_end = sum(t.is_ended() for t in self.tasks)
         ntask_ongoing = ntask - ntask_end
