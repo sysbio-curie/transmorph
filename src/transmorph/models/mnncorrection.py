@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from anndata import AnnData
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 from transmorph.engine import Model
 from transmorph.engine.layers import (
@@ -11,10 +11,9 @@ from transmorph.engine.layers import (
     LayerMerging,
     LayerOutput,
 )
-from transmorph.engine.matching import MNN
+from transmorph.engine.matching import BKNN, MNN
 from transmorph.engine.merging import LinearCorrection
-from transmorph.engine.subsampling import VertexCover
-from transmorph.engine.transforming import CommonFeatures, PCA, Pooling
+from transmorph.engine.transforming import CommonFeatures, PCA
 
 
 class MNNCorrection(Model):
@@ -55,15 +54,14 @@ class MNNCorrection(Model):
 
     def __init__(
         self,
-        mnn_n_neighbors: int = 30,
-        mnn_metric: str = "sqeuclidean",
-        mnn_kwargs: Optional[Dict] = None,
+        matching: Literal["mnn", "bknn"] = "bknn",
+        matching_n_neighbors: int = 30,
+        matching_metric: str = "sqeuclidean",
+        matching_metric_kwargs: Optional[Dict] = None,
+        obs_class: Optional[str] = None,
         n_components: int = 30,
-        use_subsampling: bool = False,
         lc_n_neighbors: int = 10,
         use_feature_space: bool = True,
-        use_pooling: bool = True,
-        pooling_n_neighbors: int = 5,
         verbose: bool = True,
     ) -> None:
         from .. import settings
@@ -74,17 +72,30 @@ class MNNCorrection(Model):
             settings.verbose = "WARNING"
 
         # Loading algorithms
-        subsampling = None
-        if use_subsampling:
-            subsampling = VertexCover()
-            mnn_n_neighbors = max(5, int(mnn_n_neighbors / 3))
-        matching = MNN(
-            metric=mnn_metric,
-            metric_kwargs=mnn_kwargs,
-            n_neighbors=mnn_n_neighbors,
-            common_features_mode="total",
-            solver="auto",
-        )
+        if matching == "mnn":
+            if matching_n_neighbors is None:
+                matching_n_neighbors = 30
+            matching_alg = MNN(
+                metric=matching_metric,
+                metric_kwargs=matching_metric_kwargs,
+                n_neighbors=matching_n_neighbors,
+                common_features_mode="total",
+                solver="auto",
+            )
+        elif matching == "bknn":
+            if matching_n_neighbors is None:
+                matching_n_neighbors = 10
+            matching_alg = BKNN(
+                metric=matching_metric,
+                metric_kwargs=matching_metric_kwargs,
+                n_neighbors=matching_n_neighbors,
+                common_features_mode="total",
+                solver="auto",
+            )
+        else:
+            raise ValueError(
+                f"Unrecognized matching: {matching}. Expected 'mnn' or 'bknn'."
+            )
         merging = LinearCorrection(n_neighbors=lc_n_neighbors)
 
         # Initializing layers
@@ -96,18 +107,9 @@ class MNNCorrection(Model):
         ltransform_dimred = LayerTransformation()
         ltransform_dimred.add_transformation(PCA(n_components=n_components))
 
-        lmatching = LayerMatching(matching=matching, subsampling=subsampling)
+        lmatching = LayerMatching(matching=matching_alg, obs_class=obs_class)
 
         lmerging = LayerMerging(merging=merging)
-
-        if use_pooling:
-            ltransform_pooling = LayerTransformation()
-            ltransform_pooling.add_transformation(
-                Pooling(
-                    n_neighbors=pooling_n_neighbors,
-                    per_dataset=False,
-                )
-            )
 
         loutput = LayerOutput()
 
@@ -117,12 +119,7 @@ class MNNCorrection(Model):
         ltransform_dimred.connect(lmatching)
         lmatching.connect(lmerging)
 
-        # Select the right structure
-        if use_pooling:
-            lmerging.connect(ltransform_pooling)
-            ltransform_pooling.connect(loutput)
-        else:
-            lmerging.connect(loutput)
+        lmerging.connect(loutput)
 
         if use_feature_space:
             lmerging.embedding_reference = ltransform_features
