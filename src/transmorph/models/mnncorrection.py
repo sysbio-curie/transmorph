@@ -14,6 +14,7 @@ from transmorph.engine.layers import (
 from transmorph.engine.matching import BKNN, MNN
 from transmorph.engine.merging import LinearCorrection
 from transmorph.engine.transforming import CommonFeatures, PCA
+from transmorph.utils.anndata_manager import get_total_feature_slices
 
 
 class MNNCorrection(Model):
@@ -50,6 +51,8 @@ class MNNCorrection(Model):
 
     verbose: bool, default = True
         Logs runtime information in console.
+
+    TODO: list genes selected
     """
 
     def __init__(
@@ -121,6 +124,7 @@ class MNNCorrection(Model):
 
         lmerging.connect(loutput)
 
+        self.use_feature_space = use_feature_space
         if use_feature_space:
             lmerging.embedding_reference = ltransform_features
         else:
@@ -149,8 +153,14 @@ class MNNCorrection(Model):
         use_representation: Optional[str]
             .obsm to use as input.
         """
+        if isinstance(datasets, Dict):
+            datasets = list(datasets.values())
         self.fit(
             datasets,
             reference=reference,
             use_representation=use_representation,
         )
+        if self.use_feature_space:
+            self.embedding_features = datasets[0].var_names[
+                get_total_feature_slices(datasets)[0]
+            ]
