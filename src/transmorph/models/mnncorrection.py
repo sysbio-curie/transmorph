@@ -51,8 +51,6 @@ class MNNCorrection(Model):
 
     verbose: bool, default = True
         Logs runtime information in console.
-
-    TODO: list genes selected
     """
 
     def __init__(

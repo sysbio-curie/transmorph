@@ -8,10 +8,11 @@ from typing import Dict, List, Literal, Optional
 from ..matching import Matching, _TypeMatchingSet
 from ...traits.isprofilable import profile_method
 from ...traits.usescommonfeatures import UsesCommonFeatures
+from ...traits.usesreference import UsesReference
 from ....utils.graph import generate_qtree, nearest_neighbors, qtree_k_nearest_neighbors
 
 
-class BKNN(Matching, UsesCommonFeatures):
+class BKNN(Matching, UsesCommonFeatures, UsesReference):
     """
     Batch k-nearest neighbors matching. x from batch X is matched with
     y from batch Y if y belongs to the k nearest neighbors of x in Y.
@@ -55,15 +56,19 @@ class BKNN(Matching, UsesCommonFeatures):
     ):
         Matching.__init__(self, str_identifier="MNN")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
+        UsesReference.__init__(self)
         self.metric = metric
         self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.n_neighbors = n_neighbors
         self.solver = solver
 
     @profile_method
-    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
+    def fit(
+        self,
+        datasets: List[np.ndarray],
+    ) -> _TypeMatchingSet:
         """
-        Computes MNN between pairs of datasets.
+        Computes BKNN between pairs of datasets.
         """
         from .... import settings
 
@@ -95,8 +100,13 @@ class BKNN(Matching, UsesCommonFeatures):
             ]
         ndatasets = len(datasets)
         results: _TypeMatchingSet = {}
+        reference = self.reference_index
+        if reference is None:
+            target_indices = np.arange(ndatasets)
+        else:
+            target_indices = [reference]
         for i in range(ndatasets):
-            for j in range(ndatasets):
+            for j in target_indices:
                 if i == j:
                     continue
                 Xi, Xj = self.slice_features(

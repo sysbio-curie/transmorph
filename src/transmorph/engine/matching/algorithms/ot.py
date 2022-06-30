@@ -13,9 +13,10 @@ from typing import Dict, List, Literal, Optional, Union
 from ..matching import Matching, _TypeMatchingSet
 from ...traits.isprofilable import profile_method
 from ...traits.usescommonfeatures import UsesCommonFeatures
+from ...traits.usesreference import UsesReference
 
 
-class OT(Matching, UsesCommonFeatures):
+class OT(Matching, UsesCommonFeatures, UsesReference):
     """
     Optimal transport-based matching. Wraps a selection of optimal
     transport-derived methods from POT package:
@@ -132,6 +133,7 @@ class OT(Matching, UsesCommonFeatures):
     ):
         Matching.__init__(self, str_identifier="OT")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
+        UsesReference.__init__(self)
 
         # Sanity checks
         assert solver in (
@@ -177,14 +179,26 @@ class OT(Matching, UsesCommonFeatures):
         self.unbalanced_reg = unbalanced_reg
 
     @profile_method
-    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
+    def fit(
+        self,
+        datasets: List[np.ndarray],
+        reference: Optional[int] = None,
+    ) -> _TypeMatchingSet:
         """
         Computes OT between pairs of datasets with the right solver.
         """
         ndatasets = len(datasets)
         results: _TypeMatchingSet = {}
+        ndatasets = len(datasets)
+        reference = self.reference_index
+        if reference is None:
+            target_indices = np.arange(ndatasets)
+        else:
+            target_indices = [reference]
         for i in range(ndatasets):
-            for j in range(i + 1, ndatasets):
+            for j in target_indices:
+                if (i, j) in results:
+                    continue
                 kwargs = {}
                 if self.solver == "emd":
                     solver = emd

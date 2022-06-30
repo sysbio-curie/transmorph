@@ -157,30 +157,6 @@ class LayerMatching(
                 self.matching_matrices,
                 labels,
             )
-        # else:
-        #     # Selects the largest number of min_batches preserving at least
-        #     # edge_strictness % of edges
-        #     prunings = [self.matching_matrices]
-        #     for min_batch in range(1, len(datasets) - 2):
-        #         prunings.append(
-        #             prune_edges_unsupervised(
-        #                 self.matching_matrices,
-        #                 len(datasets),
-        #                 min_patterns=min_batch,
-        #             )
-        #         )
-        #     chosen = prunings[0]
-        #     threshold = count_total_matching_edges(prunings[0]) * self.edge_strictness
-        #     for i, new_matchings in enumerate(prunings):
-        #         count_edges = count_total_matching_edges(new_matchings)
-        #         self.log(f"min_batchs = {i}, {count_edges} edges.")
-        #         if count_edges > threshold:
-        #             chosen = new_matchings
-        #         else:
-        #             self.log(f"Chose min_batchs = {i - 1}.")
-        #             break
-        #     self.matching_matrices = chosen
-
         return self.output_layers
 
     def get_matchings(self) -> _TypeMatchingSet:

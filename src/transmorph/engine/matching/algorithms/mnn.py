@@ -8,6 +8,7 @@ from typing import Dict, List, Literal, Optional
 from ..matching import Matching, _TypeMatchingSet
 from ...traits.isprofilable import profile_method
 from ...traits.usescommonfeatures import UsesCommonFeatures
+from ...traits.usesreference import UsesReference
 from ....utils.graph import (
     generate_qtree,
     raw_mutual_nearest_neighbors,
@@ -15,7 +16,7 @@ from ....utils.graph import (
 )
 
 
-class MNN(Matching, UsesCommonFeatures):
+class MNN(Matching, UsesCommonFeatures, UsesReference):
     """
     Mutual Nearest Neighbors (MNN) matching. Two samples xi and yj
     from batches X and Y are matched if xi belongs to the k-nearest neighbors
@@ -70,13 +71,18 @@ class MNN(Matching, UsesCommonFeatures):
     ):
         Matching.__init__(self, str_identifier="MNN")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
+        UsesReference.__init__(self)
         self.metric = metric
         self.metric_kwargs = {} if metric_kwargs is None else metric_kwargs
         self.n_neighbors = n_neighbors
         self.solver = solver
 
     @profile_method
-    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
+    def fit(
+        self,
+        datasets: List[np.ndarray],
+        reference: Optional[int] = None,
+    ) -> _TypeMatchingSet:
         """
         Computes MNN between pairs of datasets.
         """
@@ -110,8 +116,15 @@ class MNN(Matching, UsesCommonFeatures):
             ]
         ndatasets = len(datasets)
         results: _TypeMatchingSet = {}
+        reference = self.reference_index
+        if reference is None:
+            target_indices = np.arange(ndatasets)
+        else:
+            target_indices = [reference]
         for i in range(ndatasets):
-            for j in range(i + 1, ndatasets):
+            for j in target_indices:
+                if (i, j) in results:
+                    continue
                 Xi, Xj = self.slice_features(
                     X1=datasets[i],
                     X2=datasets[j],

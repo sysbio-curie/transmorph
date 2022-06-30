@@ -11,9 +11,10 @@ from ..matching import Matching, _TypeMatchingSet
 from ...traits.isprofilable import profile_method
 from ...traits.usescommonfeatures import UsesCommonFeatures
 from ...traits.usesmetric import UsesMetric
+from ...traits.usesreference import UsesReference
 
 
-class FusedGW(Matching, UsesCommonFeatures, UsesMetric):
+class FusedGW(Matching, UsesCommonFeatures, UsesMetric, UsesReference):
     """
     Fused Gromov-Wasserstein-based [1] matching. Embeds the
     ot.gromov.fused_gromov_wasserstein method from POT
@@ -72,6 +73,7 @@ class FusedGW(Matching, UsesCommonFeatures, UsesMetric):
     ):
         Matching.__init__(self, str_identifier="FUSEDGW")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
+        UsesReference.__init__(self)
         UsesMetric.__init__(self, default_GW_metric, default_GW_metric_kwargs)
         self.OT_metric = OT_metric
         self.OT_metric_kwargs = {} if OT_metric_kwargs is None else OT_metric_kwargs
@@ -79,7 +81,10 @@ class FusedGW(Matching, UsesCommonFeatures, UsesMetric):
         self.GW_loss = GW_loss
 
     @profile_method
-    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
+    def fit(
+        self,
+        datasets: List[np.ndarray],
+    ) -> _TypeMatchingSet:
         """
         Compute optimal transport plan for the FGW problem.
         """
@@ -94,12 +99,22 @@ class FusedGW(Matching, UsesCommonFeatures, UsesMetric):
 
         # Compute pairwise FGW
         result: _TypeMatchingSet = {}
+        ndatasets = len(datasets)
+        reference = self.reference_index
+        if reference is None:
+            target_indices = np.arange(ndatasets)
+        else:
+            target_indices = [reference]
         for i, Xi in enumerate(datasets):
-            for j, Xj in enumerate(datasets):
-                if j >= i:
+            for j in target_indices:
+                if (i, j) in result:
                     continue
+                Xj = datasets[j]
                 Xi_common, Xj_common = self.slice_features(
-                    X1=Xi, X2=Xj, idx_1=i, idx_2=j
+                    X1=Xi,
+                    X2=Xj,
+                    idx_1=i,
+                    idx_2=j,
                 )
                 M = cdist(
                     Xi_common,

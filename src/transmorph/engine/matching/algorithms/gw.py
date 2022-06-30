@@ -10,9 +10,10 @@ from ot.gromov import gromov_wasserstein, entropic_gromov_wasserstein
 from ..matching import Matching, _TypeMatchingSet
 from ...traits.isprofilable import profile_method
 from ...traits.usesmetric import UsesMetric
+from ...traits.usesreference import UsesReference
 
 
-class GW(Matching, UsesMetric):
+class GW(Matching, UsesMetric, UsesReference):
     """
     Gromov-Wasserstein-based matching. Embeds the gromov_wasserstein class of
     methods from POT:
@@ -79,6 +80,7 @@ class GW(Matching, UsesMetric):
             default_metric=default_metric,
             default_kwargs=default_metric_kwargs,
         )
+        UsesReference.__init__(self)
         assert optimizer in ("gw", "entropic_gw"), f"Unknown optimizer: {optimizer}."
         self.optimizer = optimizer
         self.GW_loss = GW_loss
@@ -90,7 +92,10 @@ class GW(Matching, UsesMetric):
         self.max_iter = int(max_iter)
 
     @profile_method
-    def fit(self, datasets: List[np.ndarray]) -> _TypeMatchingSet:
+    def fit(
+        self,
+        datasets: List[np.ndarray],
+    ) -> _TypeMatchingSet:
         """
         Compute optimal transport plan for the FGW problem.
         TODO: specific strategy if reference is set
@@ -115,8 +120,16 @@ class GW(Matching, UsesMetric):
         # Compute pairwise GW
         ndatasets = len(datasets)
         result: _TypeMatchingSet = {}
+        ndatasets = len(datasets)
+        reference = self.reference_index
+        if reference is None:
+            target_indices = np.arange(ndatasets)
+        else:
+            target_indices = [reference]
         for i in range(ndatasets):
-            for j in range(i + 1, ndatasets):
+            for j in target_indices:
+                if (i, j) in result:
+                    continue
                 Tij = optimizer(
                     C1=all_C[i],
                     C2=all_C[j],
