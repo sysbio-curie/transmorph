@@ -56,20 +56,6 @@ class LayerMatching(
         Provides the AnnData.obs key where sample type is stored. If
         specified, matching edges between samples of different class
         are pruned.
-
-    edge_strictness: float, default = 0.5
-        Fraction of edges to keep during the pruning process. Decreasing
-        this value will decrease the numbers of matching edges, but can
-        help getting rid of edges between samples of different classes.
-
-    Attributes
-    ----------
-    matching_matrices: _TypeMatchingSet = Dict[Tuple[int, int], csr_matrix]
-        Internal matching matrices, stored one internal matching has
-        been called. Contains in coordinates (i, j) the matching
-        between datasets i and j stored as a CSR matrix. These matrices
-        can be provided to LayerMerging, and must not be directly
-        modified.
     """
 
     def __init__(
@@ -77,7 +63,6 @@ class LayerMatching(
         matching: Matching,
         subsampling: Optional[Subsampling] = None,
         obs_class: Optional[str] = None,
-        edge_strictness: float = 0.5,
     ) -> None:
         Layer.__init__(
             self,
@@ -91,7 +76,6 @@ class LayerMatching(
         self.matching = matching
         self.matching_matrices: Optional[_TypeMatchingSet] = None
         self.obs_class = obs_class
-        self.edge_strictness = edge_strictness
 
     @profile_method
     def fit(self, datasets: List[AnnData]) -> List[Layer]:

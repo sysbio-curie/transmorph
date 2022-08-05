@@ -10,7 +10,7 @@ from ...utils.anndata_manager import anndata_manager as adm, AnnDataKeyIdentifie
 
 class LayerInput(Layer, IsRepresentable):
     """
-    Every pipeline must contain exactly one input layer,
+    Every integration pipeline must contain exactly one input layer,
     followed by an arbitrary network structure. Every
     pipeline is initialized using this input layer. This
     layer is the first to be called by any model. Its role

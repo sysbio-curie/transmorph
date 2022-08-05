@@ -12,10 +12,13 @@ from ...utils.misc import assert_type
 
 class Layer(ABC, CanLog):
     """
-    A Layer wraps an algorithmic module, and manages its connections
-    with other modules. All Layers derive from this class, and can be
-    enriched using traits. It is the deepest object in the architecture
-    allowed to manipulate AnnData objects without using traits.
+    A Layer is a structural object which wraps an algorithmic module,
+    and manages connections with other layers. All Layers derive from
+    this class, and can be enriched using traits. Layers are the deepest
+    objects in the architecture allowed to manipulate AnnData objects
+    without using traits.
+
+    Layers are not supposed to be manipulated for non-developement purposes.
 
     Attributes
     ----------

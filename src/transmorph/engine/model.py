@@ -21,11 +21,54 @@ class Model(CanLog):
 
     Parameters
     ----------
-    input_layer: LayerInput
+    input_layer : LayerInput
         Input layer of the network, which is assumed to be already
         connected. The Model will then automatically gather all
         layers connected to the network, which is expected to have
         exactly one output layer.
+
+    str_identifier : str, default = "CUSTOM_MODEL"
+        Model custom name for logging purpose.
+
+    Example
+    -------
+    >>> from transmorph.engine.layers import (
+    ...     LayerInput,
+    ...     LayerMatching,
+    ...     LayerMerging,
+    ...     LayerOutput
+    ... )
+    >>> from transmorph.engine import Model
+
+    We can then create custom layers starting from an input
+    layer, and load them with algorithms (see Layers section).
+
+    >>> layer_input = LayerInput()
+    >>> # other layers and algorithms instanciation...
+
+    A model can eventually be instanciated, and can operate
+    integration after being provided a list of AnnData objects.
+
+    >>> print(adata1)
+    AnnData object with n_obs × n_vars = 200 × 10
+        obs: 'class'
+        uns: 'hvg', 'log1p', 'pca'
+
+    >>> m = Model(layer_input)
+    >>> datasets = [adata1, adata2, adata3]
+    >>> m.fit(datasets)
+
+    Integration result for every dataset has been written under
+    'transmorph' entry of the .obsm field, as a numpy ndarray.
+
+    >>> print(adata1.obsm['transmorph'])
+    [[-0.06452738, -0.15287925],
+    [-0.06452738,  0.17531697],
+    [-0.06452738,  0.9535402],
+    ...,
+    [-0.06452738, -0.15287925],
+    [-0.06452738, -0.15287925],
+    [-0.06452738,  0.69629896]]
     """
 
     def __init__(

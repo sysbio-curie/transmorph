@@ -29,71 +29,69 @@ class LayerChecking(
     CanCatchChecking,
 ):
     """
-    A LayerChecking is a complex layer with two types of outputs, that
-    encapsulates a Checking algorithm. It is used to create logic
-    branchings in Models. The two type of outputs are
+    A checking layer is a layer that encapsulates a checking algorithm.
+    It is used to create logic branchings in Models, and has two
+    ouputs:
 
-    > Standard outputs, that represent next pipeline steps if the
+    - Forward output, containing the next pipeline step if the
       checking is accepted.
 
-    > Rejected output, must be unique. It references a layer to
-      call instead of the standard ones in case the checking is
-      rejected.
+    - Rejected output, containing the fallback step to carry out
+      if checking is rejected.
 
-    A LayerChecking can be used to create iterative procedures in
+    A checking layer can be used to create iterative procedures in
     a model, playing the role of a while loop ("while the checking
-    is rejected, go back to earlier in the pipeline and apply the
-    integration procedure"). Temporary transformations can be loaded
-    in LayerMatching to be carried out before the matching algorithm.
+    is rejected, go back to an earlier pipeline step"). Temporary
+    transformations can be loaded in a checking layer to be carried
+    out before the checking algorithm.
 
     Parameters
     ----------
-    checking: Checking
+    checking : Checking
         Checking algorithm contained in the layer. This object is
         endowed with a check() method, that will be called by the
         layer. Model execution will then continue according to
         the result.
 
-    min_score_variation: float, default = 0.01
+    min_score_variation : float, default = 0.01
         Minimum score improvement between two checkings necessary
         to avoid early exit.
 
-    n_checks_min: int, default = 3
+    n_checks_min : int, default = 3
         Minuimum number of checkings to be carried out by the layer
         before taking into account score improvement.
 
-    n_checks_max: int, default = 10
+    n_checks_max : int, default = 10
         Maximum number of checkings to be carried out by the layer.
         Beyond this number, it will automatically accept to avoid
         endless looping.
 
-    subsampling: Optional[Subsampling], default = None
+    subsampling : Optional[Subsampling], default = None
         Subsampling algorithm to use before the checking, can help
         for performance when dealing with large datasets.
-
-    Attributes
-    ----------
-    check_is_valid: Optional[bool]
-        Contains validity of the last check, useful for logging
-        purposes.
-
-    n_checks: int
-        Number of checkings that have been carried out by the layer.
-
-    rejected_layer: Optional[CanCatchChecking]
-        Reference to the rejected output. This output must be an
-        instance of CanCatchChecking, meaning it is equipped to
-        receive information of a LayerChecking in case of
-        rejection.
-
-    rejected_layer_ref: Optional[IsRepresentable]
-        Used to temporarily store the embedding reference of
-        rejected layer, that will be swapped during the loop with
-        this CheckingLayer.
-
-    TODO: remove IsRepresentable trait from LayerChecking
     """
 
+    # TODO: remove IsRepresentable trait from LayerChecking
+    #
+    # Attributes
+    # ----------
+    # check_is_valid: Optional[bool]
+    #     Contains validity of the last check, useful for logging
+    #     purposes.
+
+    # n_checks: int
+    #     Number of checkings that have been carried out by the layer.
+
+    # rejected_layer: Optional[CanCatchChecking]
+    #     Reference to the rejected output. This output must be an
+    #     instance of CanCatchChecking, meaning it is equipped to
+    #     receive information of a LayerChecking in case of
+    #     rejection.
+
+    # rejected_layer_ref: Optional[IsRepresentable]
+    #     Used to temporarily store the embedding reference of
+    #     rejected layer, that will be swapped during the loop with
+    #     this CheckingLayer.
     def __init__(
         self,
         checking: Checking,

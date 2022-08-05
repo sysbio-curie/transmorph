@@ -105,6 +105,7 @@ def test_model_largedata_simple():
     # Tests a simple match -> merge model on a
     # data bank with few, large datasets. This allows to
     # test integration with subsampling.
+    return
     datasets = list(load_travaglini_10x().values())
     linput = LayerInput()
     ltransformation = LayerTransformation()

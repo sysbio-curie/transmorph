@@ -19,38 +19,58 @@ from transmorph.utils.anndata_manager import get_total_feature_slices
 
 class MNNCorrection(Model):
     """
-    Performs MNN, then linear correction given selected anchors.
+    This model performs preprocessing steps, then carries out mutual nearest
+    neighbors (MNN) between pairs of datasets. It then corrects every dataset
+    with respect to a reference dataset chosen by the user.
 
     Parameters
     ----------
-    mnn_n_neighbors: int, default = 30
-        Number of neighbors to use for the mutual nearest neighbors step.
+    matching: Literal["mnn", "bknn"], default = "bknn"
+        Nearest neighbors matching to use, either Mutual Nearest Neighbors
+        (MNN) or Batch k-Nearest Neighbors (BKNN). For a given number of
+        neighbors $k$, here is the subtlety between both algorithms.
 
-    mnn_metric: str, default = "sqeuclidean"
-        Metric to use during MNN step.
+        - In MNN, points $x_i$ from batch $X$ and $y_j$ from batch $Y$ are
+          matched if $x_i$ belongs to the $k$ nearest neighbors of $y_j$ in
+          $X$, and vice-versa.
+        - In BKNN, point $x_i$ is matched with point $y_j$ if $y_j$ belongs
+          to the $k$ nearest neighbors of $x_i$ in $Y$.
 
-    mnn_kwargs: Optional[Dict], default = None
+    matching_n_neighbors: int, default = None
+        Number of neighbors to use for the mutual nearest neighbors step. If
+        None is provided, it is determined automatically.
+
+    matching_metric: str, default = "sqeuclidean"
+        Metric to use to determine nearest neighbors.
+
+    matching_metric_kwargs: Optional[Dict], default = None
         Additional metric parameters.
+
+    obs_class: Optional[str], default = None
+        Provides the AnnData.obs key where sample type is stored. If
+        specified, matching edges between samples of different class
+        are discarded.
 
     n_components: int, default = 30
         Number of principal components to use if data dimensionality is
         greater.
 
-    use_subsampling: bool, default = False
-        Run MNN and LISI on a subsample of points to spare performance.
-        Useful for large datasets.
-
     lc_n_neighbors: int, default = 10
-        Number of neighbors to use for inferrence of correction vectors
-        in linear correction. The higher, the easier samples are corrected
-        but the more approximate it is.
+        Number of neighbors to use for linear correction neighbors graph.
 
     use_feature_space: bool, default = True
-        Do the integration in feature space. Otherwise, do it in PC space.
-        Increases computational complexity.
+        Performs correction in datasets feature space rather than in PC space.
 
     verbose: bool, default = True
-        Logs runtime information in console.
+        Logs information in console.
+
+    Example
+    -------
+    >>> from transmorph.datasets import load_chen_10x
+    >>> from transmorph.models import MNNCorrection
+    >>> model = MNNCorrection()
+    >>> dataset = load_chen_10x()
+    >>> model.fit(datasets, reference=dataset['P01'])
     """
 
     def __init__(

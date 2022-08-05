@@ -11,7 +11,7 @@ from transmorph.engine.layers import (
     LayerMerging,
     LayerOutput,
 )
-from transmorph.engine.matching import OT
+from transmorph.engine.matching import OT, GW
 from transmorph.engine.merging import Barycenter
 from transmorph.engine.transforming import CommonFeatures, PCA
 from transmorph.utils.anndata_manager import get_total_feature_slices
@@ -19,16 +19,68 @@ from transmorph.utils.anndata_manager import get_total_feature_slices
 
 class TransportIntegration(Model):
     """
-    Performs OT, then barycentric merging.
+    This model performs preprocessing steps, then carries out optimal transport
+    between pairs of datasets. It then correctes every dataset with respect to
+    a reference dataset chosen by the user using barycentric embedding.
 
     Parameters
     ----------
+    matching: Literal["ot", "gromov"], default = "ot"
+        Transportation framework to use, either Optimal Transport (OT) or
+        Gromov-Wasserstein (GW). Optimal transport requires batches to be
+        embedded in the same space, while Gromov-Wasserstein can work with
+        batches embedded in different space at the cost of weaker constraints.
+
+    solver: Literal["exact", "entropic", "unbalanced"], default = "exact"
+        Optimization problem formulation.
+
+        - "exact" is available for both OT and Gromov-Wasserstein, and attempts
+          to solve exactly the optimization problem. It can scale poorly to large
+          datasets (with several tens of thousands of points).
+        - "entropic" is available for both OT and Gromov-Wasserstein, and uses
+          en entropic regularizer term to be able to use a convex solver. The solution
+          is approximate.
+        - "unbalanced" is available for OT only, and uses the unbalanced OT formulation
+          to deal with datasets with unbalanced class proportions.
+
+    entropy_epsilon: Optional[float], default = None
+        If solver is "entropy", allows to tweak the entropy term strength.
+
+    matching_metric: str, default = "sqeuclidean"
+        Metric to use to determine nearest neighbors.
+
+    matching_metric_kwargs: Optional[Dict], default = None
+        Additional metric parameters.
+
+    obs_class: Optional[str], default = None
+        Provides the AnnData.obs key where sample type is stored. If
+        specified, matching edges between samples of different class
+        are discarded.
+
+    n_components: int, default = 30
+        Number of principal components to use if data dimensionality is
+        greater.
+
+    use_feature_space: bool, default = True
+        Performs correction in datasets feature space rather than in PC space.
+
+    verbose: bool, default = True
+        Logs information in console.
+
+    Example
+    -------
+    >>> from transmorph.datasets import load_chen_10x
+    >>> from transmorph.models import TransportCorrection
+    >>> model = TransportCorrection()
+    >>> dataset = load_chen_10x()
+    >>> model.fit(datasets, reference=dataset['P01'])
     """
 
     def __init__(
         self,
         matching: Literal["ot", "gromov"] = "ot",
-        solver: Literal["emd", "sinkhorn", "partial", "unbalanced"] = "emd",
+        solver: Literal["exact", "entropic", "partial", "unbalanced"] = "exact",
+        entropy_epsilon: Optional[float] = None,
         matching_metric: str = "sqeuclidean",
         matching_metric_kwargs: Optional[Dict] = None,
         obs_class: Optional[str] = None,
@@ -45,11 +97,30 @@ class TransportIntegration(Model):
 
         # Loading algorithms
         if matching == "ot":
+            if solver == "exact":
+                solver = "emd"
+            elif solver == "entropic":
+                solver = "sinkhorn"
             matching_alg = OT(
                 solver=solver,
                 metric=matching_metric,
                 metric_kwargs=matching_metric_kwargs,
                 common_features_mode="total",
+                sinkhorn_reg=entropy_epsilon,
+            )
+        elif matching == "gromov":
+            if solver == "exact":
+                solver = "gw"
+            elif solver == "entropic":
+                solver = "entropi_gw"
+            else:
+                raise ValueError(f"Solver {solver} not found for GW matching.")
+            matching_alg = GW(
+                optimizer=solver,
+                default_metric=matching_metric,
+                default_metric_kwargs=matching_metric_kwargs,
+                GW_loss="square_loss",
+                entropy_epsilon=entropy_epsilon,
             )
         else:
             raise ValueError(
@@ -61,7 +132,8 @@ class TransportIntegration(Model):
         linput = LayerInput()
 
         ltransform_features = LayerTransformation()
-        ltransform_features.add_transformation(CommonFeatures())
+        if matching == "ot":
+            ltransform_features.add_transformation(CommonFeatures())
 
         ltransform_dimred = LayerTransformation()
         ltransform_dimred.add_transformation(PCA(n_components=n_components))
