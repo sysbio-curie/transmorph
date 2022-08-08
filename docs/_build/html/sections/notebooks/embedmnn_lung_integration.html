@@ -1,0 +1,612 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Integrating lung datasets using EmbedMNN model &#8212; transmorph 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bizstyle.css" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../../_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">transmorph 0.2.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Integrating lung datasets using EmbedMNN model</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt *,
+div.nbinput.container div.input_area pre,
+div.nboutput.container div.output_area pre,
+div.nbinput.container div.input_area .highlight,
+div.nboutput.container div.output_area .highlight {
+    border: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+div.nbinput.container > div[class*=highlight],
+div.nboutput.container > div[class*=highlight] {
+    margin: 0;
+}
+
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt * {
+    background: none;
+}
+
+div.nboutput.container div.output_area .highlight,
+div.nboutput.container div.output_area pre {
+    background: unset;
+}
+
+div.nboutput.container div.output_area div.highlight {
+    color: unset;  /* override Pygments text color */
+}
+
+/* avoid gaps between output lines */
+div.nboutput.container div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput.container,
+div.nboutput.container {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput.container,
+    div.nboutput.container {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput.container {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast.container {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput.container div.prompt pre {
+    color: #307FC1;
+}
+
+/* output prompt */
+div.nboutput.container div.prompt pre {
+    color: #BF5B3D;
+}
+
+/* all prompts */
+div.nbinput.container div.prompt,
+div.nboutput.container div.prompt {
+    width: 4.5ex;
+    padding-top: 5px;
+    position: relative;
+    user-select: none;
+}
+
+div.nbinput.container div.prompt > div,
+div.nboutput.container div.prompt > div {
+    position: absolute;
+    right: 0;
+    margin-right: 0.3ex;
+}
+
+@media (max-width: 540px) {
+    div.nbinput.container div.prompt,
+    div.nboutput.container div.prompt {
+        width: unset;
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput.container div.prompt.empty {
+        padding: 0;
+    }
+
+    div.nbinput.container div.prompt > div,
+    div.nboutput.container div.prompt > div {
+        position: unset;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput.container div.prompt pre,
+div.nboutput.container div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput.container div.input_area,
+div.nboutput.container div.output_area {
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput.container div.input_area,
+    div.nboutput.container div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput.container div.input_area {
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    /*background: #f5f5f5;*/
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput.container div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.imgmath center alignment in output cells */
+div.nboutput.container div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput.container div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+
+div.nbinput.container div.input_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight].math,
+div.nboutput.container div.output_area.rendered_html,
+div.nboutput.container div.output_area > div.output_javascript,
+div.nboutput.container div.output_area:not(.rendered_html) > img{
+    padding: 5px;
+    margin: 0;
+}
+
+/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
+div.nbinput.container div.input_area > div[class^='highlight'],
+div.nboutput.container div.output_area > div[class^='highlight']{
+    overflow-y: hidden;
+}
+
+/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
+.prompt .copybtn {
+    display: none;
+}
+
+/* Some additional styling taken form the Jupyter notebook CSS */
+div.rendered_html table {
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+div.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+div.rendered_html tr,
+div.rendered_html th,
+div.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+div.rendered_html th {
+  font-weight: bold;
+}
+div.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+div.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+</style>
+<section id="Integrating-lung-datasets-using-EmbedMNN-model">
+<h1>Integrating lung datasets using EmbedMNN model<a class="headerlink" href="#Integrating-lung-datasets-using-EmbedMNN-model" title="Permalink to this heading">¶</a></h1>
+<p>In this example, we will use <em>transmorph</em> to integrate lung datasets from three patients, gathered in [1]. These datasets contain in total more than 60k cells, which are all associated with a compartment annotation: <em>immune</em>, <em>stromal</em>, <em>endothelial</em> and <em>epithelial</em>. As cells show high transcriptomic differences between these compartments, we consider the integration of these datasets to be an “easy” task, compared to cases with many more, and more subtle cell types. We are interested in
+identifying subclusters in these compartments to identify cell subtypes.</p>
+<p>We use one of our built-in models, <strong>EmbedMNN</strong>, to carry out the integration. It combines a few preprocessing steps (common genes space embedding, normalization and dimensionality reduction) with a mutual nearest neighbors (MNN)-based matching [2] and a low-dimensional space embedding using UMAP [3] or MDE [4]. This low dimensional space can subsequently be used to carry out tasks such as clustering.</p>
+<section id="Loading-the-data-bank">
+<h2>Loading the data bank<a class="headerlink" href="#Loading-the-data-bank" title="Permalink to this heading">¶</a></h2>
+<p><em>transmorph</em> provides a few data banks for testing purposes, already preprocessed (cell/gene filtering, normalization, log1p…) and annotated. They can be loaded using <em>datasets</em> module. Lung databank contains three datasets in the AnnData format, each expressed in its 10,000 most variable genes space. Cells are annotated by the .obs key “class”. If the queried databank is missing, it will be automatically downloaded, and saved locally for faster subsequent access.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transmorph.datasets</span> <span class="kn">import</span> <span class="n">load_travaglini_10x</span>
+
+<span class="c1"># Format: {patient_label -&gt; AnnData}</span>
+<span class="n">trav_10x</span> <span class="o">=</span> <span class="n">load_travaglini_10x</span><span class="p">()</span>
+
+<span class="c1"># We convert it to List[AnnData] as we do not</span>
+<span class="c1"># care about label here</span>
+<span class="n">datasets</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">trav_10x</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+databank_api &gt; Loading bank travaglini_10x.
+databank_api &gt; Bank travaglini_10x successfully loaded.
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transmorph.utils.plotting</span> <span class="kn">import</span> <span class="n">plot_label_distribution_heatmap</span>
+
+<span class="n">plot_label_distribution_heatmap</span><span class="p">(</span><span class="n">datasets</span><span class="p">,</span> <span class="s2">&quot;class&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/sections_notebooks_embedmnn_lung_integration_3_0.png" src="../../_images/sections_notebooks_embedmnn_lung_integration_3_0.png" />
+</div>
+</div>
+</section>
+<section id="Plotting-initial-datasets-using-scatter_plot">
+<h2>Plotting initial datasets using scatter_plot<a class="headerlink" href="#Plotting-initial-datasets-using-scatter_plot" title="Permalink to this heading">¶</a></h2>
+<p>The scatter_plot method can be used to display a low dimensional representation of a set of datasets. It will automatically use a <em>transmorph</em> integrated representation if present in all AnnData objects. If this integrated representation is missing, it will try to compute a UMAP of .X matrices. Computing this UMAP representation can take some time for large datasets, but it can then be cached to avoid recomputing every time.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transmorph.utils.plotting</span> <span class="kn">import</span> <span class="n">scatter_plot</span><span class="p">,</span> <span class="n">reduce_dimension</span>
+
+<span class="n">reduce_dimension</span><span class="p">(</span><span class="n">datasets</span><span class="p">,</span> <span class="n">output_obsm</span><span class="o">=</span><span class="s2">&quot;before_transmorph&quot;</span><span class="p">)</span>
+
+<span class="c1"># use_cache=True allows to avoid recomputing a UMAP representation for each plot</span>
+<span class="n">scatter_plot</span><span class="p">(</span>
+    <span class="n">datasets</span><span class="p">,</span>
+    <span class="n">input_obsm</span><span class="o">=</span><span class="s2">&quot;before_transmorph&quot;</span>
+<span class="p">)</span>
+<span class="n">scatter_plot</span><span class="p">(</span>
+    <span class="n">datasets</span><span class="p">,</span>
+    <span class="n">color_by</span><span class="o">=</span><span class="s2">&quot;class&quot;</span><span class="p">,</span>
+    <span class="n">plot_cluster_names</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">show_legend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">input_obsm</span><span class="o">=</span><span class="s2">&quot;before_transmorph&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/sections_notebooks_embedmnn_lung_integration_5_0.png" src="../../_images/sections_notebooks_embedmnn_lung_integration_5_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/sections_notebooks_embedmnn_lung_integration_5_1.png" src="../../_images/sections_notebooks_embedmnn_lung_integration_5_1.png" />
+</div>
+</div>
+<p>We can see here why we claim this is an “easy” databank to integrate. Differences between compartments are so important that compartments are already clustered in initial gene space. Though, we observe clear patient-dependent subclusters in these compartment clusters, which can cause issue when trying to identify biologically-relevant subpopulations.</p>
+</section>
+<section id="Dataset-integration-using-EmbedMNN">
+<h2>Dataset integration using EmbedMNN<a class="headerlink" href="#Dataset-integration-using-EmbedMNN" title="Permalink to this heading">¶</a></h2>
+<p><strong>EmbedMNN</strong> combines a mutual nearest neighbors step and a low-dimensional embedding, here using UMAP. Parameters can be tuned during model instanciation. Model can then be ran using transform() method, providing a list of AnnData objects. It will add a .obsm[“transmorph”] entry, corresponding to the integrated view computed. <strong>This model starts by embedding all datasets in a common genes space, therefore there must exists a nonempty intersection between all .var_names.</strong></p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transmorph.models</span> <span class="kn">import</span> <span class="n">EmbedMNN</span>
+
+<span class="c1"># We use the fact cells are annotated in the</span>
+<span class="c1"># .obs[&quot;class&quot;] field to prune mismatched edges</span>
+<span class="c1"># after MNN</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">EmbedMNN</span><span class="p">(</span><span class="n">obs_class</span><span class="o">=</span><span class="s2">&quot;class&quot;</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">datasets</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+EMBED_MNN &gt; Transmorph model is initializing.
+EMBED_MNN &gt; Ready to start the integration of 3 datasets, 65662 total samples.
+EMBED_MNN &gt; Running layer LAYER_INPUT#0.
+EMBED_MNN &gt; Running layer LAYER_TRANSFORMATION#1.
+EMBED_MNN &gt; Running layer LAYER_MATCHING#2.
+LAYER_MATCHING#2 &gt; Calling matching MATCHING_MNN.
+EMBED_MNN &gt; Running layer LAYER_MERGING#3.
+LAYER_MERGING#3 &gt; Running merging MERGING_GRAPH_EMBEDDING...
+EMBED_MNN &gt; Running layer LAYER_OUTPUT#4.
+EMBED_MNN &gt; Terminated. Total embedding shape: (65662, 2)
+EMBED_MNN &gt; Results have been written in AnnData.obsm[&#39;transmorph&#39;].
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transmorph.utils.plotting</span> <span class="kn">import</span> <span class="n">scatter_plot</span>
+
+<span class="n">scatter_plot</span><span class="p">(</span><span class="n">datasets</span><span class="p">,</span> <span class="n">input_obsm</span><span class="o">=</span><span class="s2">&quot;transmorph&quot;</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s2">&quot;TR1&quot;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s2">&quot;TR2&quot;</span><span class="p">)</span>
+<span class="n">scatter_plot</span><span class="p">(</span>
+    <span class="n">datasets</span><span class="p">,</span> <span class="n">color_by</span><span class="o">=</span><span class="s2">&quot;class&quot;</span><span class="p">,</span> <span class="n">show_legend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">plot_cluster_names</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">input_obsm</span><span class="o">=</span><span class="s2">&quot;transmorph&quot;</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s2">&quot;TR1&quot;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s2">&quot;TR2&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/sections_notebooks_embedmnn_lung_integration_8_0.png" src="../../_images/sections_notebooks_embedmnn_lung_integration_8_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/sections_notebooks_embedmnn_lung_integration_8_1.png" src="../../_images/sections_notebooks_embedmnn_lung_integration_8_1.png" />
+</div>
+</div>
+<p>As we can see, <strong>EmbedMNN</strong> has improved separation between compartment-based clusters, and emphasized a better resolved, sub-clustered structure. We have now to assess quantitively that datasets are better merged, and we can doing so using Local Inverse Simpson Index (LISI).</p>
+</section>
+<section id="Comparing-dataset-homogeneity-using-LISI">
+<h2>Comparing dataset homogeneity using LISI<a class="headerlink" href="#Comparing-dataset-homogeneity-using-LISI" title="Permalink to this heading">¶</a></h2>
+<p>Local Inverse Simpson Index (LISI) is a statistic introduced in the integration algorithm Harmony [5] that measures the source heterogenity of a sample neighborhood in a joint embedding. The higher, the more diverse datasets are in a point’s neighborhood, suggesting better dataset integration. <em>transmorph</em> contains its implementation of LISI, and we can use it to assess integration quality.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">transmorph.stats.lisi</span> <span class="kn">import</span> <span class="n">compute_lisi</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">Xs_before</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">adata</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s1">&#39;before_transmorph&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">adata</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">Xs_after</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">adata</span><span class="o">.</span><span class="n">obsm</span><span class="p">[</span><span class="s1">&#39;transmorph&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">adata</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">sum</span><span class="p">([[</span><span class="n">i</span><span class="p">]</span><span class="o">*</span><span class="n">adata</span><span class="o">.</span><span class="n">n_obs</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">adata</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">datasets</span><span class="p">)],</span> <span class="p">[]))</span>
+
+<span class="n">lisi_before</span> <span class="o">=</span> <span class="n">compute_lisi</span><span class="p">(</span><span class="n">Xs_before</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+<span class="n">lisi_after</span> <span class="o">=</span> <span class="n">compute_lisi</span><span class="p">(</span><span class="n">Xs_after</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;LISI before - min: </span><span class="si">{</span><span class="n">lisi_before</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2">, max: </span><span class="si">{</span><span class="n">lisi_before</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">}</span><span class="s2">, &quot;</span>
+    <span class="sa">f</span><span class="s2">&quot;mean: </span><span class="si">{</span><span class="n">lisi_before</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">}</span><span class="s2">, median: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">lisi_before</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;LISI after - min: </span><span class="si">{</span><span class="n">lisi_after</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="si">}</span><span class="s2">, max: </span><span class="si">{</span><span class="n">lisi_after</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="si">}</span><span class="s2">, &quot;</span>
+    <span class="sa">f</span><span class="s2">&quot;mean: </span><span class="si">{</span><span class="n">lisi_after</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="si">}</span><span class="s2">, median: </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">(</span><span class="n">lisi_after</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+LISI before - min: 1.0, max: 2.999999761581421, mean: 1.3762048482894897, median: 1.142132043838501
+LISI after - min: 1.0, max: 2.999999761581421, mean: 1.5860631465911865, median: 1.4433355331420898
+</pre></div></div>
+</div>
+<p>As we can see, performing the integration step using <strong>EmbedMNN</strong> greatly increased mean and median LISI score, from an average of 1.3 datasets per sample neighborhood to around 1.8 datasets per sample neighborhood.</p>
+</section>
+<section id="Performing-clustering-in-embedding-space">
+<h2>Performing clustering in embedding space<a class="headerlink" href="#Performing-clustering-in-embedding-space" title="Permalink to this heading">¶</a></h2>
+<p>A common task after embedding datasets in a common space is to perform clustering. <em>transmorph</em> allows to easily do so using the <em>cluster_anndatas</em> function, which leverages Leiden [6] algorithm to provide a reasonable community detection. AnnDatas objects that have been processed by <em>transmorph</em> can be directly passed to the function, and “resolution” parameter can be tuned to reach a satisfying cluster attribution.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">transmorph.utils.graph</span> <span class="kn">import</span> <span class="n">cluster_anndatas</span>
+
+<span class="c1"># The lower the resolution, the less clusters</span>
+<span class="n">cluster_anndatas</span><span class="p">(</span><span class="n">datasets</span><span class="p">,</span> <span class="n">n_neighbors</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">resolution</span><span class="o">=</span><span class="mf">0.0001</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">scatter_plot</span><span class="p">(</span><span class="n">datasets</span><span class="p">,</span> <span class="n">input_obsm</span><span class="o">=</span><span class="s2">&quot;transmorph&quot;</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s2">&quot;TR1&quot;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s2">&quot;TR2&quot;</span><span class="p">)</span>
+<span class="n">scatter_plot</span><span class="p">(</span>
+    <span class="n">datasets</span><span class="p">,</span> <span class="n">color_by</span><span class="o">=</span><span class="s2">&quot;cluster&quot;</span><span class="p">,</span> <span class="n">show_legend</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">plot_cluster_names</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">input_obsm</span><span class="o">=</span><span class="s2">&quot;transmorph&quot;</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s2">&quot;TR1&quot;</span><span class="p">,</span> <span class="n">ylabel</span><span class="o">=</span><span class="s2">&quot;TR2&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/sections_notebooks_embedmnn_lung_integration_14_0.png" src="../../_images/sections_notebooks_embedmnn_lung_integration_14_0.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../../_images/sections_notebooks_embedmnn_lung_integration_14_1.png" src="../../_images/sections_notebooks_embedmnn_lung_integration_14_1.png" />
+</div>
+</div>
+<p>AnnData objects can then be saved with their new cluster annotations and joint embedding. Cell type detection can subsequently be carried out on each of these clusters using third-party tools such as <em>sc-type</em> in R [6] in order to annotate these clusters with cell types.</p>
+<section id="References">
+<h3>References<a class="headerlink" href="#References" title="Permalink to this heading">¶</a></h3>
+<p>[1] Travaglini, Kyle J., et al. <em>A molecular cell atlas of the human lung from single-cell RNA sequencing.</em>, <strong>Nature</strong> 587.7835 (2020): 619-625.</p>
+<p>[2] Haghverdi, Laleh, et al. <em>Batch effects in single-cell RNA-sequencing data are corrected by matching mutual nearest neighbors.</em> <strong>Nature biotechnology</strong> 36.5 (2018): 421-427.</p>
+<p>[3] Becht, Etienne, et al. <em>Dimensionality reduction for visualizing single-cell data using UMAP.</em> <strong>Nature biotechnology</strong> 37.1 (2019): 38-44.</p>
+<p>[4] Agrawal, Akshay, Alnur Ali, and Stephen Boyd. <em>Minimum-distortion embedding.</em> <strong>arXiv preprint</strong> arXiv:2103.02559 (2021).</p>
+<p>[5] Korsunsky, Ilya, et al. <em>Fast, sensitive and accurate integration of single-cell data with Harmony.</em> <strong>Nature methods</strong> 16.12 (2019): 1289-1296.</p>
+<p>[6] Ianevski, Aleksandr, Anil K. Giri, and Tero Aittokallio. <em>Fully-automated and ultra-fast cell-type identification using specific marker combinations from single-cell transcriptomic data.</em> <strong>Nature communications</strong> 13.1 (2022): 1-10.</p>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/logo_v2.png" alt="Logo"/>
+            </a></p>
+  <div>
+    <h3><a href="../../index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Integrating lung datasets using EmbedMNN model</a><ul>
+<li><a class="reference internal" href="#Loading-the-data-bank">Loading the data bank</a></li>
+<li><a class="reference internal" href="#Plotting-initial-datasets-using-scatter_plot">Plotting initial datasets using scatter_plot</a></li>
+<li><a class="reference internal" href="#Dataset-integration-using-EmbedMNN">Dataset integration using EmbedMNN</a></li>
+<li><a class="reference internal" href="#Comparing-dataset-homogeneity-using-LISI">Comparing dataset homogeneity using LISI</a></li>
+<li><a class="reference internal" href="#Performing-clustering-in-embedding-space">Performing clustering in embedding space</a><ul>
+<li><a class="reference internal" href="#References">References</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../../_sources/sections/notebooks/embedmnn_lung_integration.ipynb.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">transmorph 0.2.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Integrating lung datasets using EmbedMNN model</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2022, Aziz Fouché, Loïc Chadoutaud, Andrei Zinovyev.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.1.1.
+    </div>
+  </body>
+</html>

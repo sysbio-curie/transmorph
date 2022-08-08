@@ -1,0 +1,153 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>transmorph: a python framework for data integration &#8212; transmorph 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installing transmorph" href="sections/installation.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="sections/installation.html" title="Installing transmorph"
+             accesskey="N">next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">transmorph 0.2.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">transmorph: a python framework for data integration</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="transmorph-a-python-framework-for-data-integration">
+<h1>transmorph: a python framework for data integration<a class="headerlink" href="#transmorph-a-python-framework-for-data-integration" title="Permalink to this heading">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This project is still in development. Don’t hesitate to drop by our <a class="reference external" href="https://github.com/Risitop/transmorph">GitHub</a> for any issue encountered! Thank you by advance for your feedback.</p>
+</div>
+<section id="contents">
+<h2>Contents<a class="headerlink" href="#contents" title="Permalink to this heading">¶</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sections/installation.html">Installing transmorph</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/prebuilt_models.html">Pre-built models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/model_api.html">Model API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/databanks.html">Benchmarking databanks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sections/post_analysis.html">Analysis tools</a></li>
+</ul>
+</div>
+<p><strong>transmorph</strong> is a python framework dedicated to data integration, with a focus on single-cell applications. Dataset integration describes the problem of embedding two or more datasets together, across different batches or feature spaces, so that similar samples end up close from one another. In transmorph we aim to provide a comprehensive framework to design, apply, report and benchmark data integration models using a system of interactive building blocks supported by statistical and plotting tools. We included pre-built models as well as benchmarking databanks in order to easily set up integration tasks. This package can notably be used in compatibility with <a class="reference external" href="https://scanpy.readthedocs.io/en/stable/">scanpy</a> and <a class="reference external" href="https://anndata.readthedocs.io/en/latest/">anndata</a> packages, and works in jupyter notebooks.</p>
+</section>
+<section id="the-transmorph-framework">
+<h2>The transmorph framework<a class="headerlink" href="#the-transmorph-framework" title="Permalink to this heading">¶</a></h2>
+<p><strong>transmorph</strong> is a modular framework, where a data integration pipeline is viewed as a network of small algorithms. This architecture allows to separate structural units (layers) from computational units (algorithms), which greatly improves framework expression power and robustness. It also allows to benchmark internal pipeline states, improving interpretability and helping users to choose between the different algorithms. It eventually provides sound dataflow properties, with heavier data objects handled by layers, while computational modules only manipulate low-level objects. A network can be packaged into a model, in order to be readily usable in any data analysis pipeline, improving reproducibility of analyses carried out in our framework. Here is an example of a pre-built integration pipeline, <em>EmbedMNN</em> used in several applications.</p>
+<a class="reference internal image-reference" href="_images/embedmnn_model.png"><img alt="_images/embedmnn_model.png" class="align-center" src="_images/embedmnn_model.png" style="width: 80%;" /></a>
+<p>As we can see, this model is composed by a few algorithmic blocks: two preprocessing algorithms (common features embedding into PCA representation), one matching algorithm (mutual nearest neighbors) and one embedding algorithm (UMAP graph embedding). This sequence of algorithms is then encapsulated into a model. This shows how <strong>transmorph</strong> can be used to easily setup a data integration pipeline to embed multi-sources datasets into a common features space. We can apply this model on a challenging single-cell example (approx. 60,000 total cells of 8 different types, from 14 different sources). The integration can be ran efficiently on a simple laptop (<em>left</em>: before integration, <em>right</em>: after integration).</p>
+<p><a class="reference internal" href="_images/zhou_before_type.png"><img alt="pic_zhou_before" src="_images/zhou_before_type.png" style="width: 45%;" /></a> <a class="reference internal" href="_images/zhou_after_type.png"><img alt="pic_zhou_embed" src="_images/zhou_after_type.png" style="width: 45%;" /></a></p>
+<p>To summarize, the <strong>transmorph</strong> framework provides a rich model API to design data integration pipelines, supported by analysis and preprocessing tools together with benchmarking datasets.</p>
+<a class="reference internal image-reference" href="_images/framework_summary.png"><img alt="_images/framework_summary.png" class="align-center" src="_images/framework_summary.png" style="width: 448.2px; height: 345.0px;" /></a>
+</section>
+<section id="contributors">
+<h2>Contributors<a class="headerlink" href="#contributors" title="Permalink to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Aziz Fouché (main maintainer), Institut Curie Paris, Mines ParisTech , ENS Paris-Saclay</p></li>
+<li><p>Loïc Chadoutaud, Institut Curie Paris, Mines ParisTech</p></li>
+<li><p>Andrei Zinovyev, Institut Curie Paris, Mines ParisTech</p></li>
+</ul>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="#">
+              <img class="logo" src="_static/logo_v2.png" alt="Logo"/>
+            </a></p>
+  <div>
+    <h3><a href="#">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">transmorph: a python framework for data integration</a><ul>
+<li><a class="reference internal" href="#contents">Contents</a></li>
+<li><a class="reference internal" href="#the-transmorph-framework">The transmorph framework</a></li>
+<li><a class="reference internal" href="#contributors">Contributors</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="sections/installation.html"
+                          title="next chapter">Installing transmorph</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="sections/installation.html" title="Installing transmorph"
+             >next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">transmorph 0.2.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">transmorph: a python framework for data integration</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2022, Aziz Fouché, Loïc Chadoutaud, Andrei Zinovyev.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.1.1.
+    </div>
+  </body>
+</html>

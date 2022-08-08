@@ -356,14 +356,6 @@
     "\n",
     "[6] Ianevski, Aleksandr, Anil K. Giri, and Tero Aittokallio. *Fully-automated and ultra-fast cell-type identification using specific marker combinations from single-cell transcriptomic data.* **Nature communications** 13.1 (2022): 1-10."
    ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "f5aaf27a",
-   "metadata": {},
-   "outputs": [],
-   "source": []
   }
  ],
  "metadata": {
