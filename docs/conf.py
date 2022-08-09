@@ -31,3 +31,4 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
 html_theme = "bizstyle"
 html_static_path = ["_static"]
 html_logo = "../img/logo_v2.png"
+html_favicon = "../img/favicon.ico"

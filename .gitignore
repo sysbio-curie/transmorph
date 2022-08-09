@@ -4,6 +4,7 @@
 Pipfile
 Pipfile.lock
 build/
+docs/_build/
 examples/.ipynb_checkpoints/
 src/transmorph.egg-info
 src/transmorph/__pycache__/
