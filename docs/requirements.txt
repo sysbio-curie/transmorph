@@ -2,6 +2,7 @@ anndata>=0.8.0
 igraph
 jupyter
 leidenalg
+nbsphinx
 numpy<1.21,>=1.17
 pre-commit
 pot
@@ -10,5 +11,6 @@ pynndescent
 scanpy
 scikit-learn
 scipy
+sphinx
 stabilized-ica
 umap-learn
