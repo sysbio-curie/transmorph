@@ -13,5 +13,6 @@ scikit-learn
 scipy
 sphinx
 sphinx_math_dollar
+sphinxcontrib-bibtex
 stabilized-ica
 umap-learn
