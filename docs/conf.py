@@ -19,10 +19,35 @@ release = "0.2.0"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx.ext.autodoc", "sphinx.ext.napoleon", "nbsphinx"]
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.mathjax",
+    "sphinx_math_dollar",
+    "sphinx.ext.napoleon",
+    "nbsphinx",
+    "sphinxcontrib.bibtex",
+]
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", "**.ipynb_checkpoints"]
+bibtex_bibfiles = ["biblio.bib"]
+
+autodoc_mock_imports = [
+    "anndata",
+    "igraph",
+    "leidenalg",
+    "numpy",
+    "pre-commit",
+    "pot",
+    "pymde",
+    "pynndescent",
+    "scanpy",
+    "scikit-learn",
+    "scipy",
+    "stabilized-ica",
+    "transmorph",
+    "umap-learn",
+]
 
 
 # -- Options for HTML output -------------------------------------------------

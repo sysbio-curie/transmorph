@@ -2,6 +2,6 @@
 
 from .embedmnn import EmbedMNN
 from .mnncorrection import MNNCorrection
-from .transportcorrection import TransportIntegration
+from .transportcorrection import TransportCorrection
 
-__all__ = ["EmbedMNN", "MNNCorrection", "TransportIntegration"]
+__all__ = ["EmbedMNN", "MNNCorrection", "TransportCorrection"]

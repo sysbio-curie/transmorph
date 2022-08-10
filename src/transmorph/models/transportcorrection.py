@@ -17,7 +17,7 @@ from transmorph.engine.transforming import CommonFeatures, PCA
 from transmorph.utils.anndata_manager import get_total_feature_slices
 
 
-class TransportIntegration(Model):
+class TransportCorrection(Model):
     """
     This model performs preprocessing steps, then carries out optimal transport
     between pairs of datasets. It then correctes every dataset with respect to
