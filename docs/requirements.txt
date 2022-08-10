@@ -12,5 +12,6 @@ scanpy
 scikit-learn
 scipy
 sphinx
+sphinx_math_dollar
 stabilized-ica
 umap-learn
