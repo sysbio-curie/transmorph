@@ -46,6 +46,13 @@ class TransportCorrection(Model):
     entropy_epsilon: Optional[float], default = None
         If solver is "entropy", allows to tweak the entropy term strength.
 
+    unbalanced_reg: Optional[float]
+        Mass conservation regularizer to use in the unbalanced optimal
+        transport formulation. The higher, the closer result is from
+        constrained optimal transport. The lower, the better the matching
+        will be dealing with unbalanced datasets, but convergence will be
+        harder. Will be set to 1e-1 by default.
+
     matching_metric: str, default = "sqeuclidean"
         Metric to use to determine nearest neighbors.
 
@@ -81,6 +88,7 @@ class TransportCorrection(Model):
         matching: Literal["ot", "gromov"] = "ot",
         solver: Literal["exact", "entropic", "partial", "unbalanced"] = "exact",
         entropy_epsilon: Optional[float] = None,
+        unbalanced_reg: Optional[float] = None,
         matching_metric: str = "sqeuclidean",
         matching_metric_kwargs: Optional[Dict] = None,
         obs_class: Optional[str] = None,
@@ -98,25 +106,28 @@ class TransportCorrection(Model):
         # Loading algorithms
         if matching == "ot":
             if solver == "exact":
-                solver = "emd"
+                solver_ot = "emd"
             elif solver == "entropic":
-                solver = "sinkhorn"
+                solver_ot = "sinkhorn"
+            else:
+                solver_ot = "unbalanced"
             matching_alg = OT(
-                solver=solver,
+                solver=solver_ot,
                 metric=matching_metric,
                 metric_kwargs=matching_metric_kwargs,
                 common_features_mode="total",
                 sinkhorn_reg=entropy_epsilon,
+                unbalanced_reg=unbalanced_reg,
             )
         elif matching == "gromov":
             if solver == "exact":
-                solver = "gw"
+                solver_gw = "gw"
             elif solver == "entropic":
-                solver = "entropi_gw"
+                solver_gw = "entropic_gw"
             else:
                 raise ValueError(f"Solver {solver} not found for GW matching.")
             matching_alg = GW(
-                optimizer=solver,
+                optimizer=solver_gw,
                 default_metric=matching_metric,
                 default_metric_kwargs=matching_metric_kwargs,
                 GW_loss="square_loss",
@@ -181,6 +192,8 @@ class TransportCorrection(Model):
         use_representation: Optional[str]
             .obsm to use as input.
         """
+        if isinstance(datasets, Dict):
+            datasets = list(datasets.values())
         self.fit(
             datasets,
             reference=reference,

@@ -195,6 +195,10 @@ class Model(CanLog):
         self.info("Transmorph model is initializing.")
 
         # Flags reference dataset as such if any
+        if reference is not None:
+            assert isinstance(
+                reference, AnnData
+            ), "Reference must be an AnnData object."
         for i, adata in enumerate(datasets):
             self.log(f"Flagging dataset {i} as reference: {adata is reference}.")
             if adata is reference:

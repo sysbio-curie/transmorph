@@ -5,6 +5,7 @@ from .datasets import load_bank
 from .datasets import remove_bank
 
 from .datasets import load_chen_10x
+from .datasets import load_cell_cycle
 from .datasets import load_pal_10x
 from .datasets import load_spirals
 from .datasets import load_test_datasets_small
@@ -17,6 +18,7 @@ __all__ = [
     "remove_bank",
     "load_spirals",
     "load_test_datasets_small",
+    "load_cell_cycle",
     "load_chen_10x",
     "load_pal_10x",
     "load_travaglini_10x",

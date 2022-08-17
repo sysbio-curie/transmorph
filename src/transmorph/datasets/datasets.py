@@ -12,7 +12,7 @@ import scanpy as sc
 
 from anndata import AnnData
 from os.path import dirname
-from scipy.sparse import load_npz
+from scipy.sparse import csr_matrix, load_npz
 from typing import Dict, Optional
 
 from .databank_api import check_files, download_dataset, remove_dataset, unzip_file
@@ -20,7 +20,7 @@ from .._logging import logger
 
 # Datasets are stored in data/ subdirectory.
 DPATH_DATASETS = dirname(__file__) + "/data/"
-AVAILABLE_BANKS = ["chen_10x", "pal_10x", "travaglini_10x", "zhou_10x"]
+AVAILABLE_BANKS = ["chen_10x", "pal_10x", "travaglini_10x", "zhou_10x", "cell_cycle"]
 
 
 def load_dataset(source, filename, is_sparse=False) -> np.ndarray:
@@ -96,6 +96,15 @@ def load_spirals():
     adata_t.obs["label"] = yt
 
     return {"src": adata_s, "ref": adata_t}
+
+
+def load_cell_cycle() -> Dict[str, AnnData]:
+    """
+    Loads three cell cycle datasets for label transfer purposes.
+
+    TODO
+    """
+    return load_bank("cell_cycle")
 
 
 def load_chen_10x(
@@ -453,7 +462,7 @@ def load_bank(
     # Loading datasets
     for fname in os.listdir(dataset_root):
         adata = sc.read_h5ad(dataset_root + fname)
-        if not keep_sparse:
+        if not keep_sparse and isinstance(adata.X, csr_matrix):
             logger.log(
                 logging.DEBUG,
                 f"databank_api > Removing sparsity of {dataset_name}.",

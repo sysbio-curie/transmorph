@@ -91,7 +91,7 @@ class OT(Matching, UsesCommonFeatures, UsesReference):
         transport formulation. The higher, the closer result is from
         constrained optimal transport. The lower, the better the matching
         will be dealing with unbalanced datasets, but convergence will be
-        harder. Will be set to 1e-3 by default.
+        harder. Will be set to 1e-1 by default.
 
     max_iter: int, default = 1e6
         Maximum number of iterations to solve the optimization problem.
@@ -175,7 +175,7 @@ class OT(Matching, UsesCommonFeatures, UsesReference):
 
         # Unbalanced parameters
         if unbalanced_reg is None:
-            unbalanced_reg = 1e-2
+            unbalanced_reg = 1e-1
         self.unbalanced_reg = unbalanced_reg
 
     @profile_method

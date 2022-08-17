@@ -75,5 +75,20 @@
             "BC21.h5ad",
             "BC22.h5ad"
         ]
+    },
+    {
+        "name": "cell_cycle",
+        "reference": "multiple, see documentation",
+        "type": "Cell cycle coordinates",
+        "zip_link": "https://1drv.ms/u/s!Al03Ky07bKkGheYuVdA7Eyhb4fHUNw?e=hPd9Nm",
+        "zip_name": "cell_cycle.zip",
+        "md5_hash": "f39fa350d590a7539cbb656bd6d1a56a",
+        "n_files": 4,
+        "files": [
+            "U2OS.h5ad",
+            "CHLA9.h5ad",
+            "CHLA10.h5ad",
+            "TC71.h5ad"
+        ]
     }
 ]
