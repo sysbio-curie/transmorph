@@ -158,6 +158,7 @@ class EmbedMNN(Model):
         self,
         datasets: List[AnnData],
         use_representation: Optional[str] = None,
+        output_representation: str = "transmorph",
     ) -> None:
         """
         Carries out the model on a list of AnnData objects. Writes the result in
@@ -170,9 +171,13 @@ class EmbedMNN(Model):
 
         use_representation: Optional[str]
             .obsm to use as input.
+
+        output_representation: str
+            .obsm destination key, "transmorph" by default.
         """
         self.fit(
             datasets=datasets,
             reference=None,
             use_representation=use_representation,
+            output_representation=output_representation,
         )

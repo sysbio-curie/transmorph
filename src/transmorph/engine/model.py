@@ -143,6 +143,7 @@ class Model(CanLog):
         datasets: Union[List[AnnData], Dict[str, AnnData]],
         reference: Optional[AnnData] = None,
         use_representation: Optional[str] = None,
+        output_representation: str = "transmorph",
     ):
         """
         Runs the Model given a list of AnnData datasets, and writes integration
@@ -171,6 +172,9 @@ class Model(CanLog):
             Matrix representation to use during the pipeline, useful to provide
             a low-dimensional representation of data.
             If None, use AnnData.X. Otherwise, uses the provided .obsm key.
+
+        output_representation: str
+            .obsm destination key, "transmorph" by default.
 
         Returns
         -------
@@ -215,6 +219,8 @@ class Model(CanLog):
                     value=adata.obsm[use_representation],
                     persist="pipeline",
                 )
+        for layer in self.output_layers:
+            layer.repr_key = output_representation
 
         # Computes NN graph if needed
         if UsesNeighbors.Used:
