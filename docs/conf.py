@@ -9,7 +9,7 @@
 import os
 import sys
 
-sys.path.append(os.path.abspath("../src/transmorph/"))
+sys.path.append(os.path.abspath("../src/"))
 
 project = "transmorph"
 copyright = "2022, Aziz Fouché, Loïc Chadoutaud, Andrei Zinovyev"
@@ -36,16 +36,13 @@ autodoc_mock_imports = [
     "anndata",
     "igraph",
     "leidenalg",
-    "numpy",
     "pre-commit",
     "pot",
     "pymde",
     "pynndescent",
     "scanpy",
-    "scikit-learn",
     "scipy",
     "stabilized-ica",
-    "transmorph",
     "umap-learn",
 ]
 

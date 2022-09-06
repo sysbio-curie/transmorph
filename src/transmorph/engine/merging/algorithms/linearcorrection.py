@@ -8,7 +8,7 @@ from typing import List
 from ..merging import Merging
 from ...traits.usesneighbors import UsesNeighbors
 from ...traits.usesreference import UsesReference
-from ....utils.graph import get_nearest_vertex_from_set
+from ....utils.graph import get_nearest_vertex_from_set, smooth_correction_vectors
 
 
 class LinearCorrection(Merging, UsesNeighbors, UsesReference):
@@ -112,7 +112,12 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
                 "is comprehensive enough, and number of neighbors is high enough."
             )
         references[unreferenced] = np.arange(X_src.shape[0])[unreferenced]
-        corr_vectors = corr_vectors[references]
+        corr_vectors = smooth_correction_vectors(
+            X_src,
+            corr_vectors[references],
+            indices,
+            distances,
+        )
 
         return X_src + corr_vectors * self.transformation_rate
 

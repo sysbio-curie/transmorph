@@ -803,3 +803,22 @@ def prune_edges_unsupervised(
         result_matchings[i, j].eliminate_zeros()
 
     return result_matchings
+
+
+@njit
+def smooth_correction_vectors(
+    X: np.ndarray,
+    v: np.ndarray,
+    nn_indices: np.ndarray,
+    nn_distances: np.ndarray,
+    n_neighbors: int = 5,
+) -> np.ndarray:
+    """
+    Applies smoothing to a vector space.
+    """
+    new_correction = np.zeros(v.shape)
+    for i, vi in enumerate(v):
+        local_vs = v[nn_indices[i, :n_neighbors]]
+        for j, v_nb_j in enumerate(local_vs):
+            new_correction[i] += v_nb_j
+    return new_correction / n_neighbors
