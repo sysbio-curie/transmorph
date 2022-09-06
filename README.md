@@ -1,12 +1,10 @@
-# <img alt="Transmorph" src="img/logo_v2.png" height="90">
+# [<img alt="Transmorph" src="img/logo_v2.png" height="90">](https://transmorph.readthedocs.io/en/latest/index.html)
 
 [![PyPI version](https://badge.fury.io/py/transmorph.svg)](https://badge.fury.io/py/transmorph)
 [![GitHub license](https://img.shields.io/github/license/Risitop/transmorph.svg)](https://github.com/Risitop/transmorph/blob/main/LICENSE)
 [![Documentation Status](https://readthedocs.org/projects/transmorph/badge/?version=latest)](https://transmorph.readthedocs.io/en/latest/?badge=latest)
 [![Downloads](https://pepy.tech/badge/transmorph)](https://pepy.tech/project/transmorph)
 [![Downloads](https://pepy.tech/badge/transmorph/month)](https://pepy.tech/project/transmorph)
-
-**We are currently updating transmorph to its v0.2.0, PyPi version is unchanged yet.**
 
 **transmorph** is a python framework dedicated to data integration, with a focus on single-cell applications. Dataset integration describes the problem of embedding two or more datasets together, across different batches or feature spaces, so that similar samples end up close from one another. In transmorph we aim to provide a comprehensive framework to design, apply, report and benchmark data integration models using a system of interactive building blocks supported by statistical and plotting tools. We included pre-built models as well as benchmarking databanks in order to easily set up integration tasks. This package can be used in compatibility with **scanpy** and **anndata** packages, and works in jupyter notebooks.
 
