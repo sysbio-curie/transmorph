@@ -7,10 +7,10 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="transmorph",
-    version="0.2.0",
-    author="Aziz Fouché, Loïc Chadoutaud (Institut Curie, Paris)",
+    version="0.2.1",
+    author="Aziz Fouché, Loïc Chadoutaud, Andrei Zinovyev (Institut Curie, Paris)",
     author_email="aziz.fouche@curie.fr",
-    description="Optimal transport-based data integration.",
+    description="A unifying data integration framework.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Risitop/transmorph",
@@ -26,7 +26,7 @@ setuptools.setup(
         "anndata>=0.8.0",
         "igraph",
         "leidenalg",
-        "numpy<1.21,>=1.17",
+        "numpy>=1.17",
         "pre-commit",
         "pot",
         "pymde",
@@ -37,5 +37,5 @@ setuptools.setup(
         "stabilized-ica",
         "umap-learn",
     ],
-    python_requires=">=3.9,<3.10",
+    python_requires=">=3.9",
 )

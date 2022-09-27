@@ -76,7 +76,7 @@ class MNNCorrection(Model):
     def __init__(
         self,
         matching: Literal["mnn", "bknn"] = "bknn",
-        matching_n_neighbors: int = 30,
+        matching_n_neighbors: Optional[int] = None,
         matching_metric: str = "sqeuclidean",
         matching_metric_kwargs: Optional[Dict] = None,
         obs_class: Optional[str] = None,
