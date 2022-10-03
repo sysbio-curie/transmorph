@@ -10,12 +10,11 @@ from typing import Dict, Literal, List, Optional
 from ..matching import Matching, _TypeMatchingSet
 from ...traits.isprofilable import profile_method
 from ...traits.usescommonfeatures import UsesCommonFeatures
-from ...traits.usesmetric import UsesMetric
 from ...traits.usesreference import UsesReference
 from ...traits.usesspatial import UsesSpatial
 
 
-class FusedGW(Matching, UsesCommonFeatures, UsesMetric, UsesReference, UsesSpatial):
+class FusedGW(Matching, UsesCommonFeatures, UsesReference, UsesSpatial):
     """
     Fused Gromov-Wasserstein-based [1] matching. Embeds the
     ot.gromov.fused_gromov_wasserstein method from POT
@@ -66,8 +65,6 @@ class FusedGW(Matching, UsesCommonFeatures, UsesMetric, UsesReference, UsesSpati
         self,
         OT_metric: str = "sqeuclidean",
         OT_metric_kwargs: Optional[Dict] = None,
-        default_GW_metric: str = "sqeuclidean",
-        default_GW_metric_kwargs: Optional[Dict] = None,
         alpha: float = 0.5,
         GW_loss: Literal["square_loss", "kl_loss"] = "square_loss",
         common_features_mode: Literal["pairwise", "total"] = "pairwise",
@@ -75,7 +72,6 @@ class FusedGW(Matching, UsesCommonFeatures, UsesMetric, UsesReference, UsesSpati
         Matching.__init__(self, str_identifier="FUSEDGW")
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
         UsesReference.__init__(self)
-        UsesMetric.__init__(self, default_GW_metric, default_GW_metric_kwargs)
         UsesSpatial.__init__(self)
         self.OT_metric = OT_metric
         self.OT_metric_kwargs = {} if OT_metric_kwargs is None else OT_metric_kwargs
@@ -92,10 +88,12 @@ class FusedGW(Matching, UsesCommonFeatures, UsesMetric, UsesReference, UsesSpati
         """
         # Precomputes weights and internal distances
         all_w = [np.ones(X.shape[0]) / X.shape[0] for X in datasets]
-        all_metrics = [self.get_metric(i) for i in range(len(datasets))]
         all_C = [
-            cdist(Xi, Xi, metric, **kwargs)
-            for Xi, (metric, kwargs) in zip(datasets, all_metrics)
+            cdist(
+                self.get_spatial_coordinates(i),
+                self.get_spatial_coordinates(i),
+            )
+            for i in range(len(datasets))
         ]
         all_C = [C / C.max() for C in all_C]
 
@@ -107,15 +105,20 @@ class FusedGW(Matching, UsesCommonFeatures, UsesMetric, UsesReference, UsesSpati
             target_indices = np.arange(ndatasets)
         else:
             target_indices = [reference]
-        for i in range(len(datasets)):
+        for i, Xi in enumerate(datasets):
             for j in target_indices:
                 if (i, j) in result:
                     continue
-                Xi_spatial = self.get_spatial_coordinates(i)
-                Xj_spatial = self.get_spatial_coordinates(j)
+                Xj = datasets[j]
+                Xi_common, Xj_common = self.slice_features(
+                    X1=Xi,
+                    X2=Xj,
+                    idx_1=i,
+                    idx_2=j,
+                )
                 M = cdist(
-                    Xi_spatial,
-                    Xj_spatial,
+                    Xi_common,
+                    Xj_common,
                     metric=self.OT_metric,
                     *self.OT_metric_kwargs,
                 )
