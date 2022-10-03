@@ -9,6 +9,7 @@ from .usescommonfeatures import UsesCommonFeatures
 from .usesmetric import UsesMetric
 from .usesreference import UsesReference
 from .usessamplelabels import UsesSampleLabels
+from .usesspatial import UsesSpatial
 
 
 def assert_trait(obj: Any, traits: Union[Type, Tuple[Type, ...]]):
@@ -46,3 +47,5 @@ def preprocess_traits(
         obj.retrieve_reference_index(datasets)
     if isinstance(obj, UsesSampleLabels):
         obj.retrieve_all_labels(datasets)
+    if isinstance(obj, UsesSpatial):
+        obj.retrieve_spatial_coordinates(datasets)

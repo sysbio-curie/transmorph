@@ -16,6 +16,7 @@ from .usescommonfeatures import UsesCommonFeatures
 from .usesmatching import UsesMatching, _TypeMatchingModes
 from .usesmetric import UsesMetric
 from .usesneighbors import UsesNeighbors
+from .usesspatial import UsesSpatial
 from .usesreference import UsesReference
 from .usessamplelabels import UsesSampleLabels
 from .utils import assert_trait
@@ -31,6 +32,7 @@ __all__ = [
     "IsSubsamplable",
     "UsesCommonFeatures",
     "UsesMatching",
+    "UsesSpatial",
     "_TypeMatchingModes",
     "UsesMetric",
     "UsesNeighbors",

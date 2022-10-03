@@ -12,9 +12,10 @@ from ...traits.isprofilable import profile_method
 from ...traits.usescommonfeatures import UsesCommonFeatures
 from ...traits.usesmetric import UsesMetric
 from ...traits.usesreference import UsesReference
+from ...traits.usesspatial import UsesSpatial
 
 
-class FusedGW(Matching, UsesCommonFeatures, UsesMetric, UsesReference):
+class FusedGW(Matching, UsesCommonFeatures, UsesMetric, UsesReference, UsesSpatial):
     """
     Fused Gromov-Wasserstein-based [1] matching. Embeds the
     ot.gromov.fused_gromov_wasserstein method from POT
@@ -75,6 +76,7 @@ class FusedGW(Matching, UsesCommonFeatures, UsesMetric, UsesReference):
         UsesCommonFeatures.__init__(self, mode=common_features_mode)
         UsesReference.__init__(self)
         UsesMetric.__init__(self, default_GW_metric, default_GW_metric_kwargs)
+        UsesSpatial.__init__(self)
         self.OT_metric = OT_metric
         self.OT_metric_kwargs = {} if OT_metric_kwargs is None else OT_metric_kwargs
         self.alpha = alpha
@@ -105,20 +107,15 @@ class FusedGW(Matching, UsesCommonFeatures, UsesMetric, UsesReference):
             target_indices = np.arange(ndatasets)
         else:
             target_indices = [reference]
-        for i, Xi in enumerate(datasets):
+        for i in range(len(datasets)):
             for j in target_indices:
                 if (i, j) in result:
                     continue
-                Xj = datasets[j]
-                Xi_common, Xj_common = self.slice_features(
-                    X1=Xi,
-                    X2=Xj,
-                    idx_1=i,
-                    idx_2=j,
-                )
+                Xi_spatial = self.get_spatial_coordinates(i)
+                Xj_spatial = self.get_spatial_coordinates(j)
                 M = cdist(
-                    Xi_common,
-                    Xj_common,
+                    Xi_spatial,
+                    Xj_spatial,
                     metric=self.OT_metric,
                     *self.OT_metric_kwargs,
                 )
