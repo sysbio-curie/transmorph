@@ -1,7 +1,10 @@
 Installing transmorph
 =====================
 
-**transmorph** can be installed either from source of from the python repository PyPi. PyPi version is commonly more stable, but may not contain latest features, while you can find the development version on GitHub. Using a python environment is highly recommended (for instance `pipenv`_) in order to easily handle dependencies and versions.
+**transmorph** can be installed either from source of from the python repository PyPi. PyPi version is commonly more stable, but may not contain latest features, while you can find the development version on GitHub.
+
+Using a python environment is highly recommended (for instance `pipenv`_) in order to easily handle dependencies and versions. *transmorph* is tested only on Linux system right now, but we plan to add
+at least minimal support for other OS in the near future.
 
 .. contents:: Contents
    :local:
@@ -9,8 +12,8 @@ Installing transmorph
    :depth: 3
 
 
-Notable dependencies (automatically installed via $pip)
--------------------------------------------------------
+Notable python dependencies (automatically installed via $pip)
+--------------------------------------------------------------
 
 + `anndata`_
 + `igraph`_
@@ -26,15 +29,6 @@ Notable dependencies (automatically installed via $pip)
 + `stabilized-ica`_
 + `umap-learn`_
 
-Install from source (dev version)
-------------------------------------
-
-.. code-block:: console
-
-    git clone https://github.com/Risitop/transmorph
-    pip install ./transmorph
-
-
 Install from PyPi (recommended, latest stable version)
 ------------------------------------------------------
 
@@ -42,6 +36,13 @@ Install from PyPi (recommended, latest stable version)
 
     pip install transmorph
 
+Install from source (dev version)
+------------------------------------
+
+.. code-block:: console
+
+    git clone https://github.com/Risitop/transmorph
+    pip install ./transmorph
 
 What's next
 -----------

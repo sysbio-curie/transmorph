@@ -8,6 +8,8 @@ import random
 import string
 import sys
 
+FORBIDDEN_FILE_CHARS = '{}[]()/<>:"/\\|?*.'
+
 # Simple function that creates module global logger.
 
 
@@ -39,7 +41,10 @@ def create_logger():
     if not os.path.exists(log_dir_path):
         os.mkdir(log_dir_path)
     randstr = "".join(random.choices(string.ascii_letters, k=10))
-    file_name = f"{datetime.now()}_{randstr}.log".replace(" ", "_")
+    file_name = f"{datetime.now()}_{randstr}"
+    for c in FORBIDDEN_FILE_CHARS:
+        file_name = file_name.replace(c, "_")
+    file_name = f"{file_name}.log"
     file_path = f"{log_dir_path}{file_name}"
     if os.path.exists(file_path):
         os.remove(file_path)
