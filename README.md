@@ -16,36 +16,9 @@ https://transmorph.readthedocs.io/en/latest/
 
 ## Installation
 
-**transmorph** can be installed either from source of from the python repository PyPi. PyPi version is commonly more stable, but may not contain latest features, while you can find the development version on GitHub. Using a python environment is highly recommended (for instance  [pipenv](https://pypi.org/project/pipenv/)) in order to easily handle dependencies and versions. **transmorph** has only be tested for python 3.9.
+**transmorph** can be installed either from source of from the python repository PyPi. PyPi version is commonly more stable, but may not contain latest features, while you can find the development version on GitHub. Using a python environment is highly recommended (for instance  [pipenv](https://pypi.org/project/pipenv/)) in order to easily handle dependencies and versions. **transmorph** has only be tested for python >=3.9, on Linux and Windows systems.
 
-### Notable dependencies (automatically installed via $pip)
-
-+ [anndata](https://anndata.readthedocs.io/en/latest/)
-+ [igraph](https://igraph.org/)
-+ [leidenalg](https://leidenalg.readthedocs.io/en/stable/intro.html)
-+ [numba](https://numba.pydata.org/)
-+ [numpy](https://numpy.org/) 
-+ [osqp](https://github.com/osqp/osqp-python) (quadratic program solver)
-+ [POT](https://github.com/PythonOT/POT) (optimal transport in python)
-+ [pymde](https://pymde.org/)
-+ [pynndescent](https://pynndescent.readthedocs.io/en/latest/)
-+ [scipy](https://www.scipy.org/) 
-+ [scikit-learn](https://scikit-learn.org/stable/)
-+ [stabilized-ica](https://stabilized-ica.readthedocs.io/en/latest/)
-+ [umap-learn](https://umap-learn.readthedocs.io/en/latest/)
-
-### Install from source (latest version)
-
-```sh
-git clone https://github.com/Risitop/transmorph
-pip install ./transmorph
-```
-
-### Install from PyPi (recommended, latest stable version)
-
-```sh
-pip install transmorph
-```
+See the instructions: [https://transmorph.readthedocs.io/en/latest/sections/installation.html](https://transmorph.readthedocs.io/en/latest/sections/installation.html)
 
 ### Quick starting with a pre-built model
 

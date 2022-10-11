@@ -409,10 +409,14 @@ def scatter_plot(
 
     # Saving, showing and closing
     if save:
-        save_path = "/".join(caller_path.split("/")[:-1]) + "/figures/"
+        if "\\" in caller_path:
+            sep_char = "\\"
+        else:
+            sep_char = "/"
+        save_path = sep_char.join(caller_path.split(sep_char)[:-1]) + f"{sep_char}figures{sep_char}"
         if not exists(save_path):
             os.mkdir(save_path)
-        fname = caller_path.split("/")[-1].split(".")[0]
+        fname = caller_path.split(sep_char)[-1].split(".")[0]
         if suffix == "__color_by__":
             suffix = color_by
         if suffix != "":

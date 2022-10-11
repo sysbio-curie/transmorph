@@ -3,8 +3,7 @@ Installing transmorph
 
 **transmorph** can be installed either from source of from the python repository PyPi. PyPi version is commonly more stable, but may not contain latest features, while you can find the development version on GitHub.
 
-Using a python environment is highly recommended (for instance `pipenv`_) in order to easily handle dependencies and versions. *transmorph* is tested only on Linux system right now, but we plan to add
-at least minimal support for other OS in the near future.
+Using a python environment is highly recommended (for instance `pipenv`_) in order to easily handle dependencies and versions.
 
 .. contents:: Contents
    :local:
@@ -37,12 +36,33 @@ Install from PyPi (recommended, latest stable version)
     pip install transmorph
 
 Install from source (dev version)
-------------------------------------
+---------------------------------
 
 .. code-block:: console
 
     git clone https://github.com/Risitop/transmorph
     pip install ./transmorph
+
+Troubleshooting
+---------------
+
+Extra steps may be necessary to get **transmorph** properly working, especially on Windows systems. We would be grateful if you could to report any other installation error as a GitHub issue so that we can work on a fix. 
+
++ **numpy** package is not installed
+
+.. code-block:: console
+
+    pip install numpy
+
++ Microsoft Visual C++ >=14.0 is required
+
+Fix: Grab the C++ SDK from https://visualstudio.microsoft.com/visual-cpp-build-tools/, ensure C++ development tools are ticked (C++ development tools are automatically installed on Linux distributions).
+
++ PyMDE install error, no graph.c file
+
+.. code-block:: console
+
+    pip install cython
 
 What's next
 -----------

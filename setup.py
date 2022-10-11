@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="transmorph",
-    version="0.2.1",
+    version="0.2.2",
     author="Aziz Fouché, Loïc Chadoutaud, Andrei Zinovyev (Institut Curie, Paris)",
     author_email="aziz.fouche@curie.fr",
     description="A unifying data integration framework.",

@@ -8,7 +8,6 @@ import urllib.request
 import zipfile
 
 from os import path
-from posixpath import dirname
 from socket import error as SocketError
 from typing import Dict, Optional
 from warnings import warn
@@ -17,7 +16,7 @@ from .._logging import logger
 
 CALLBACK = 30
 DATASETS_JSON = "datasets.json"
-DATA_PATH = f"{dirname(__file__)}/data/"
+DATA_PATH = f"{path.dirname(__file__)}/data/"
 
 
 def check_md5_file(file_path: str, target_hash: str) -> bool:
@@ -48,7 +47,7 @@ def unzip_file(zip_path: str, dataset_name: str) -> None:
 def check_files(dataset_name: str) -> bool:
     # Check if all files from a dataset are present
     logger.log(logging.DEBUG, f"databank_api > Checking files from {dataset_name}...")
-    with open(f"{dirname(__file__)}/{DATASETS_JSON}", "r") as f:
+    with open(f"{path.dirname(__file__)}/{DATASETS_JSON}", "r") as f:
         all_datasets = json.load(f)
         dataset: Optional[Dict] = None
         for ds in all_datasets:
@@ -59,7 +58,7 @@ def check_files(dataset_name: str) -> bool:
             warn(f"Dataset {dataset_name} not found in database.")
             return False
         for fname in dataset["files"]:
-            if not path.exists(f"{dirname(__file__)}/data/{dataset_name}/{fname}"):
+            if not path.exists(f"{path.dirname(__file__)}/data/{dataset_name}/{fname}"):
                 return False
     return True
 
@@ -88,7 +87,7 @@ def download_dataset(dataset_name: str) -> str:
     # using data from datasets.json
     # TODO print -> log
 
-    datasets_root = f"{dirname(__file__)}/"
+    datasets_root = f"{path.dirname(__file__)}/"
 
     # Ensuring dataset exists
     f = open(f"{datasets_root}{DATASETS_JSON}", "r")
