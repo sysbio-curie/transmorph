@@ -49,4 +49,13 @@ in AnnData.obsm['transmorph'].
 chen_10x['P01'].obsm['transmorph']
 ```
 
+One can for instance use a plotting function from transmorph to display integration results.
+
+```python
+from transmorph.utils.plotting import scatter_plot
+
+scatter_plot(chen_10x, input_obsm="transmorph")
+scatter_plot(chen_10x, input_obsm="transmorph", color_by="class")
+```
+
 [Chen 2020] [Chen, Y. P., Yin, J. H., Li, W. F., Li, H. J., Chen, D. P., Zhang, C. J., ... & Ma, J. (2020). Single-cell transcriptomics reveals regulators underlying immune cell diversity and immune subtypes associated with prognosis in nasopharyngeal carcinoma. Cell research, 30(11), 1024-1042.](https://www.nature.com/articles/s41422-020-0374-x)
