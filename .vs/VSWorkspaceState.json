@@ -1,0 +1,16 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\docs",
+    "\\docs\\sections",
+    "\\src",
+    "\\src\\transmorph",
+    "\\src\\transmorph\\datasets",
+    "\\src\\transmorph\\engine",
+    "\\src\\transmorph\\engine\\layers",
+    "\\src\\transmorph\\utils",
+    "\\tests"
+  ],
+  "SelectedNode": "\\src\\transmorph\\engine\\layers\\layer.py",
+  "PreviewInSolutionExplorer": false
+}

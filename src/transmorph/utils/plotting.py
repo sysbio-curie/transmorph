@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import matplotlib as mt
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -17,7 +18,16 @@ from ..engine.evaluators import (
     matching_edge_accuracy_discrete,
     matching_edge_penalty_continuous,
 )
-from ..engine.layers import LayerMatching
+from ..engine.layers import (
+    Layer, 
+    LayerChecking, 
+    LayerInput, 
+    LayerMatching, 
+    LayerMerging, 
+    LayerOutput, 
+    LayerTransformation
+)
+from ..engine.traits import ContainsTransformations
 from ..utils.anndata_manager import (
     anndata_manager as adm,
     AnnDataKeyIdentifiers,
@@ -555,3 +565,95 @@ def plot_label_distribution_heatmap(
         plt.yticks(np.arange(ndatasets), dataset_keys)
     if title is not None:
         plt.title(title)
+
+def plot_model(model: Model) -> None:
+    """
+    Plots a visual representation of a model.
+    """
+
+    BOX_WIDTH = 40
+    BOX_HEIGHT = 20
+
+    def _retrieve_elements(layer: Layer):
+        elements = []
+        if isinstance(layer, ContainsTransformations):
+            for transformation in layer.transformations:
+                elements.append(type(transformation).__name__)
+        if isinstance(layer, LayerMatching):
+            elements.append(type(layer.matching).__name__)
+        if isinstance(layer, LayerMerging):
+            elements.append(type(layer.merging).__name__)
+        return elements
+
+    def _retrieve_n_rows(model: Model) -> int:
+        max_elements = 0
+        for layer in model.layers:
+            max_elements = max(max_elements, len(_retrieve_elements(layer)))
+        return max_elements
+
+    def _plot_textbox(x: int, y: int, text: str, ax: mt.axes.Axes, **rect_kwargs):
+        rect = mt.patches.Rectangle((x, y), BOX_WIDTH, BOX_HEIGHT, **rect_kwargs)
+        ax.add_patch(rect)
+        ax.text(x + BOX_WIDTH/2, y + BOX_HEIGHT/2, text, ha="center", va="center", fontsize=9)
+
+    def _plot_layer(layer: Layer, x_offset: int, ax: mt.axes.Axes):
+        _plot_textbox(
+            x_offset, 
+            0, 
+            type(layer).__name__[5:], 
+            ax,
+            linewidth=1,
+            edgecolor="k",
+            facecolor="none"
+        )
+        next_layers = layer.output_layers
+        if len(next_layers) > 1:
+            raise NotImplementedError
+        if len(next_layers) == 0:
+            return
+        plt.arrow(
+            x_offset + BOX_WIDTH, 
+            BOX_HEIGHT/2, 
+            BOX_WIDTH/2, 
+            0, 
+            length_includes_head=True, 
+            facecolor="k",
+            head_width=3,
+            head_length=1.5
+        )
+        y_offset = 0
+        for element in _retrieve_elements(layer):
+            plt.arrow(
+                x_offset + BOX_HEIGHT, 
+                y_offset, 
+                0, 
+                -BOX_HEIGHT, 
+                length_includes_head=True, 
+                facecolor="k",
+                head_width=2
+            )
+            _plot_textbox(
+                x_offset, 
+                y_offset - BOX_HEIGHT*2, 
+                element, 
+                ax,
+                linewidth=1,
+                edgecolor="k",
+                facecolor="none"
+            )
+            y_offset -= BOX_HEIGHT*2
+        _plot_layer(next_layers[0], x_offset + BOX_WIDTH*1.5, ax)
+        
+    assert isinstance(model, Model), f"Model expected, found {type(model)}."
+
+    n_layers = len(model.layers)
+    n_rows = _retrieve_n_rows(model)
+
+    if n_layers == 0:
+        return
+
+    fig = plt.figure(figsize=(2.5*n_layers, .7*(1 + n_rows)))
+    ax = plt.gca()
+    plt.axis('off')
+
+    _plot_layer(model.layers[0], 0, ax)
