@@ -2,6 +2,7 @@
 
 import matplotlib as mt
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 import os
 
@@ -35,8 +36,6 @@ from ..utils.anndata_manager import (
 )
 from ..utils.dimred import pca, umap
 from ..utils.matrix import extract_chunks, guess_is_discrete
-
-MARKERS = "osv^<>pP*hHXDd"
 
 
 def reduce_dimension(
@@ -119,25 +118,57 @@ def reduce_dimension(
         )
 
 
+#!/usr/bin/env python3
+
+import matplotlib as mt
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import numpy as np
+import os
+
+from anndata import AnnData
+from matplotlib import cm
+from numbers import Number
+from os.path import exists
+from scipy.sparse import csr_matrix
+from typing import Dict, List, Literal, Optional, Union
+
+from transmorph.engine import Model
+from transmorph.engine.evaluators import (
+    evaluate_matching_layer,
+    matching_edge_accuracy_discrete,
+    matching_edge_penalty_continuous,
+)
+from transmorph.engine.layers import (
+    Layer, 
+    LayerChecking, 
+    LayerInput, 
+    LayerMatching, 
+    LayerMerging, 
+    LayerOutput, 
+    LayerTransformation
+)
+from transmorph.engine.traits import ContainsTransformations
+from transmorph.utils.anndata_manager import (
+    anndata_manager as adm,
+    AnnDataKeyIdentifiers,
+    slice_common_features,
+)
+from transmorph.utils.dimred import pca, umap
+from transmorph.utils.matrix import extract_chunks, guess_is_discrete
+
 def scatter_plot(
     datasets: Union[AnnData, List[AnnData], Dict[str, AnnData]],
-    matching_mtx: Optional[csr_matrix] = None,
-    input_obsm: Optional[str] = None,
-    color_by: str = "__dataset__",
-    palette: str = "rainbow",
-    title: Optional[str] = None,
+    use_rep: Optional[str] = None,
+    color_by: Optional[str] = None,
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
-    batch_names: Optional[List[int]] = None,
-    show_title: bool = True,
-    show_legend: bool = True,
-    plot_cluster_names: bool = False,
-    show: bool = True,
-    save: bool = False,
-    extension: str = "png",
-    caller_path: str = "",
-    suffix: str = "__color_by__",
-    dpi: int = 100,
+    title: Optional[str] = None,
+    continuous_palette: bool = False,
+    dataset_labels: Optional[List[str]] = None,
+    labels_on_plot: bool = False,
+    palette: str = "rainbow",
+    dpi: int = 100
 ):
     """
     Advanced plotting function for transmorph results, handling parameters
@@ -219,35 +250,31 @@ def scatter_plot(
     if isinstance(datasets, AnnData):
         datasets = [datasets]
     if isinstance(datasets, Dict):
-        batch_names = list(datasets.keys())
+        dataset_labels = list(datasets.keys())
         datasets = list(datasets.values())
 
     # Checking parameters
     assert all(
         isinstance(adata, AnnData) for adata in datasets
     ), "All datasets must be AnnData."
-    if matching_mtx is not None:
-        assert len(datasets) == 2, "Drawing matching requires exactly two datasets."
-        assert type(matching_mtx) is csr_matrix, "Matching must come as a csr_matrix."
 
-    if input_obsm is None:
-        input_obsm = AnnDataKeyIdentifiers.PlotRepresentation
+    if use_rep is None:
+        assert all(
+            adata.X.shape[1] == 2 for adata in datasets
+        ), "No use_rep specified, and some adata.X are not 2 dimensional."
 
     # Retrieving representation
     default_xlabel = "Feature 1"
     default_ylabel = "Feature 2"
-    if not all(adm.isset_value(adata, key=input_obsm) for adata in datasets):
-        assert all(
-            adata.X.shape[1] == 2 for adata in datasets
-        ), "Make sure to call reduce_dimension first."
+    if not all(adm.isset_value(adata, key=use_rep) for adata in datasets):
         representations = [adata.X for adata in datasets]
     else:
-        representations = [adm.get_value(adata, key=input_obsm) for adata in datasets]
-        reducer = adm.get_value(datasets[0], key=f"reducer_{input_obsm}")
+        representations = [adm.get_value(adata, key=use_rep) for adata in datasets]
+        reducer = adm.get_value(datasets[0], key=f"reducer_{use_rep}")
         if reducer == "umap":
             default_xlabel = "UMAP1"
             default_ylabel = "UMAP2"
-        else:
+        elif reducer == "pca":
             default_xlabel = "PC1"
             default_ylabel = "PC2"
 
@@ -256,76 +283,47 @@ def scatter_plot(
     if ylabel is None:
         ylabel = default_ylabel
 
-    # Guessing continous or discrete labels
-    if color_by == "__dataset__":
-        n_labels = len(datasets)
-        continuous = False
-        if batch_names is not None:
-            all_labels = batch_names
+    if color_by is None: # Color by dataset
+        continuous_palette = False
+        if dataset_labels is not None:
+            all_labels = dataset_labels
         else:
-            all_labels = [f"Batch {i + 1}" for i in range(n_labels)]
-    else:
+            all_labels = [f"Dataset {i + 1}" for i, _ in enumerate(datasets)]
+    else: # Colour by custom label
         all_labels = set()
         for adata in datasets:
             all_labels = all_labels | set(adata.obs[color_by])
         all_labels = sorted(all_labels)
-        n_labels = len(all_labels)
-        continuous = (n_labels > 20) and all(isinstance(y, Number) for y in all_labels)
+        # simple heuristic
+        continuous_palette = (len(all_labels) > 20) and all(isinstance(y, Number) for y in all_labels)
 
-    # Guess plotting parameters
-    npoints = sum(X.shape[0] for X in representations)
-    size = 100
-    if npoints > 100:
-        size = 60
-    if npoints > 500:
-        size = 50
-    if npoints > 1000:
-        size = 40
-    if npoints > 5000:
-        size = 30
-    if npoints > 10000:
-        size = 20
-    if npoints > 50000:
-        size = 10
-
-    ndatasets = len(datasets)
-    alpha = 0.8
-    if ndatasets >= 3:
-        alpha = 0.6
-    if ndatasets >= 10:
-        alpha = 0.4
-
+    dot_size = .5
+    dot_alpha = 1
+    n_labels = len(all_labels)
+    n_datasets = len(datasets)
+    
     # Prepare the palette
     cmap = cm.get_cmap(palette, n_labels)
 
     # Do the plotting
-    plt.figure(figsize=(6, 6), dpi=dpi)
+    fig = plt.figure(dpi=dpi)
+    ax_scatter = fig.add_subplot(111, aspect='equal')
+    
+    scatter = None
     for i, adata in enumerate(datasets):
         X = representations[i]
-        mk = MARKERS[i % len(MARKERS)]  # Loops to avoid oob error
-        if color_by == "__dataset__":
-            if ndatasets == 1:
+        if color_by is None:
+            if n_datasets == 1:
                 color = cmap(0.5)
             else:
-                color = cmap(i / (ndatasets - 1))
-            plt.scatter(*X.T, marker=mk, s=size, alpha=alpha, color=color)
-            plt.scatter(
-                [],
-                [],
-                marker=mk,
-                s=40,
-                label=all_labels[i],
-                color=color,
-            )
-            continue
-        if continuous:
-            show_legend = False
-            plt.scatter(
+                color = cmap(i / (n_datasets - 1))
+            scatter = ax_scatter.scatter(*X.T, s=dot_size, alpha=dot_alpha, color=color, label=all_labels[i])
+        elif continuous_palette:
+            scatter = ax_scatter.scatter(
                 *X.T,
                 c=adata.obs[color_by],
-                alpha=alpha,
-                marker=mk,
-                s=size,
+                alpha=dot_alpha,
+                s=dot_size,
                 cmap=palette,
             )
         else:
@@ -335,26 +333,26 @@ def scatter_plot(
                 else:
                     color = cmap(k / (n_labels - 1))
                 if i == 0:
-                    plt.scatter(
-                        [],
-                        [],
-                        marker="o",
-                        s=40,
+                    scatter = ax_scatter.scatter(
+                        *X[adata.obs[color_by] == label].T,
+                        alpha=dot_alpha,
+                        s=dot_size,
                         color=color,
                         label=label,
                     )
-                plt.scatter(
-                    *X[adata.obs[color_by] == label].T,
-                    alpha=alpha,
-                    marker=mk,
-                    s=size,
-                    color=color,
-                )
-    if continuous:
-        plt.colorbar()
-
-    # Plotting cluster names if necessary
-    if plot_cluster_names:
+                else:
+                    scatter = ax_scatter.scatter(
+                        *X[adata.obs[color_by] == label].T,
+                        alpha=dot_alpha,
+                        s=dot_size,
+                        color=color,
+                    )
+                
+    if continuous_palette:
+        divider = make_axes_locatable(ax_scatter)
+        ax_legend = divider.append_axes("right", size="5%", pad=0.1)
+        plt.colorbar(scatter, cax=ax_legend).set_label(color_by, fontsize=14)
+    elif labels_on_plot:
         for ilabel, label in enumerate(all_labels):
             nobs, cl_pos = 0, np.zeros((2,), dtype=np.float32)
             for i, adata in enumerate(datasets):
@@ -376,64 +374,33 @@ def scatter_plot(
                 ha="center",
                 va="center",
             )
-
-    # Drawing matching if necessary
-    if matching_mtx is not None:
-        Tcoo = matching_mtx.tocoo()
-        X1, X2 = representations
-        for i, j, v in zip(Tcoo.row, Tcoo.col, Tcoo.data):
-            plt.plot(
-                [X1[i][0], X2[j][0]],
-                [X1[i][1], X2[j][1]],
-                alpha=np.clip(v * X2.shape[0], 0, 1),
-                c="k",
-            )
-
-    # Reordering legend
-    if show_legend:
-        handles, labels = plt.gca().get_legend_handles_labels()
-        if len(handles) < 5:
-            legendsize = 12
-        elif len(handles) < 10:
-            legendsize = 8
-        else:
-            legendsize = 5
+    else:
+        divider = make_axes_locatable(ax_scatter)
+        ax_legend = divider.append_axes("right", size="5%", pad=0.1)
+        handles, labels = ax_scatter.get_legend_handles_labels()
         order = np.argsort(labels)
-        plt.legend(
+        for label in order:
+            ax_legend.scatter([], [], label=label)
+        ax_legend.legend(
             [handles[idx] for idx in order],
             [labels[idx] for idx in order],
-            fontsize=legendsize,
+            fontsize=12,
+            markerscale=12,
+            ncols=(1 + len(order) // 10),
+            loc="center left"
         )
+        ax_legend.axis("off")
 
     # Adding text pieces
-    plt.xlabel(xlabel, fontsize=16)
-    plt.ylabel(ylabel, fontsize=16)
-    plt.xticks([])
-    plt.yticks([])
-    if color_by == "__dataset__":
-        color_by = "dataset"
-    if show_title:
-        if title is None:
-            title = ""
-        plt.title(title, fontsize=18)
-
-    # Saving, showing and closing
-    if save:
-        if "\\" in caller_path:
-            sep_char = "\\"
-        else:
-            sep_char = "/"
-        save_path = sep_char.join(caller_path.split(sep_char)[:-1]) + f"{sep_char}figures{sep_char}"
-        if not exists(save_path):
-            os.mkdir(save_path)
-        fname = caller_path.split(sep_char)[-1].split(".")[0]
-        if suffix == "__color_by__":
-            suffix = color_by
-        if suffix != "":
-            suffix = "_" + suffix
-        plt.savefig(save_path + f"{fname}{suffix}.{extension}")
-    if show:
-        plt.show()
+    ax_scatter.set_xlabel(xlabel, fontsize=16)
+    ax_scatter.set_ylabel(ylabel, fontsize=16)
+    ax_scatter.set_xticks([])
+    ax_scatter.set_yticks([])
+    
+    if title is not None:
+        ax_scatter.set_title(title, fontsize=18)
+        
+    plt.show()
     plt.close()
 
 
