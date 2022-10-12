@@ -164,18 +164,13 @@ def scatter_plot(
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
     title: Optional[str] = None,
-    continuous_palette: bool = False,
     dataset_labels: Optional[List[str]] = None,
     labels_on_plot: bool = False,
     palette: str = "rainbow",
     dpi: int = 100
 ):
     """
-    Advanced plotting function for transmorph results, handling parameters
-    guessing, representation cacheing, automatic dimensionality reduction,
-    continuous or linear labeling, figure saving.
-
-    IMPORTANT: If save=True, see parameter caller_path.
+    Advanced plotting function for transmorph results.
 
     Parameters
     ----------
@@ -185,64 +180,34 @@ def scatter_plot(
         Otherwise, AnnData.X is chosen as fallback representation (in this
         case, all datasets must be embedded in the same space).
 
-    matching_mtx: csr_matrix, default = None
-        This option is only valid for two datasets. You can provide a boolean
-        or probabilistic matching between datasets represented as a sparse
-        matrix (CSR format), which will be displayed on the plot. Be careful,
-        for too large datasets this will slow down plotting and yield results
-        difficult to read.
+    use_rep: Optional[str]
+        AnnData.obsm key containing data embedding. If None, attempts to use 
+        AnnData.X instead if dimensionality is 2.
 
-    reducer: str, default = "umap"
-        Algorithm to use if embedding dimensionality exceeds 2. Valid options
-        are "pca" for linear dimensionality reduction and "umap" for embedding
-        high dimensional datasets such as single-cell data.
-
-    color_by: str, default = "__dataset__"
-        Labeling colors to use in the figure. "__dataset__" will color each
+    color_by: Optional[str]
+        Labeling colors to use in the figure. None will color each
         point depending of its dataset of origin. Otherwise, all keys of
         AnnData.obs are valid. The function will try to guess discrete- or
         continuous-ness of the labels, and color accordingly.
 
-    palette: str, default = "rainbow"
-        Matplotlib colormap to pick colors from.
-
-    title: str, default = ""
-        Title of the plot.
-
-    xlabel: str, default = ""
+    xlabel: Optional[str]
         Labeling of the x axis.
 
-    ylabel: str, default = ""
+    ylabel: Optional[str]
         Labeling of the y axis.
 
-    show_title: bool, default = True
-        Shows plot title.
+    title: Optional[str]
+        Title of the plot.
 
-    show_legend: bool, default = True
-        Shows the legend panel.
+    dataset_labels: Optional[List[str]]
+        Labels to use in legend to describe each AnnData, if datasets 
+        is not a Dict. 
 
-    plot_cluster_names: bool, default = False
-        Shows cluster names on the plot, gathered from color_by.
+    labels_on_plot: bool, default = False
+        Shows labels on plot instead of in legend.
 
-    show: bool, default = True
-        Call plt.show() at the end to display the figure in a separate
-        window.
-
-    save: bool, default = False
-        Save the plot in the same directory as the file calling the
-        functions, in a figures/ subdirectory (created if necessary).
-
-    extension: str, default = "png"
-        If save=True, valid image file extension to use.
-
-    caller_path:
-        If save=True, pass f"__file__" to indicate file location.
-
-    suffix: str = "__color_by__":
-        If save=True, suffix to append to the file name to differentiate
-        between image files of the same source. "__color_by__" will use
-        labels as suffix (e.g. "plot_cell_type.png")
-                                     ^^^^^^^^^
+    palette: str, default = "rainbow"
+        Matplotlib colormap to pick colors from.
 
     dpi: int, default = 200,
         Dot per inch to use for the figure.
