@@ -566,7 +566,13 @@ def plot_label_distribution_heatmap(
     if title is not None:
         plt.title(title)
 
-def plot_model(model: Model) -> None:
+def plot_model(
+    model: Model,
+    layer_edgecolor: str = "royalblue",
+    layer_facecolor: str = "lightsteelblue",
+    algorithm_edgecolor: str = "darkorange",
+    algorithm_facecolor: str = "bisque"
+) -> None:
     """
     Plots a visual representation of a model.
     """
@@ -603,8 +609,8 @@ def plot_model(model: Model) -> None:
             type(layer).__name__[5:], 
             ax,
             linewidth=1,
-            edgecolor="k",
-            facecolor="none"
+            edgecolor=layer_edgecolor,
+            facecolor=layer_facecolor
         )
         next_layers = layer.output_layers
         if len(next_layers) > 1:
@@ -638,8 +644,8 @@ def plot_model(model: Model) -> None:
                 element, 
                 ax,
                 linewidth=1,
-                edgecolor="k",
-                facecolor="none"
+                edgecolor=algorithm_edgecolor,
+                facecolor=algorithm_facecolor
             )
             y_offset -= BOX_HEIGHT*2
         _plot_layer(next_layers[0], x_offset + BOX_WIDTH*1.5, ax)
