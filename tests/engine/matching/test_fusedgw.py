@@ -5,7 +5,6 @@ from transmorph.datasets import load_travaglini_10x
 from transmorph.engine.matching import FusedGW
 from transmorph.engine.traits import UsesMetric
 from transmorph.stats import edge_accuracy
-from transmorph.utils.plotting import scatter_plot
 
 
 def test_matching_fusedgw_accuracy():
@@ -19,22 +18,7 @@ def test_matching_fusedgw_accuracy():
     results = mt.fit([adata.X for adata in datasets])
     T = results[0, 1]
     accuracy = edge_accuracy(datasets[0], datasets[1], T, "class")
-    time = mt.get_time_spent() * 1000
     assert accuracy >= -1
-    scatter_plot(
-        datasets=datasets,
-        matching_mtx=T,
-        color_by="class",
-        title="Fused Gromov-Wasserstein matching\n"
-        f"[acc={'{:.2f}'.format(accuracy)}, "
-        f"time={'{:.2f}'.format(time)}ms]",
-        xlabel="Feature 1",
-        ylabel="Feature 2",
-        show=False,
-        save=True,
-        caller_path=__file__,
-        suffix="nometric",
-    )
 
     # With custom metrics
     UsesMetric.set_adata_metric(datasets[0], "cosine")
@@ -49,22 +33,7 @@ def test_matching_fusedgw_accuracy():
     results = mt.fit([adata.X for adata in datasets])
     T = results[0, 1]
     accuracy = edge_accuracy(datasets[0], datasets[1], T, "class")
-    time = mt.get_time_spent() * 1000
     assert accuracy >= -1
-    scatter_plot(
-        datasets=datasets,
-        matching_mtx=T,
-        color_by="class",
-        title="Fused Gromov-Wasserstein matching\n"
-        f"[acc={'{:.2f}'.format(accuracy)}, "
-        f"time={'{:.2f}'.format(time)}ms]",
-        xlabel="Feature 1",
-        ylabel="Feature 2",
-        show=False,
-        save=True,
-        caller_path=__file__,
-        suffix="metric",
-    )
 
 
 def test_matching_fusedgw_commonfeatures():

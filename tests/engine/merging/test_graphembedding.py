@@ -4,7 +4,6 @@ from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.matching import Labels
 from transmorph.engine.merging import GraphEmbedding
 from transmorph.engine.traits import UsesNeighbors
-from transmorph.utils.plotting import scatter_plot
 from transmorph.utils.anndata_manager import (
     anndata_manager as adm,
     AnnDataKeyIdentifiers,
@@ -40,17 +39,6 @@ def test_merging_umap():
             value=X_out,
             persist="output",
         )
-    scatter_plot(
-        datasets=datasets,
-        color_by="class",
-        title="Merging UMAP",
-        xlabel="UMAP1",
-        ylabel="UMAP2",
-        show=False,
-        save=True,
-        caller_path=__file__,
-        suffix="umap",
-    )
 
 
 def test_merging_mde():
@@ -82,17 +70,6 @@ def test_merging_mde():
             value=X_out,
             persist="output",
         )
-    scatter_plot(
-        datasets=datasets,
-        color_by="class",
-        title="Merging MDE",
-        xlabel="MDE1",
-        ylabel="MDE2",
-        show=False,
-        save=True,
-        caller_path=__file__,
-        suffix="mde",
-    )
 
 
 if __name__ == "__main__":

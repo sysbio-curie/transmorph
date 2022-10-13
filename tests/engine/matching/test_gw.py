@@ -4,7 +4,6 @@ from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.matching import GW
 from transmorph.engine.traits import UsesMetric
 from transmorph.stats import edge_accuracy
-from transmorph.utils.plotting import scatter_plot
 
 
 def test_matching_gw_accuracy():
@@ -19,22 +18,7 @@ def test_matching_gw_accuracy():
         results = mt.fit([adata.X for adata in datasets])
         T = results[0, 1]
         accuracy = edge_accuracy(datasets[0], datasets[1], T, "class")
-        time = mt.get_time_spent() * 1000
         assert accuracy >= -1
-        scatter_plot(
-            datasets=datasets,
-            matching_mtx=T,
-            color_by="class",
-            title="Gromov-Wasserstein matching\n"
-            f"[acc={'{:.2f}'.format(accuracy)}, "
-            f"time={'{:.2f}'.format(time)}ms]",
-            xlabel="Feature 1",
-            ylabel="Feature 2",
-            show=False,
-            save=True,
-            caller_path=__file__,
-            suffix=f"{optimizer}_nometric",
-        )
 
         # With custom metrics
         UsesMetric.set_adata_metric(datasets[0], "cosine")
@@ -49,22 +33,7 @@ def test_matching_gw_accuracy():
         results = mt.fit([adata.X for adata in datasets])
         T = results[0, 1]
         accuracy = edge_accuracy(datasets[0], datasets[1], T, "class")
-        time = mt.get_time_spent() * 1000
         assert accuracy >= -1
-        scatter_plot(
-            datasets=datasets,
-            matching_mtx=T,
-            color_by="class",
-            title="Gromov-Wasserstein matching\n"
-            f"[acc={'{:.2f}'.format(accuracy)}, "
-            f"time={'{:.2f}'.format(time)}ms]",
-            xlabel="Feature 1",
-            ylabel="Feature 2",
-            show=False,
-            save=True,
-            caller_path=__file__,
-            suffix=f"{optimizer}_metric",
-        )
 
 
 if __name__ == "__main__":

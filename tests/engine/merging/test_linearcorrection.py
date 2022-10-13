@@ -4,7 +4,6 @@ from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.matching import Labels
 from transmorph.engine.merging import LinearCorrection
 from transmorph.engine.traits import UsesNeighbors, UsesReference
-from transmorph.utils.plotting import scatter_plot
 from transmorph.utils.anndata_manager import (
     anndata_manager as adm,
     AnnDataKeyIdentifiers,
@@ -43,17 +42,6 @@ def test_merging_linearcorrection():
             value=X_out,
             persist="output",
         )
-    scatter_plot(
-        datasets=datasets,
-        color_by="class",
-        title="Merging linear correction",
-        xlabel="Feature 1",
-        ylabel="Feature 2",
-        show=False,
-        save=True,
-        caller_path=__file__,
-        suffix="",
-    )
 
 
 if __name__ == "__main__":

@@ -14,7 +14,6 @@ from transmorph.engine.matching import Labels, MNN
 from transmorph.engine.merging import Barycenter, LinearCorrection, GraphEmbedding
 from transmorph.engine.model import Model
 from transmorph.engine.transforming import Standardize, PCA, CommonFeatures
-from transmorph.utils.plotting import scatter_plot, reduce_dimension
 
 
 def test_model_initialization():
@@ -54,18 +53,6 @@ def test_model_smalldata_simple():
     lmerging.connect(loutput)
     model = Model(linput)
     model.fit(datasets, reference=datasets[1])
-    testname = "smalldata_simple"
-    scatter_plot(
-        datasets,
-        color_by="class",
-        title=testname,
-        xlabel="Feature 1",
-        ylabel="Feature 2",
-        save=True,
-        show=False,
-        caller_path=__file__,
-        suffix=testname,
-    )
 
 
 def test_model_smalldata_complex():
@@ -87,18 +74,6 @@ def test_model_smalldata_complex():
     lchecking.connect_rejected(lmatching)
     model = Model(linput)
     model.fit(datasets, reference=datasets[1])
-    testname = "smalldata_complex"
-    scatter_plot(
-        datasets,
-        color_by="class",
-        title=testname,
-        xlabel="Feature 1",
-        ylabel="Feature 2",
-        save=True,
-        show=False,
-        caller_path=__file__,
-        suffix=testname,
-    )
 
 
 def test_model_largedata_simple():
@@ -121,29 +96,6 @@ def test_model_largedata_simple():
     lmerging.connect(loutput)
     model = Model(linput)
     model.fit(datasets)
-    reduce_dimension(datasets, reducer="pca", input_obsm="transmorph")
-    testname = "largedatasets_simple"
-    scatter_plot(
-        datasets,
-        color_by="class",
-        title=testname,
-        xlabel="UMAP1",
-        ylabel="UMAP2",
-        save=True,
-        show=False,
-        caller_path=__file__,
-        suffix=f"{testname}_class",
-    )
-    scatter_plot(
-        datasets,
-        title=testname,
-        xlabel="UMAP1",
-        ylabel="UMAP2",
-        save=True,
-        show=False,
-        caller_path=__file__,
-        suffix=f"{testname}_dataset",
-    )
 
 
 if __name__ == "__main__":

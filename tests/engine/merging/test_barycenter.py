@@ -4,7 +4,6 @@ from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.matching import Labels
 from transmorph.engine.merging import Barycenter
 from transmorph.engine.traits import UsesReference
-from transmorph.utils.plotting import scatter_plot
 from transmorph.utils.anndata_manager import (
     anndata_manager as adm,
     AnnDataKeyIdentifiers,
@@ -30,17 +29,6 @@ def test_merging_barycenter():
             value=X_out,
             persist="output",
         )
-    scatter_plot(
-        datasets=datasets,
-        color_by="class",
-        title="Merging barycenter",
-        xlabel="Feature 1",
-        ylabel="Feature 2",
-        show=False,
-        save=True,
-        caller_path=__file__,
-        suffix="",
-    )
 
 
 if __name__ == "__main__":

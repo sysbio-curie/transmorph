@@ -3,7 +3,6 @@
 from transmorph.datasets import load_test_datasets_small, load_travaglini_10x
 from transmorph.engine.matching import MNN
 from transmorph.stats import edge_accuracy
-from transmorph.utils.plotting import scatter_plot
 
 
 def test_matching_mnn_accuracy():
@@ -13,23 +12,8 @@ def test_matching_mnn_accuracy():
     mt = MNN(n_neighbors=3)
     results = mt.fit([src.X, ref.X])
     T = results[0, 1]
-    time = mt.get_time_spent() * 1000
     accuracy = edge_accuracy(src, ref, T, "class")
     assert accuracy >= 0.5
-    scatter_plot(
-        datasets=[src, ref],
-        matching_mtx=T,
-        color_by="class",
-        title="MNN matching\n"
-        f"[acc={'{:.2f}'.format(accuracy)}, "
-        f"time={'{:.2f}'.format(time)}ms]",
-        xlabel="Feature 1",
-        ylabel="Feature 2",
-        show=False,
-        save=True,
-        caller_path=__file__,
-        suffix="",
-    )
 
 
 def test_matching_mnn_commonfeatures():
