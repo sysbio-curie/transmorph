@@ -4,14 +4,13 @@ import matplotlib as mt
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
-import os
 
 from anndata import AnnData
 from matplotlib import cm
 from numbers import Number
-from os.path import exists
 from scipy.sparse import csr_matrix
 from typing import Dict, List, Literal, Optional, Union
+
 
 from ..engine import Model
 from ..engine.evaluators import (
@@ -20,14 +19,11 @@ from ..engine.evaluators import (
     matching_edge_penalty_continuous,
 )
 from ..engine.layers import (
-    Layer, 
-    LayerChecking, 
-    LayerInput, 
-    LayerMatching, 
-    LayerMerging, 
-    LayerOutput, 
-    LayerTransformation
+    Layer,
+    LayerMatching,
+    LayerMerging,
 )
+from ..engine.matching import CombineMatching
 from ..engine.traits import ContainsTransformations
 from ..utils.anndata_manager import (
     anndata_manager as adm,
@@ -118,45 +114,6 @@ def reduce_dimension(
         )
 
 
-#!/usr/bin/env python3
-
-import matplotlib as mt
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-import numpy as np
-import os
-
-from anndata import AnnData
-from matplotlib import cm
-from numbers import Number
-from os.path import exists
-from scipy.sparse import csr_matrix
-from typing import Dict, List, Literal, Optional, Union
-
-from transmorph.engine import Model
-from transmorph.engine.evaluators import (
-    evaluate_matching_layer,
-    matching_edge_accuracy_discrete,
-    matching_edge_penalty_continuous,
-)
-from transmorph.engine.layers import (
-    Layer, 
-    LayerChecking, 
-    LayerInput, 
-    LayerMatching, 
-    LayerMerging, 
-    LayerOutput, 
-    LayerTransformation
-)
-from transmorph.engine.traits import ContainsTransformations
-from transmorph.utils.anndata_manager import (
-    anndata_manager as adm,
-    AnnDataKeyIdentifiers,
-    slice_common_features,
-)
-from transmorph.utils.dimred import pca, umap
-from transmorph.utils.matrix import extract_chunks, guess_is_discrete
-
 def scatter_plot(
     datasets: Union[AnnData, List[AnnData], Dict[str, AnnData]],
     use_rep: Optional[str] = None,
@@ -167,7 +124,7 @@ def scatter_plot(
     dataset_labels: Optional[List[str]] = None,
     labels_on_plot: bool = False,
     palette: str = "rainbow",
-    dpi: int = 100
+    dpi: int = 100,
 ):
     """
     Advanced plotting function for transmorph results.
@@ -181,7 +138,7 @@ def scatter_plot(
         case, all datasets must be embedded in the same space).
 
     use_rep: Optional[str]
-        AnnData.obsm key containing data embedding. If None, attempts to use 
+        AnnData.obsm key containing data embedding. If None, attempts to use
         AnnData.X instead if dimensionality is 2.
 
     color_by: Optional[str]
@@ -200,8 +157,8 @@ def scatter_plot(
         Title of the plot.
 
     dataset_labels: Optional[List[str]]
-        Labels to use in legend to describe each AnnData, if datasets 
-        is not a Dict. 
+        Labels to use in legend to describe each AnnData, if datasets
+        is not a Dict.
 
     labels_on_plot: bool, default = False
         Shows labels on plot instead of in legend.
@@ -248,32 +205,34 @@ def scatter_plot(
     if ylabel is None:
         ylabel = default_ylabel
 
-    if color_by is None: # Color by dataset
+    if color_by is None:  # Color by dataset
         continuous_palette = False
         if dataset_labels is not None:
             all_labels = dataset_labels
         else:
             all_labels = [f"Dataset {i + 1}" for i, _ in enumerate(datasets)]
-    else: # Colour by custom label
+    else:  # Colour by custom label
         all_labels = set()
         for adata in datasets:
             all_labels = all_labels | set(adata.obs[color_by])
         all_labels = sorted(all_labels)
         # simple heuristic
-        continuous_palette = (len(all_labels) > 20) and all(isinstance(y, Number) for y in all_labels)
+        continuous_palette = (len(all_labels) > 20) and all(
+            isinstance(y, Number) for y in all_labels
+        )
 
-    dot_size = .5
+    dot_size = 0.5
     dot_alpha = 1
     n_labels = len(all_labels)
     n_datasets = len(datasets)
-    
+
     # Prepare the palette
     cmap = cm.get_cmap(palette, n_labels)
 
     # Do the plotting
     fig = plt.figure(dpi=dpi)
-    ax_scatter = fig.add_subplot(111, aspect='equal')
-    
+    ax_scatter = fig.add_subplot(111, aspect="equal")
+
     scatter = None
     for i, adata in enumerate(datasets):
         X = representations[i]
@@ -282,7 +241,9 @@ def scatter_plot(
                 color = cmap(0.5)
             else:
                 color = cmap(i / (n_datasets - 1))
-            scatter = ax_scatter.scatter(*X.T, s=dot_size, alpha=dot_alpha, color=color, label=all_labels[i])
+            scatter = ax_scatter.scatter(
+                *X.T, s=dot_size, alpha=dot_alpha, color=color, label=all_labels[i]
+            )
         elif continuous_palette:
             scatter = ax_scatter.scatter(
                 *X.T,
@@ -312,7 +273,7 @@ def scatter_plot(
                         s=dot_size,
                         color=color,
                     )
-                
+
     if continuous_palette:
         divider = make_axes_locatable(ax_scatter)
         ax_legend = divider.append_axes("right", size="5%", pad=0.1)
@@ -352,7 +313,7 @@ def scatter_plot(
             fontsize=12,
             markerscale=12,
             ncols=(1 + len(order) // 10),
-            loc="center left"
+            loc="center left",
         )
         ax_legend.axis("off")
 
@@ -361,10 +322,10 @@ def scatter_plot(
     ax_scatter.set_ylabel(ylabel, fontsize=16)
     ax_scatter.set_xticks([])
     ax_scatter.set_yticks([])
-    
+
     if title is not None:
         ax_scatter.set_title(title, fontsize=18)
-        
+
     plt.show()
     plt.close()
 
@@ -498,12 +459,13 @@ def plot_label_distribution_heatmap(
     if title is not None:
         plt.title(title)
 
+
 def plot_model(
     model: Model,
     layer_edgecolor: str = "royalblue",
     layer_facecolor: str = "lightsteelblue",
     algorithm_edgecolor: str = "darkorange",
-    algorithm_facecolor: str = "bisque"
+    algorithm_facecolor: str = "bisque",
 ) -> None:
     """
     Plots a visual representation of a model.
@@ -519,6 +481,9 @@ def plot_model(
                 elements.append(type(transformation).__name__)
         if isinstance(layer, LayerMatching):
             elements.append(type(layer.matching).__name__)
+            if isinstance(layer.matching, CombineMatching):
+                for matching in layer.matching.matchings:
+                    elements.append(type(matching).__name__)
         if isinstance(layer, LayerMerging):
             elements.append(type(layer.merging).__name__)
         return elements
@@ -532,17 +497,24 @@ def plot_model(
     def _plot_textbox(x: int, y: int, text: str, ax: mt.axes.Axes, **rect_kwargs):
         rect = mt.patches.Rectangle((x, y), BOX_WIDTH, BOX_HEIGHT, **rect_kwargs)
         ax.add_patch(rect)
-        ax.text(x + BOX_WIDTH/2, y + BOX_HEIGHT/2, text, ha="center", va="center", fontsize=9)
+        ax.text(
+            x + BOX_WIDTH / 2,
+            y + BOX_HEIGHT / 2,
+            text,
+            ha="center",
+            va="center",
+            fontsize=9,
+        )
 
     def _plot_layer(layer: Layer, x_offset: int, ax: mt.axes.Axes):
         _plot_textbox(
-            x_offset, 
-            0, 
-            type(layer).__name__[5:], 
+            x_offset,
+            0,
+            type(layer).__name__[5:],
             ax,
             linewidth=1,
             edgecolor=layer_edgecolor,
-            facecolor=layer_facecolor
+            facecolor=layer_facecolor,
         )
         next_layers = layer.output_layers
         if len(next_layers) > 1:
@@ -550,38 +522,38 @@ def plot_model(
         if len(next_layers) == 0:
             return
         plt.arrow(
-            x_offset + BOX_WIDTH, 
-            BOX_HEIGHT/2, 
-            BOX_WIDTH/2, 
-            0, 
-            length_includes_head=True, 
+            x_offset + BOX_WIDTH,
+            BOX_HEIGHT / 2,
+            BOX_WIDTH / 2,
+            0,
+            length_includes_head=True,
             facecolor="k",
             head_width=3,
-            head_length=1.5
+            head_length=1.5,
         )
         y_offset = 0
         for element in _retrieve_elements(layer):
             plt.arrow(
-                x_offset + BOX_HEIGHT, 
-                y_offset, 
-                0, 
-                -BOX_HEIGHT, 
-                length_includes_head=True, 
+                x_offset + BOX_HEIGHT,
+                y_offset,
+                0,
+                -BOX_HEIGHT,
+                length_includes_head=True,
                 facecolor="k",
-                head_width=2
+                head_width=2,
             )
             _plot_textbox(
-                x_offset, 
-                y_offset - BOX_HEIGHT*2, 
-                element, 
+                x_offset,
+                y_offset - BOX_HEIGHT * 2,
+                element,
                 ax,
                 linewidth=1,
                 edgecolor=algorithm_edgecolor,
-                facecolor=algorithm_facecolor
+                facecolor=algorithm_facecolor,
             )
-            y_offset -= BOX_HEIGHT*2
-        _plot_layer(next_layers[0], x_offset + BOX_WIDTH*1.5, ax)
-        
+            y_offset -= BOX_HEIGHT * 2
+        _plot_layer(next_layers[0], x_offset + BOX_WIDTH * 1.5, ax)
+
     assert isinstance(model, Model), f"Model expected, found {type(model)}."
 
     n_layers = len(model.layers)
@@ -590,8 +562,8 @@ def plot_model(
     if n_layers == 0:
         return
 
-    fig = plt.figure(figsize=(2.5*n_layers, .7*(1 + n_rows)))
-    ax = plt.gca()
-    plt.axis('off')
+    fig = plt.figure(figsize=(2.5 * n_layers, 0.7 * (1 + n_rows)))
+    ax = fig.add_subplot(111)
+    plt.axis("off")
 
     _plot_layer(model.layers[0], 0, ax)

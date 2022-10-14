@@ -10,24 +10,6 @@ Using a python environment is highly recommended (for instance `pipenv`_) in ord
    :backlinks: none
    :depth: 3
 
-
-Notable python dependencies (automatically installed via $pip)
---------------------------------------------------------------
-
-+ `anndata`_
-+ `igraph`_
-+ `leidenalg`_
-+ `numba`_
-+ `numpy`_
-+ `osqp`_
-+ `POT`_
-+ `pymde`_
-+ `pynndescent`_
-+ `scipy`_
-+ `scikit-learn`_
-+ `stabilized-ica`_
-+ `umap-learn`_
-
 Install from PyPi (recommended, latest stable version)
 ------------------------------------------------------
 

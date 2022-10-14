@@ -5,11 +5,11 @@ from __future__ import annotations
 import numpy as np
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List
 
 from ..traits import CanLog
 
-_TypeSubsampling = Tuple[np.ndarray, np.ndarray]
+_TypeSubsampling = np.ndarray
 
 
 class Subsampling(ABC, CanLog):

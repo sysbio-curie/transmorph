@@ -15,7 +15,7 @@ from ..traits import (
     ContainsTransformations,
     IsProfilable,
     profile_method,
-    IsSubsamplable,
+    UsesSubsampling,
     IsRepresentable,
     UsesSampleLabels,
 )
@@ -30,7 +30,7 @@ class LayerMatching(
     CanCatchChecking,
     ContainsTransformations,
     IsProfilable,
-    IsSubsamplable,
+    UsesSubsampling,
 ):
     """
     A LayerMatching encapsulates a matching algorithm, used to assess
@@ -72,7 +72,7 @@ class LayerMatching(
         CanCatchChecking.__init__(self)
         ContainsTransformations.__init__(self)
         IsProfilable.__init__(self)
-        IsSubsamplable.__init__(self, subsampling)
+        UsesSubsampling.__init__(self, subsampling)
         self.matching = matching
         self.matching_matrices: Optional[_TypeMatchingSet] = None
         self.obs_class = obs_class

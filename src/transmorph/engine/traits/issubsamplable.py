@@ -11,7 +11,7 @@ from ..traits.utils import preprocess_traits
 from ...utils.anndata_manager import anndata_manager as adm, AnnDataKeyIdentifiers
 
 
-class IsSubsamplable:
+class UsesSubsampling:
     """
     This trait allows a class to host a subsampling algorithm, and manipulate
     subsampled matrices. This is a key trait for performance-hungry components.
@@ -21,7 +21,6 @@ class IsSubsamplable:
         if subsampling is None:
             subsampling = KeepAll()
         self.subsampling = subsampling
-        self.anchors: List[np.ndarray] = []
         self.references: List[np.ndarray] = []
 
     @property

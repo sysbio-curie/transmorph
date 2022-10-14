@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 import numpy as np
+import sccover
 
 from typing import List, Optional
 
 from ..subsampling import Subsampling, _TypeSubsampling
 from ...traits.usesneighbors import UsesNeighbors
-from ....utils.graph import vertex_cover
 
 
 class VertexCover(Subsampling, UsesNeighbors):
@@ -43,8 +43,13 @@ class VertexCover(Subsampling, UsesNeighbors):
         results = []
         for i, _ in enumerate(datasets):
             Adj = UsesNeighbors.get_neighbors_graph(
-                i, mode="edges", n_neighbors=self.n_neighbors
+                i,
+                mode="edges",
+                n_neighbors=self.n_neighbors,
             )
-            anchors, references = vertex_cover(Adj, hops=self.n_hops)
+            references = sccover.vertex_cover_base(Adj)
+            anchors = np.array(
+                [int(ref == i) for i, ref in enumerate(references)], dtype=bool
+            )
             results.append((anchors, references))
         return results

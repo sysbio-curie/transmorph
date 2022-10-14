@@ -13,10 +13,8 @@ from transmorph.utils.graph import (
     generate_qtree,
     get_nearest_vertex_from_set,
     nearest_neighbors,
-    node_geodesic_distances,
     qtree_mutual_nearest_neighbors,
     raw_mutual_nearest_neighbors,
-    vertex_cover,
 )
 from transmorph.utils.anndata_manager import anndata_manager as adm
 
@@ -171,21 +169,6 @@ def test_mutual_nearest_neighbors():
         mnn_diffs = mnn_approx - mnn_exact
         mnn_diffs.data = np.abs(mnn_diffs.data)
         assert mnn_diffs.sum() / nnbs < 0.1
-
-
-def test_vertex_cover():
-    # Test vertex cover on random datasets
-    for _ in range(NTRIES):
-        nx = np.random.randint(low=100, high=500)
-        X = np.random.random((nx, NDIMS))
-        adj = nearest_neighbors(X, mode="edges", n_neighbors=10)
-        D = node_geodesic_distances(adj, False)
-        for n_hops in (1, 2, 3):
-            anchors, references = vertex_cover(adj, hops=n_hops)
-            assert anchors.sum() < nx
-            for i in range(nx):
-                assert D[i, references[i]] <= n_hops
-                assert bool(anchors[references[i]]) is True
 
 
 def test_combine_matchings_smallcase():

@@ -3,8 +3,8 @@
 import numpy as np
 
 from ot import emd
-from ot.bregman import sinkhorn_stabilized
 from ot.partial import partial_wasserstein
+from ot.bregman import sinkhorn_stabilized
 from ot.unbalanced import sinkhorn_stabilized_unbalanced
 from scipy.sparse import csr_matrix
 from scipy.spatial.distance import cdist

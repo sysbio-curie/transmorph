@@ -11,7 +11,7 @@ from .containstransformations import ContainsTransformations
 from .hasmetadata import HasMetadata
 from .isprofilable import IsProfilable, profile_method
 from .isrepresentable import IsRepresentable
-from .issubsamplable import IsSubsamplable
+from .issubsamplable import UsesSubsampling
 from .usescommonfeatures import UsesCommonFeatures
 from .usesmatching import UsesMatching, _TypeMatchingModes
 from .usesmetric import UsesMetric
@@ -28,7 +28,7 @@ __all__ = [
     "IsProfilable",
     "profile_method",
     "IsRepresentable",
-    "IsSubsamplable",
+    "UsesSubsampling",
     "UsesCommonFeatures",
     "UsesMatching",
     "_TypeMatchingModes",

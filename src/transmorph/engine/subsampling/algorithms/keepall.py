@@ -20,6 +20,4 @@ class KeepAll(Subsampling):
         """
         Selects all points, and defines each point as its own anchor.
         """
-        return [
-            (np.ones(X.shape[0]).astype(bool), np.arange(X.shape[0])) for X in datasets
-        ]
+        return [np.arange(X.shape[0]) for X in datasets]

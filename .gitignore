@@ -5,7 +5,6 @@ Pipfile
 Pipfile.lock
 build/
 docs/_build/
-examples/.ipynb_checkpoints/
 src/transmorph.egg-info
 src/transmorph/__pycache__/
 src/transmorph/datasets/data/
@@ -13,3 +12,4 @@ src/transmorph/datasets/data/
 .pre-commit-config.yaml
 **/figures/**
 **/logs/**
+**/.ipynb_checkpoints/**

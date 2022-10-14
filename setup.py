@@ -32,6 +32,7 @@ setuptools.setup(
         "pymde",
         "pynndescent",
         "scanpy",
+        "sccover",
         "scikit-learn",
         "scipy",
         "stabilized-ica",

@@ -13,7 +13,7 @@ from ..traits import (
     IsProfilable,
     profile_method,
     IsRepresentable,
-    IsSubsamplable,
+    UsesSubsampling,
     assert_trait,
 )
 from ..traits.utils import preprocess_traits
@@ -24,7 +24,7 @@ class LayerChecking(
     Layer,
     IsProfilable,
     IsRepresentable,
-    IsSubsamplable,
+    UsesSubsampling,
     ContainsTransformations,
     CanCatchChecking,
 ):
@@ -107,7 +107,7 @@ class LayerChecking(
         )
         IsProfilable.__init__(self)
         IsRepresentable.__init__(self, repr_key=f"{self}#{self.layer_id}")
-        IsSubsamplable.__init__(self, subsampling)
+        UsesSubsampling.__init__(self, subsampling)
         ContainsTransformations.__init__(self)
         CanCatchChecking.__init__(self)
         self.check_is_valid: Optional[bool] = None
