@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import anndata as ad
 import numpy as np
 
 from abc import ABC, abstractmethod
@@ -40,7 +41,9 @@ class Subsampling(ABC, CanLog):
         pass
 
     @abstractmethod
-    def subsample(self, datasets: List[np.ndarray]) -> List[_TypeSubsampling]:
+    def subsample(
+        self, datasets: List[ad.AnnData], embeddings: List[np.ndarray]
+    ) -> List[_TypeSubsampling]:
         """
         Applies a subsampling algorithm to a list of matrices
         representing datasets. Returns results in the following

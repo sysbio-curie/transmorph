@@ -35,7 +35,7 @@ class Standardize(Transformation):
         embeddings: List[np.ndarray],
     ) -> List[np.ndarray]:
         results = []
-        for X in datasets:
+        for X in embeddings:
             X = X.copy()
             if self.center:
                 X = center_matrix(X, axis=0)

@@ -97,7 +97,7 @@ def compute_lisi(
     """
 
     # n_neighbors >= 3*perplexity
-    connectivity = nearest_neighbors(X, n_neighbors=int(perplexity * 3))
+    connectivity = nearest_neighbors(X, mode="edges", n_neighbors=int(perplexity * 3))
     indices, _ = sort_sparse_matrix(connectivity)
     label_per_nb = labels[indices]
 

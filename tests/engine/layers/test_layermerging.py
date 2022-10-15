@@ -19,15 +19,12 @@ from transmorph.engine.merging import (
 )
 from transmorph.engine.traits import (
     HasMetadata,
-    UsesNeighbors,
     UsesReference,
     IsRepresentable,
 )
 from transmorph.engine.transforming import Standardize, PCA
-from transmorph.utils.anndata_manager import (
-    anndata_manager as adm,
-    AnnDataKeyIdentifiers,
-)
+from transmorph.utils.anndata_manager import anndata_manager as adm
+
 
 ALL_MERGINGS = [
     # constructor, parameters
@@ -45,11 +42,6 @@ def test_layer_merging():
     # in -> matching -> merging -> out setup.
     datasets = list(load_test_datasets_small().values())
     for merging_algo, kwargs in ALL_MERGINGS:
-        # Writing metadata
-        UsesNeighbors.compute_neighbors_graphs(
-            datasets=datasets,
-            representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
-        )
         UsesReference.write_is_reference(datasets[1])
 
         # Building model
@@ -81,7 +73,7 @@ def test_layer_merging():
         if isinstance(merging, UsesReference):
             merging.retrieve_reference_index(datasets)
         merging.set_matchings(lmatching.matching_matrices)
-        Xs_true = merging.transform([adata.X for adata in datasets])
+        Xs_true = merging.transform(datasets, [adata.X for adata in datasets])
         Xs_test = [lmerging.get_representation(adata) for adata in datasets]
 
         for X_test, X_true in zip(Xs_test, Xs_true):
@@ -91,8 +83,6 @@ def test_layer_merging():
                 continue
             np.testing.assert_array_equal(X_test, X_true)
 
-        # Removing all non-output content.
-        UsesNeighbors.reset()
         for adata in datasets:
             adm.clean(adata, level="pipeline")
 
@@ -104,10 +94,6 @@ def test_is_feature_space_propagation_1():
     # but then only space-preserving operations
     UsesReference.write_is_reference(travaglini[1])
     matching = Labels(label_obs="compartment")
-    UsesNeighbors.compute_neighbors_graphs(
-        travaglini,
-        AnnDataKeyIdentifiers.BaseRepresentation,
-    )
     merging = LinearCorrection()
     linput = LayerInput()
     lmatching = LayerMatching(matching=matching)
@@ -135,10 +121,6 @@ def test_is_feature_space_propagation_2():
     # and then only space-preserving operations
     UsesReference.write_is_reference(travaglini[1])
     matching = Labels(label_obs="compartment")
-    UsesNeighbors.compute_neighbors_graphs(
-        travaglini,
-        AnnDataKeyIdentifiers.BaseRepresentation,
-    )
     merging = LinearCorrection()
     linput = LayerInput()
     lmatching = LayerMatching(matching=matching)
@@ -166,10 +148,6 @@ def test_is_feature_space_propagation_3():
     # with space-preserving operations.
     UsesReference.write_is_reference(travaglini[1])
     matching = Labels(label_obs="compartment")
-    UsesNeighbors.compute_neighbors_graphs(
-        travaglini,
-        AnnDataKeyIdentifiers.BaseRepresentation,
-    )
     merging = LinearCorrection()
     linput = LayerInput()
     ltran1 = LayerTransformation()
@@ -211,10 +189,6 @@ def test_is_feature_space_propagation_4():
     # step uses a feature space embedding.
     UsesReference.write_is_reference(travaglini[1])
     matching = Labels(label_obs="compartment")
-    UsesNeighbors.compute_neighbors_graphs(
-        travaglini,
-        AnnDataKeyIdentifiers.BaseRepresentation,
-    )
     merging = LinearCorrection()
     linput = LayerInput()
     ltran1 = LayerTransformation()
@@ -258,10 +232,6 @@ def test_is_feature_space_propagation_5():
     # space preservation on last layers.
     UsesReference.write_is_reference(travaglini[1])
     matching = Labels(label_obs="compartment")
-    UsesNeighbors.compute_neighbors_graphs(
-        travaglini,
-        AnnDataKeyIdentifiers.BaseRepresentation,
-    )
     merging = LinearCorrection()
     linput = LayerInput()
     lmatching = LayerMatching(matching=matching)

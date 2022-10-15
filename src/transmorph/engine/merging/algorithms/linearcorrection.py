@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 
+import anndata as ad
 import numpy as np
 
 from scipy.sparse import csr_matrix
 from typing import List
 
 from ..merging import Merging
-from ...traits.usesneighbors import UsesNeighbors
 from ...traits.usesreference import UsesReference
-from ....utils.graph import get_nearest_vertex_from_set, smooth_correction_vectors
+from ....utils.graph import (
+    get_nearest_vertex_from_set,
+    nearest_neighbors,
+    smooth_correction_vectors,
+)
+from ....utils.matrix import sort_sparse_matrix
 
 
-class LinearCorrection(Merging, UsesNeighbors, UsesReference):
+class LinearCorrection(Merging, UsesReference):
     """
     LinearCorrection is a way to merge vectorized datasets embedded
     in the same vector space onto a reference, aiming to solve issues
@@ -52,7 +57,6 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
             matching_mode="normalized",
             transformation_rate=transformation_rate,
         )
-        UsesNeighbors.__init__(self)
         UsesReference.__init__(self)
         self.n_neighbors = n_neighbors
 
@@ -69,7 +73,7 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
         self,
         X_src: np.ndarray,
         X_ref: np.ndarray,
-        k_src: int,
+        nn_src: csr_matrix,
         T: csr_matrix,
     ) -> np.ndarray:
         """
@@ -87,12 +91,7 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
             ref_locations[corrected_idx] - X_src[corrected_idx]
         )
 
-        indices, distances = UsesNeighbors.get_neighbors_graph(
-            k_src,
-            mode="distances",
-            return_format="arrays",
-            n_neighbors=self.n_neighbors,
-        )
+        indices, distances = sort_sparse_matrix(nn_src)
         references = get_nearest_vertex_from_set(indices, distances, corrected_idx)
         unreferenced = references == -1
         nunreferenced = sum(unreferenced)
@@ -121,20 +120,27 @@ class LinearCorrection(Merging, UsesNeighbors, UsesReference):
 
         return X_src + corr_vectors * self.transformation_rate
 
-    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+    def transform(
+        self, datasets: List[ad.AnnData], embeddings: List[np.ndarray]
+    ) -> List[np.ndarray]:
         """
         Computes correction vectors, then transforms.
         """
         k_ref = self.reference_index
         assert k_ref is not None, "No reference provided."
-        X_ref = self.get_reference_item(datasets)
+        X_ref = self.get_reference_item(embeddings)
         assert X_ref is not None, "No reference provided."
         result = []
-        for k, X in enumerate(datasets):
+        for k, (adata, X) in enumerate(zip(datasets, embeddings)):
             if X is X_ref:
                 result.append(X_ref)
                 continue
             T = self.get_matching(k, k_ref)
-            projection = self.project(X, X_ref, k, T)
+            nn_src = nearest_neighbors(
+                adata,
+                mode="distances",
+                n_neighbors=self.n_neighbors,
+            )
+            projection = self.project(X, X_ref, nn_src, T)
             result.append(projection)
         return result

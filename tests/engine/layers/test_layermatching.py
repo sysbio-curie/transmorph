@@ -11,7 +11,6 @@ from transmorph.engine.traits import (
     HasMetadata,
     UsesMetric,
     UsesSampleLabels,
-    UsesNeighbors,
 )
 
 ALL_MATCHINGS = [
@@ -87,7 +86,6 @@ def test_layer_matching_contains_transformations():
 def test_layer_matching_subsampling():
     # Testing layer matching with a subsampling.
     datasets = list(load_test_datasets_small().values())
-    UsesNeighbors.compute_neighbors_graphs(datasets)
     linput = LayerInput()
     matching = Labels(label_obs="class")
     lmatching = LayerMatching(matching=matching, subsampling=VertexCover())
@@ -98,7 +96,6 @@ def test_layer_matching_subsampling():
 
 def test_layer_matching_mnn_qtree():
     # Testing MNN <-> UsesNeighbors qtree interface
-    UsesNeighbors.compute_neighbors_graphs(travaglini)
     linput = LayerInput()
     matching = MNN(n_neighbors=20)
     lmatching = LayerMatching(matching=matching)

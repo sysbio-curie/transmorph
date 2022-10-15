@@ -3,7 +3,6 @@
 from transmorph.datasets import load_test_datasets_small
 from transmorph.engine.matching import Labels
 from transmorph.engine.merging import GraphEmbedding
-from transmorph.engine.traits import UsesNeighbors
 from transmorph.utils.anndata_manager import (
     anndata_manager as adm,
     AnnDataKeyIdentifiers,
@@ -21,10 +20,6 @@ def test_merging_umap():
             value=adata.X,
             persist="pipeline",
         )
-    UsesNeighbors.compute_neighbors_graphs(
-        datasets=datasets,
-        representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
-    )
     matching = Labels(label_obs="class")
     matching.retrieve_all_labels(datasets)
     T = matching.fit([adata.X for adata in datasets])
@@ -52,10 +47,6 @@ def test_merging_mde():
             value=adata.X,
             persist="pipeline",
         )
-    UsesNeighbors.compute_neighbors_graphs(
-        datasets=datasets,
-        representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
-    )
     matching = Labels(label_obs="class")
     matching.retrieve_all_labels(datasets)
     T = matching.fit([adata.X for adata in datasets])

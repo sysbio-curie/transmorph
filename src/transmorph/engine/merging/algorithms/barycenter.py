@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import anndata as ad
 import numpy as np
 
 from typing import List
@@ -33,16 +34,18 @@ class Barycenter(Merging, UsesReference):
         )
         UsesReference.__init__(self)
 
-    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+    def transform(
+        self, datasets: List[ad.AnnData], embeddings: List[np.ndarray]
+    ) -> List[np.ndarray]:
         """
         Combines datasets and matching to return a representation
         of all datasets in reference space.
         """
         k_ref = self.reference_index
         assert k_ref is not None, "Reference dataset must be set."
-        X_ref = self.get_reference_item(datasets)
+        X_ref = self.get_reference_item(embeddings)
         result = []
-        for k, X in enumerate(datasets):
+        for k, X in enumerate(embeddings):
             if X is X_ref:
                 result.append(X_ref)
                 continue

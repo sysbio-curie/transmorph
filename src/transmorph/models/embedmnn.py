@@ -122,7 +122,6 @@ class EmbedMNN(Model):
                 metric_kwargs=matching_metric_kwargs,
                 n_neighbors=matching_n_neighbors,
                 common_features_mode="total",
-                solver="auto",
             )
         else:
             raise ValueError(

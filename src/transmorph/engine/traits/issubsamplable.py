@@ -70,7 +70,9 @@ class UsesSubsampling:
                 self.references[i] = references
 
         # Computes missing subsamplings
-        subsampling_results = self.subsampling.subsample([mtx for _, mtx in to_compute])
+        subsampling_results = self.subsampling.subsample(
+            datasets, [mtx for _, mtx in to_compute]
+        )
         # We store results in AnnData objects
         for (i, _), (anchors, references) in zip(to_compute, subsampling_results):
             adm.set_value(

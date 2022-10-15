@@ -72,7 +72,7 @@ class LayerMerging(
         assert isinstance(self.input_layer, LayerMatching)
         self.merging.set_matchings(self.input_layer.get_matchings())
         self.info(f"Running merging {self.merging}...")
-        Xs_transform = self.merging.transform(Xs)
+        Xs_transform = self.merging.transform(datasets, Xs)
         for adata, X_after in zip(datasets, Xs_transform):
             self.write_representation(adata, X_after, is_feature_space=is_feature_space)
         return self.output_layers

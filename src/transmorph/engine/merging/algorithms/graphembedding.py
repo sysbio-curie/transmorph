@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import anndata as ad
 import numpy as np
 import pymde
 
@@ -10,12 +11,15 @@ from typing import List, Literal
 
 from ..merging import Merging
 from ...matching import _TypeMatchingSet
-from ...traits.usesneighbors import UsesNeighbors
-from ....utils.graph import combine_matchings, generate_membership_matrix
+from ....utils.graph import (
+    combine_matchings,
+    generate_membership_matrix,
+    nearest_neighbors,
+)
 from ....utils.matrix import extract_chunks
 
 
-class GraphEmbedding(Merging, UsesNeighbors):
+class GraphEmbedding(Merging):
     """
     This merging regroups different graph embedding methods (GEM). Given a
     graph of weighted edges between data samples, a GEM learns an embedding
@@ -90,20 +94,21 @@ class GraphEmbedding(Merging, UsesNeighbors):
             str_identifier="GRAPH_EMBEDDING",
             matching_mode="bool",
         )
-        UsesNeighbors.__init__(self)
         assert optimizer in ("umap", "mde"), f"Unknown optimizer {optimizer}."
         self.optimizer = optimizer
         self.n_neighbors = n_neighbors
         self.embedding_dimension = embedding_dimension
         self.symmetrize_edges = symmetrize_edges
 
-    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+    def transform(
+        self, datasets: List[ad.AnnData], embeddings: List[np.ndarray]
+    ) -> List[np.ndarray]:
         """
         Builds a joint graph of datasets, then run the optimizer.
         """
         from .... import settings
 
-        ndatasets = len(datasets)
+        ndatasets = len(embeddings)
 
         # Matching matrix is already row-normalized
         matchings: _TypeMatchingSet = {}
@@ -113,8 +118,8 @@ class GraphEmbedding(Merging, UsesNeighbors):
                     continue
                 G = generate_membership_matrix(
                     self.get_matching(i, j),
-                    datasets[i],
-                    datasets[j],
+                    embeddings[i],
+                    embeddings[j],
                 )
                 matchings[i, j] = G
                 self.log(f"Matching graph {i, j}: {(G > 0).sum()} edges.")
@@ -124,19 +129,15 @@ class GraphEmbedding(Merging, UsesNeighbors):
 
         # We retrieve and scale boolean kNN-graphs
         inner_graphs = [
-            self.get_neighbors_graph(
-                i,
-                mode="edges",
-                n_neighbors=self.n_neighbors,
-            )
-            for i in range(ndatasets)
+            nearest_neighbors(adata=adata, mode="edges", n_neighbors=self.n_neighbors)
+            for adata in datasets
         ]
         for i, G in enumerate(inner_graphs):
             assert isinstance(G, csr_matrix)
             G = generate_membership_matrix(
                 G,
-                datasets[i],
-                datasets[i],
+                embeddings[i],
+                embeddings[i],
             )
             inner_graphs[i] = G
             self.log(f"Internal graph {i}: {(G > 0).sum()} edges.")
@@ -168,7 +169,7 @@ class GraphEmbedding(Merging, UsesNeighbors):
 
         # Computing the embedding
         if self.optimizer == "umap":
-            nsamples = sum(X.shape[0] for X in datasets)
+            nsamples = sum(X.shape[0] for X in embeddings)
             n_epochs = (
                 settings.umap_maxiter
                 if settings.umap_maxiter is not None
@@ -213,4 +214,4 @@ class GraphEmbedding(Merging, UsesNeighbors):
             X_result = np.array(mde.embed())
         else:
             raise ValueError(f"Unknown optimizer {self.optimizer}.")
-        return extract_chunks(X_result, [X.shape[0] for X in datasets])
+        return extract_chunks(X_result, [X.shape[0] for X in embeddings])

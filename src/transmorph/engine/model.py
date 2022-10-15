@@ -6,7 +6,7 @@ from anndata import AnnData
 from typing import Dict, List, Optional, TypeVar, Union
 
 from .layers import Layer, LayerChecking, LayerInput, LayerOutput
-from .traits import CanLog, CanCatchChecking, IsProfilable, UsesNeighbors, UsesReference
+from .traits import CanLog, CanCatchChecking, IsProfilable, UsesReference
 from .. import profiler
 from ..utils.anndata_manager import anndata_manager as adm, AnnDataKeyIdentifiers
 
@@ -221,14 +221,6 @@ class Model(CanLog):
                 )
         for layer in self.output_layers:
             layer.repr_key = output_representation
-
-        # Computes NN graph if needed
-        if UsesNeighbors.Used:
-            self.log("Precomputing neighbors graph.")
-            UsesNeighbors.compute_neighbors_graphs(
-                datasets,
-                representation_key=AnnDataKeyIdentifiers.BaseRepresentation,
-            )
 
         # Logging some info
         ndatasets = len(datasets)

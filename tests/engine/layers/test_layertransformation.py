@@ -45,7 +45,7 @@ def test_layer_transformation():
             transformation.retrieve_all_metadata(datasets)
         if isinstance(transformation, UsesCommonFeatures):
             transformation.retrieve_common_features(datasets, True)
-        Xs_true = transformation.transform([adata.X for adata in datasets])
+        Xs_true = transformation.transform(datasets, [adata.X for adata in datasets])
 
         for X_true, X_test in zip(Xs_true, Xs_test):
             np.testing.assert_array_almost_equal(X_true, X_test)

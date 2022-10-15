@@ -11,7 +11,7 @@ from transmorph.engine.layers import (
 from transmorph.engine.checking import NeighborEntropy
 from transmorph.engine.matching import Labels
 from transmorph.engine.merging import LinearCorrection
-from transmorph.engine.traits import IsRepresentable, UsesNeighbors, UsesReference
+from transmorph.engine.traits import IsRepresentable, UsesReference
 from transmorph.utils.anndata_manager import anndata_manager as adm
 
 N_STEPS_MAX = 100
@@ -21,7 +21,6 @@ N_CHECKS_MAX = 3
 def test_layer_checking_simple():
     # Tests a very simple network with two branches
     datasets = list(load_test_datasets_small().values())
-    UsesNeighbors.compute_neighbors_graphs(datasets)
     linput = LayerInput()
     lchecking = LayerChecking(checking=NeighborEntropy())
     louty = LayerOutput()
@@ -34,14 +33,12 @@ def test_layer_checking_simple():
     louty.fit(datasets)
     # We pretend we received the "yes" layer
     IsRepresentable.assert_representation_equals([linput, louty], datasets)
-    UsesNeighbors.reset()
     adm.clean(datasets)
 
 
 def test_layer_checking_standard():
     # Tests a standard model with a single loop.
     datasets = list(load_test_datasets_small().values())
-    UsesNeighbors.compute_neighbors_graphs(datasets)
     UsesReference.write_is_reference(datasets[1])
     linput = LayerInput()
     lmatching = LayerMatching(matching=Labels("class"))

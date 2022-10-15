@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import anndata as ad
 import numpy as np
 
 from typing import List
@@ -16,7 +17,9 @@ class KeepAll(Subsampling):
     def __init__(self):
         Subsampling.__init__(self, str_identifier="KEEPALL")
 
-    def subsample(self, datasets: List[np.ndarray]) -> List[_TypeSubsampling]:
+    def subsample(
+        self, datasets: List[ad.AnnData], embeddings: List[np.ndarray]
+    ) -> List[_TypeSubsampling]:
         """
         Selects all points, and defines each point as its own anchor.
         """
