@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 
+import anndata as ad
 import numpy as np
 
 from typing import List
 
 from ..transformation import Transformation
-from ...traits.usesneighbors import UsesNeighbors
 from ....utils.matrix import pooling, extract_chunks, sort_sparse_matrix, perturbate
-from ....utils.graph import nearest_neighbors
+from ....utils.graph import nearest_neighbors, nearest_neighbors_custom
 
 
-class Pooling(Transformation, UsesNeighbors):
+class Pooling(Transformation):
     """
     Replaces each sample by the average of its neighbors. This
     is a useful to smooth data manifolds, and reduce the impact
@@ -41,24 +41,27 @@ class Pooling(Transformation, UsesNeighbors):
         per_dataset: bool = True,
     ):
         Transformation.__init__(self, "POOLING", True, transformation_rate)
-        UsesNeighbors.__init__(self)
         self.n_neighbors = n_neighbors
         self.jitter_std = jitter_std
         self.per_dataset = per_dataset
 
-    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+    def transform(
+        self,
+        datasets: List[ad.AnnData],
+        embeddings: List[np.ndarray],
+    ) -> List[np.ndarray]:
         """
         Applies pooling, potentially partial.
         """
         if self.per_dataset:
             result = []
-            for i, X in enumerate(datasets):
-                indices, _ = self.get_neighbors_graph(
-                    i,
-                    "edges",
+            for adata, X in zip(datasets, embeddings):
+                neighbors = nearest_neighbors(
+                    adata,
+                    mode="edges",
                     n_neighbors=self.n_neighbors,
-                    return_format="arrays",
                 )
+                indices, _ = sort_sparse_matrix(neighbors)
                 X_pooled = pooling(X, indices)
                 if self.transformation_rate <= 1.0:
                     X_pooled *= self.transformation_rate
@@ -66,10 +69,10 @@ class Pooling(Transformation, UsesNeighbors):
                 result.append(X_pooled)
         else:
             X_all = np.concatenate(datasets, axis=0)
-            nn_matrix = nearest_neighbors(
+            nn_matrix = nearest_neighbors_custom(
                 X_all,
+                "edges",
                 n_neighbors=self.n_neighbors,
-                mode="edges",
             )
             indices, _ = sort_sparse_matrix(nn_matrix)
             X_pooled = pooling(X_all, indices)

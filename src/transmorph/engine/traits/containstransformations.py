@@ -91,7 +91,7 @@ class ContainsTransformations:
             if log_callback is not None:
                 init_dimension = f"[{', '.join([str(X.shape) for X in Xs])}]"
                 log_callback(f"Initial spaces dimension: {init_dimension}")
-            Xs = transformation.transform(Xs)
+            Xs = transformation.transform(datasets, Xs)
             is_feature_space = is_feature_space and transformation.preserves_space
             if log_callback is not None:
                 final_dimension = f"[{', '.join([str(X.shape) for X in Xs])}]"

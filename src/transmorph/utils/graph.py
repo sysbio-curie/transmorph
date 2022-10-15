@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import anndata as ad
 import igraph as ig
 import leidenalg as la
 import numpy as np
+import scanpy as sc
 import warnings
 
 from anndata import AnnData
@@ -12,31 +14,44 @@ from pynndescent import NNDescent
 from scipy.spatial.distance import cdist
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import dijkstra
-from sklearn.neighbors import NearestNeighbors
+from sklearn import neighbors as skn
 from typing import Dict, List, Literal, Optional, Tuple
 
 from .anndata_manager import anndata_manager as adm
-from .dimred import pca
 from .geometry import sparse_cdist
 from .matrix import (
     extract_chunks,
-    contains_duplicates,
-    perturbate,
     sort_sparse_matrix,
     sparse_from_arrays,
 )
-from .._logging import logger
+
+
+def nearest_neighbors_custom(
+    X: np.ndarray,
+    mode: Literal["edges", "distances"],
+    n_neighbors: int = 15,
+) -> csr_matrix:
+    """
+    Wraps sklearn.neighbors.NearestNeighbors class.
+    """
+    nn_model = skn.NearestNeighbors(n_neighbors=n_neighbors).fit(X)
+    if mode == "edges":
+        return csr_matrix(nn_model.kneighbors_graph(X, mode="connectivity").toarray())
+    elif mode == "distances":
+        return csr_matrix(nn_model.kneighbors_graph(X, mode="distance").toarray())
+    else:
+        raise ValueError(f"Unrecognized mode: {mode}")
 
 
 def nearest_neighbors(
-    X: np.ndarray,
-    mode: Literal["distances", "edges"] = "distances",
-    algorithm: Literal["auto", "sklearn", "nndescent"] = "auto",
-    n_neighbors: Optional[int] = None,
-    metric: Optional[str] = None,
-    metric_kwargs: Optional[Dict] = None,
-    use_pcs: Optional[int] = None,
-    random_seed: Optional[int] = None,
+    adata: ad.AnnData,
+    mode: Literal["edges", "distances", "connectivities"],
+    neigbhbors_key: str = "neighbors",
+    n_neighbors: int = 15,
+    metric: str = "euclidean",
+    metric_kwargs: Dict = {},
+    use_pca: bool = True,
+    random_state: Optional[RandomState] = None,
 ) -> csr_matrix:
     """
     Encapsulates k-nearest neighbors algorithms.
@@ -67,91 +82,34 @@ def nearest_neighbors(
         for small datasets or if the solution must be exact, use "nndescent"
         for large datasets if an approached solution is enough. With "auto",
         the function will adapt to dataset size.
-
     """
-    # Retrieves default parameters if needed
-    from .. import settings, use_setting
+    assert isinstance(
+        adata, ad.AnnData
+    ), f"AnnData expected, found {type(adata).__name__}."
+    assert mode in ["edges", "distances", "connectivities"]
+    if (
+        neigbhbors_key not in adata.uns
+        or adata.uns[neigbhbors_key]["params"]["n_neighbors"] < n_neighbors
+        or adata.uns[neigbhbors_key]["params"]["metric"] != metric
+    ):
+        from .._settings import settings, use_setting
 
-    n_neighbors = use_setting(n_neighbors, settings.n_neighbors_max)
-    metric = use_setting(metric, settings.neighbors_metric)
-    metric_kwargs = use_setting(metric_kwargs, settings.neighbors_metric_kwargs)
-    use_pcs = use_setting(use_pcs, settings.neighbors_n_pcs)
-    random_seed = use_setting(random_seed, settings.neighbors_random_seed)
-
-    # Checks parameters
-    nx = X.shape[0]
-    if algorithm == "nndescent":
-        use_nndescent = True
-    elif algorithm == "sklearn":
-        use_nndescent = False
-    elif algorithm == "auto":
-        use_nndescent = nx > settings.large_dataset_threshold
-    else:
-        raise ValueError(
-            f"Unrecognized algorithm: {algorithm}. Valid options are 'auto',"
-            " 'nndescent', 'sklearn'."
-        )
-    assert mode in ("edges", "distances"), f"Unknown mode: {mode}."
-    assert use_pcs is None or use_pcs > 0, f"Invalid PC number: {use_pcs}"
-
-    if use_pcs is not None and use_pcs < X.shape[1]:
-        logger.debug(f"nearest_neighbors > Computing PCA {X.shape[1]} -> {use_pcs}")
-        X = pca(X, n_components=use_pcs)
-
-    # If overlapping points, adds a light noise to guarantee
-    # NN algorithms proper functioning.
-    if contains_duplicates(X):
-        logger.debug("nearest_neighbors > Duplicates detected. Jittering.")
-        X = perturbate(X, std=0.01)
-
-    # By default, self loops are included in algorithms
-    n_neighbors += 1
-    n_neighbors = min(n_neighbors, nx - 1)
-
-    # Nearest neighbors
-    connectivity = None
-    if use_nndescent:
-        # PyNNDescent provides a high speed implementation of kNN
-        # Parameters borrowed from UMAP's implementation
-        # https://github.com/lmcinnes/umap
-        logger.debug("nearest_neighbors > Computing nearest neighbors using nndescent.")
-        q_tree = NNDescent(
-            X,
+        if use_pca and "X_pca" not in adata.obsm:
+            sc.pp.pca(adata)
+        sc.pp.neighbors(
+            adata,
             n_neighbors=n_neighbors,
             metric=metric,
             metric_kwds=metric_kwargs,
-            random_state=RandomState(random_seed),
+            method="umap",
+            random_state=use_setting(random_state, settings.global_random_seed),
         )
-        knn_indices, knn_distances = q_tree.neighbor_graph
-        knn_indices = knn_indices[:, 1:]
-        knn_distances = knn_distances[:, 1:]
-        if mode == "distances":
-            connectivity = sparse_from_arrays(knn_indices, knn_distances)
-        else:
-            connectivity = sparse_from_arrays(knn_indices)
-    else:
-        # Standard exact kNN using sklearn implementation
-        logger.debug("nearest_neighbors > Computing nearest neighbors using sklearn.")
-
-        nn = NearestNeighbors(
-            n_neighbors=n_neighbors,
-            metric=metric,
-            metric_params=metric_kwargs,
-        )
-        nn.fit(X)
-        if mode == "distances":
-            nnmode = "distance"
-        else:
-            nnmode = "connectivity"
-        connectivity = nn.kneighbors_graph(X, mode=nnmode)
-
-        connectivity.setdiag(0)
-        connectivity.eliminate_zeros()
-
-    ks = (connectivity > 0).sum(axis=1)
-    kmin, kmax = ks.min(), ks.max()
-    logger.debug(f"nearest_neighbors > n: {X.shape[0]}, kmin: {kmin}, kmax: {kmax}")
-    return connectivity
+    if mode == "edges":
+        return adata.obsp["distances"].astype(bool)
+    elif mode == "distances":
+        return adata.obsp["distances"]
+    elif mode == "connectivities":
+        return adata.obsp["connectivities"]
 
 
 def distance_to_knn(D: np.ndarray, k: int, axis: int):
@@ -536,7 +494,7 @@ def cluster_anndatas(
     datasets: List[AnnData],
     use_rep: Optional[str] = None,
     cluster_key: str = "cluster",
-    n_neighbors: int = 10,
+    n_neighbors: int = 15,
     resolution: float = 1.0,
 ) -> None:
     """
@@ -567,10 +525,10 @@ def cluster_anndatas(
         adm.isset_value(adata, key=use_rep, field="obsm") for adata in datasets
     ), f"{use_rep} missing in .obsm of some AnnDatas."
     X = np.concatenate(
-        [adm.get_value(adata, key=use_rep, field_str="obsm") for adata in datasets],
+        [adata.obsm[use_rep] for adata in datasets],
         axis=0,
     )
-    adj_matrix = nearest_neighbors(X, mode="edges", n_neighbors=n_neighbors)
+    adj_matrix = nearest_neighbors_custom(X, n_neighbors=n_neighbors)
     sources, targets = adj_matrix.nonzero()
     edgelist = zip(sources.tolist(), targets.tolist())
     partition = np.array(

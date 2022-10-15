@@ -2,6 +2,7 @@
 
 from typing import List
 
+import anndata as ad
 import numpy as np
 
 from ..transformation import Transformation
@@ -24,14 +25,18 @@ class CommonFeatures(Transformation, UsesCommonFeatures):
         )
         UsesCommonFeatures.__init__(self, mode="total")
 
-    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+    def transform(
+        self,
+        datasets: List[ad.AnnData],
+        embeddings: List[np.ndarray],
+    ) -> List[np.ndarray]:
         """
         Uses the power of UsesCommonFeatures trait to solve the case.
         """
         from ...._settings import settings
 
         results = []
-        for i, X in enumerate(datasets):
+        for i, X in enumerate(embeddings):
             initial_dim = X.shape[1]
             X_sliced = self.slice_features(X, i)
             final_dim = X_sliced.shape[1]

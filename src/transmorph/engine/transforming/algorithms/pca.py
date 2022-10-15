@@ -2,6 +2,7 @@
 
 from typing import Literal, List
 
+import anndata as ad
 import numpy as np
 
 from ..transformation import Transformation
@@ -53,18 +54,23 @@ class PCA(Transformation, UsesCommonFeatures, UsesReference):
                 X.shape[1] == datasets[0].shape[1] for X in datasets
             ), f"All datasets must be of same dimension for strategy={self.strategy}."
 
-    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+    def transform(
+        self,
+        datasets: List[ad.AnnData],
+        embeddings: List[np.ndarray],
+    ) -> List[np.ndarray]:
         """
         Slices datasets in the same space if necessary, then carries out the
         information.
         """
         to_reduce = []
-        for i, X in enumerate(datasets):
+        for i, X in enumerate(embeddings):
             to_reduce.append(self.slice_features(X1=X, idx_1=i))
         if to_reduce[0].shape[1] <= self.n_components:
             return to_reduce
 
-        if self.strategy == "idependent":
+        # TODO: check if X_pca is set
+        if self.strategy == "independent":
             return [pca(X, self.n_components) for X in to_reduce]
 
         pca_obj = None

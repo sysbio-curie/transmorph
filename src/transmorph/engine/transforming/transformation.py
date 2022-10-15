@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import anndata as ad
 import numpy as np
 
 from abc import ABC, abstractmethod
@@ -46,7 +47,11 @@ class Transformation(ABC, CanLog, IsProfilable):
         pass
 
     @abstractmethod
-    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+    def transform(
+        self,
+        datasets: List[ad.AnnData],
+        embeddings: List[np.ndarray],
+    ) -> List[np.ndarray]:
         """
         Takes a list of representations as input, and returns a list of
         representations as output in the same order. Retrieved metadata
@@ -57,7 +62,8 @@ class Transformation(ABC, CanLog, IsProfilable):
     @staticmethod
     def assert_transform_equals(
         transformation: Transformation,
-        datasets: List[np.ndarray],
+        datasets: List[ad.AnnData],
+        embeddings: List[np.ndarray],
         targets: List[np.ndarray],
         decimal: float = 6.0,
         print_debug: bool = False,
@@ -91,7 +97,10 @@ class Transformation(ABC, CanLog, IsProfilable):
         assert_type(transformation, Transformation)
         # To ensure transform does not change initial matrices
         initial_Xs = [X.copy() for X in datasets]
-        transformed_Xs = transformation.transform(datasets=datasets)
+        transformed_Xs = transformation.transform(
+            datasets=datasets,
+            embeddings=embeddings,
+        )
         for X_tra, X_tar in zip(transformed_Xs, targets):
             # Transformed are correct
             if print_debug:

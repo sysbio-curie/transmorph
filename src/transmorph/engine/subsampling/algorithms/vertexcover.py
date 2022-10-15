@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
+import anndata as ad
 import numpy as np
 import sccover
 
 from typing import List, Optional
 
 from ..subsampling import Subsampling, _TypeSubsampling
-from ...traits.usesneighbors import UsesNeighbors
+from ....utils.graph import nearest_neighbors
 
 
-class VertexCover(Subsampling, UsesNeighbors):
+class VertexCover(Subsampling):
     """
     Subsamples the dataset by computing a vertex cover, where every point
     in the dataset either belongs to the subsampling or is neighbor to a
@@ -32,21 +33,20 @@ class VertexCover(Subsampling, UsesNeighbors):
         from .... import settings, use_setting
 
         Subsampling.__init__(self, str_identifier="VERTEX_COVER")
-        UsesNeighbors.__init__(self)
         self.n_hops = n_hops
         self.n_neighbors = use_setting(n_neighbors, settings.vertexcover_n_neighbors)
 
-    def subsample(self, datasets: List[np.ndarray]) -> List[_TypeSubsampling]:
+    def subsample(
+        self,
+        datasets: List[ad.AnnData],
+        embeddings: List[np.ndarray],
+    ) -> List[_TypeSubsampling]:
         """
         Simply retrieves neighbor graphs, and uses it to compute vertex covers.
         """
         results = []
-        for i, _ in enumerate(datasets):
-            Adj = UsesNeighbors.get_neighbors_graph(
-                i,
-                mode="edges",
-                n_neighbors=self.n_neighbors,
-            )
+        for adata in datasets:
+            Adj = nearest_neighbors(adata, "edges", n_neighbors=self.n_neighbors)
             references = sccover.vertex_cover_base(Adj)
             anchors = np.array(
                 [int(ref == i) for i, ref in enumerate(references)], dtype=bool

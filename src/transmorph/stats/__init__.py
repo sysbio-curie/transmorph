@@ -7,7 +7,6 @@ from .integration import (
     matching_divergence,
 )
 from .matching import edge_accuracy, edge_penalty
-from .neighbors import neighborhood_preservation
 
 __all__ = [
     "edge_accuracy",
@@ -16,5 +15,4 @@ __all__ = [
     "label_entropy",
     "lisi",
     "matching_divergence",
-    "neighborhood_preservation",
 ]

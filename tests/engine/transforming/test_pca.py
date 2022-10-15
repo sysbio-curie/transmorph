@@ -30,7 +30,13 @@ def test_transform_pca():
     transform.retrieve_common_features(adatas, is_feature_space=True)
     datasets = [adata.X for adata in adatas]
     # Random PCA solver means we decrease the # of decimals required.
-    trf.Transformation.assert_transform_equals(transform, datasets, targets, decimal=1)
+    trf.Transformation.assert_transform_equals(
+        transform,
+        adatas,
+        datasets,
+        targets,
+        decimal=1,
+    )
 
 
 if __name__ == "__main__":

@@ -12,102 +12,12 @@ from transmorph.utils.graph import (
     distance_to_knn,
     generate_qtree,
     get_nearest_vertex_from_set,
-    nearest_neighbors,
     qtree_mutual_nearest_neighbors,
     raw_mutual_nearest_neighbors,
 )
 from transmorph.utils.anndata_manager import anndata_manager as adm
 
 NTRIES, NDIMS = 50, 10
-
-
-def test_nearest_neighbors():
-    # Tests nearest neighbors output
-    n_neighbors = 10
-    ntries = max(5, int(NTRIES / 10))
-    for _ in range(ntries):
-        nx = np.random.randint(low=100, high=500)
-        X = np.random.random((nx, NDIMS))
-
-        nnX_A = nearest_neighbors(
-            X,
-            mode="distances",
-            algorithm="sklearn",
-            n_neighbors=n_neighbors,
-            metric="minkowski",
-            metric_kwargs={"p": 2},
-            use_pcs=5,
-            random_seed=42,
-        )
-        assert nnX_A.shape[0] == nx
-        assert np.all((nnX_A > 0).sum(axis=1) == n_neighbors)
-
-        nnX_B = nearest_neighbors(
-            X,
-            mode="distances",
-            algorithm="sklearn",
-            n_neighbors=n_neighbors,
-            metric="minkowski",
-            metric_kwargs={"p": 2},
-            use_pcs=5,
-            random_seed=42,
-        )
-        assert nnX_B.shape[0] == nx
-        assert np.all((nnX_B > 0).sum(axis=1) == n_neighbors)
-        np.testing.assert_almost_equal(nnX_A.toarray(), nnX_B.toarray())
-
-        nnX = nearest_neighbors(
-            X,
-            mode="edges",
-            algorithm="sklearn",
-            n_neighbors=n_neighbors,
-            metric="minkowski",
-            metric_kwargs={"p": 2},
-            use_pcs=5,
-        )
-        assert nnX.shape[0] == nx
-        assert np.all((nnX > 0).sum(axis=1) == n_neighbors)
-        assert np.all(nnX.data == 1.0)
-
-        nnX_A = nearest_neighbors(
-            X,
-            mode="distances",
-            algorithm="nndescent",
-            n_neighbors=n_neighbors,
-            metric="minkowski",
-            metric_kwargs={"p": 2},
-            use_pcs=5,
-            random_seed=42,
-        )
-        assert nnX_A.shape[0] == nx
-        assert np.all((nnX_A > 0).sum(axis=1) == n_neighbors)
-
-        nnX_B = nearest_neighbors(
-            X,
-            mode="distances",
-            algorithm="nndescent",
-            n_neighbors=n_neighbors,
-            metric="minkowski",
-            metric_kwargs={"p": 2},
-            use_pcs=5,
-            random_seed=42,
-        )
-        assert nnX_B.shape[0] == nx
-        assert np.all((nnX_B > 0).sum(axis=1) == n_neighbors)
-        np.testing.assert_almost_equal(nnX_A.toarray(), nnX_B.toarray())
-
-        nnX = nearest_neighbors(
-            X,
-            mode="edges",
-            algorithm="nndescent",
-            n_neighbors=n_neighbors,
-            metric="minkowski",
-            metric_kwargs={"p": 2},
-            use_pcs=5,
-        )
-        assert nnX_B.shape[0] == nx
-        assert np.all((nnX > 0).sum(axis=1) == n_neighbors)
-        assert np.all(nnX.data == 1.0)
 
 
 def test_distance_to_knn():

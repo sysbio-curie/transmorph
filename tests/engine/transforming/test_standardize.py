@@ -11,7 +11,12 @@ def test_transform_standardize_nochange():
     datasets = [adata.X for adata in databank.values()]
     targets = [X.copy() for X in datasets]
     transform = Standardize(center=False, scale=False)
-    Transformation.assert_transform_equals(transform, datasets, targets)
+    Transformation.assert_transform_equals(
+        transform,
+        databank.values(),
+        datasets,
+        targets,
+    )
 
 
 def test_transform_standardize_center():
@@ -20,7 +25,12 @@ def test_transform_standardize_center():
     datasets = [adata.X for adata in databank.values()]
     targets = [center_matrix(X) for X in datasets]
     transform = Standardize(center=True, scale=False)
-    Transformation.assert_transform_equals(transform, datasets, targets)
+    Transformation.assert_transform_equals(
+        transform,
+        databank.values(),
+        datasets,
+        targets,
+    )
 
 
 def test_transform_standardize_scale():
@@ -29,7 +39,12 @@ def test_transform_standardize_scale():
     datasets = [adata.X for adata in databank.values()]
     targets = [scale_matrix(X) for X in datasets]
     transform = Standardize(center=False, scale=True)
-    Transformation.assert_transform_equals(transform, datasets, targets)
+    Transformation.assert_transform_equals(
+        transform,
+        databank.values(),
+        datasets,
+        targets,
+    )
 
 
 def test_transform_standardize_centerscale():
@@ -38,7 +53,12 @@ def test_transform_standardize_centerscale():
     datasets = [adata.X for adata in databank.values()]
     targets = [scale_matrix(center_matrix(X)) for X in datasets]
     transform = Standardize(center=True, scale=True)
-    Transformation.assert_transform_equals(transform, datasets, targets)
+    Transformation.assert_transform_equals(
+        transform,
+        databank.values(),
+        datasets,
+        targets,
+    )
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-
+import anndata as ad
 import numpy as np
 
 from typing import List
@@ -29,7 +29,11 @@ class Standardize(Transformation):
         self.center = center
         self.scale = scale
 
-    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+    def transform(
+        self,
+        datasets: List[ad.AnnData],
+        embeddings: List[np.ndarray],
+    ) -> List[np.ndarray]:
         results = []
         for X in datasets:
             X = X.copy()

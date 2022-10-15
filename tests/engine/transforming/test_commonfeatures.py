@@ -20,7 +20,7 @@ def test_transform_commonfeatures():
     transform.retrieve_common_features(adatas, is_feature_space=True)
     # Source datasets
     datasets = [adata.X for adata in adatas]
-    Transformation.assert_transform_equals(transform, datasets, targets)
+    Transformation.assert_transform_equals(transform, adatas, datasets, targets)
 
 
 if __name__ == "__main__":

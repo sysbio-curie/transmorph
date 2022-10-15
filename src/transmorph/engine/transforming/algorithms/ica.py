@@ -2,6 +2,7 @@
 
 import numpy as np
 
+import anndata as ad
 from typing import List
 
 from ..transformation import Transformation
@@ -41,13 +42,17 @@ class ICA(Transformation, UsesCommonFeatures):
         self.max_iter = max_iter
         self.n_runs = n_runs
 
-    def transform(self, datasets: List[np.ndarray]) -> List[np.ndarray]:
+    def transform(
+        self,
+        datasets: List[ad.AnnData],
+        embeddings: List[np.ndarray],
+    ) -> List[np.ndarray]:
         """
         Slices datasets in the same space if necessary, then carries out the
         information.
         """
         to_reduce = []
-        for i, X in enumerate(datasets):
+        for i, X in enumerate(embeddings):
             to_reduce.append(self.slice_features(X1=X, idx_1=i))
         X_ica = ica(
             np.concatenate(to_reduce, axis=0),
