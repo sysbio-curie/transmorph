@@ -43,7 +43,7 @@ def generate_features(
 def generate_anndata(
     nobs: int,
     nvars: int,
-    features_set: Optional[np.ndarray],
+    features_set: Optional[np.ndarray] = None,
     force_shape: bool = False,
 ):
     # Helper function generating random anndatas of size approx.
