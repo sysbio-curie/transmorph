@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from transmorph.datasets import load_travaglini_10x
+from transmorph.datasets import load_test_datasets_random
 from transmorph.engine.layers import LayerInput, LayerTransformation
 from transmorph.engine.traits import HasMetadata, UsesCommonFeatures
 from transmorph.engine.transforming import (
@@ -19,7 +19,7 @@ ALL_TRANSFORMATIONS = [
     (Standardize, {"center": True, "scale": True}),
 ]
 
-datasets = list(load_travaglini_10x().values())
+datasets = list(load_test_datasets_random().values())
 
 
 def test_layer_transformation():
@@ -78,7 +78,7 @@ def test_layer_transformation_order():
             transformation.retrieve_all_metadata(datasets)
         if isinstance(transformation, UsesCommonFeatures):
             transformation.retrieve_common_features(datasets, feature_space)
-        Xs_true = transformation.transform(Xs_true)
+        Xs_true = transformation.transform(datasets, Xs_true)
         feature_space = feature_space and transformation.preserves_space
 
     for X_true, X_test in zip(Xs_true, Xs_test):

@@ -12,7 +12,7 @@ from transmorph.utils.anndata_manager import (
     get_total_feature_slices,
     slice_common_features,
 )
-from transmorph.utils.misc import generate_anndata, generate_features
+from transmorph.utils.misc import generate_anndata, generate_str_elements
 
 NADATAS = 5
 NTRIES = 100
@@ -23,7 +23,7 @@ adm = Adm()
 def test_generate_feature_slice_success():
     # Tests feature slice selection on correct inputs
     for _ in range(NTRIES):
-        features = generate_features(500, 8)
+        features = generate_str_elements(500, 8)
         selected = np.unique(random.choices(features, k=100))
         fsliced = features[generate_features_slice(features, selected)]
         assert fsliced.shape[0] == selected.shape[0]
@@ -35,7 +35,7 @@ def test_generate_feature_slice_failure():
 
     # Duplicates in features
     for _ in range(NTRIES):
-        features = generate_features(500, 8, leave_duplicates=True)
+        features = generate_str_elements(500, 8)
         selected = np.unique(random.choices(features, k=100))
         if np.unique(features).shape == features.shape:
             continue
@@ -44,7 +44,7 @@ def test_generate_feature_slice_failure():
 
     # Duplicates in selection
     for _ in range(NTRIES):
-        features = generate_features(500, 8)
+        features = generate_str_elements(500, 8)
         selected = np.array(random.choices(features, k=100))
         if np.unique(selected).shape == selected.shape:
             continue
@@ -53,8 +53,8 @@ def test_generate_feature_slice_failure():
 
     # Missing features
     for _ in range(NTRIES):
-        features = generate_features(500, 8)
-        selected = generate_features(100, 8)
+        features = generate_str_elements(500, 8)
+        selected = generate_str_elements(100, 8)
         with pytest.raises(AssertionError):
             generate_features_slice(features, selected)
 
@@ -67,8 +67,14 @@ def test_get_pairwise_feature_slices():
 
     # Existing intersection
     for _ in range(NTRIES):
-        features = generate_features(500, 8)
-        adatas = [generate_anndata(100, 200, features) for _ in range(NADATAS)]
+        fcommon = generate_str_elements(50, 8)
+        adatas = [
+            generate_anndata(
+                100,
+                np.concatenate((fcommon, generate_str_elements(50, 9)), axis=0),
+            )
+            for _ in range(NADATAS)
+        ]
         slices = get_pairwise_feature_slices(adatas)
         for i in range(NADATAS):
             si1, si2 = slices[i, i]
@@ -89,7 +95,7 @@ def test_get_pairwise_feature_slices():
     # No intersection
     for _ in range(NTRIES):
         adatas = [
-            generate_anndata(100, 200, generate_features(500, i + 4))
+            generate_anndata(100, generate_str_elements(500, i + 4))
             for i in range(NADATAS)
         ]
         slices = get_pairwise_feature_slices(adatas)
@@ -122,8 +128,13 @@ def test_get_total_feature_slices():
 
     # Existing intersection
     for _ in range(NTRIES):
-        features = generate_features(500, 8)
-        adatas = [generate_anndata(100, 200, features) for _ in range(NADATAS)]
+        fcommon = generate_str_elements(50, 8)
+        adatas = [
+            generate_anndata(
+                100, np.concatenate((fcommon, generate_str_elements(50, 9)), axis=0)
+            )
+            for _ in range(NADATAS)
+        ]
         slices = get_total_feature_slices(adatas)
         for i in range(NADATAS):
             for j in range(i + 1, NADATAS):
@@ -136,7 +147,7 @@ def test_get_total_feature_slices():
     # No intersection
     for _ in range(NTRIES):
         adatas = [
-            generate_anndata(100, 200, generate_features(500, i + 4))
+            generate_anndata(100, generate_str_elements(500, i + 4))
             for i in range(NADATAS)
         ]
         slices = get_total_feature_slices(adatas)
@@ -162,8 +173,13 @@ def test_slice_common_features():
 
     # Existing intersection
     for _ in range(NTRIES):
-        features = generate_features(500, 8)
-        adatas = [generate_anndata(100, 200, features) for _ in range(NADATAS)]
+        fcommon = generate_str_elements(50, 8)
+        adatas = [
+            generate_anndata(
+                100, np.concatenate((fcommon, generate_str_elements(50, 9)), axis=0)
+            )
+            for _ in range(NADATAS)
+        ]
         slices = get_total_feature_slices(adatas)
         matrices = slice_common_features(adatas)
         assert len(slices) == len(matrices)
@@ -181,7 +197,7 @@ def test_slice_common_features():
     # No intersection
     for _ in range(NTRIES):
         adatas = [
-            generate_anndata(100, 200, generate_features(500, i + 4))
+            generate_anndata(100, generate_str_elements(500, i + 4))
             for i in range(NADATAS)
         ]
         matrices = slice_common_features(adatas)
@@ -240,8 +256,7 @@ def test_anndata_manager_to_delete(query, target, expected):
 )
 def test_anndata_manager_insert_get_delete(field_str, str_key, value):
     # Tests correct insertion/retrieval
-    features = generate_features(n=500)
-    adata = generate_anndata(100, 50, features, force_shape=True)
+    adata = generate_anndata(100, 50)
     field = Adm.get_field_from_str(adata, field_str)
     field[str_key] = value
     v_after = Adm.get(field, str_key)
@@ -267,8 +282,7 @@ def test_anndata_manager_insert_get_delete(field_str, str_key, value):
 )
 def test_anndata_manager_set_isset_get_clean(field_str, str_key, value, persist):
     # Tests correct high level API
-    features = generate_features(n=500)
-    adata = generate_anndata(100, 50, features, force_shape=True)
+    adata = generate_anndata(100, 50)
     adm.set_value(adata, str_key, field_str, value, persist)
     assert adm.isset_value(adata, str_key)
     v_after = adm.get_value(adata, str_key)
@@ -286,7 +300,6 @@ def test_anndata_manager_set_isset_get_clean(field_str, str_key, value, persist)
 
 def test_anndata_id():
     # Tests correct attribution of IDs
-    features = generate_features(n=500)
-    adatas = [generate_anndata(100, 50, features) for _ in range(NADATAS)]
+    adatas = [generate_anndata(100, 50) for _ in range(NADATAS)]
     for i, adata in enumerate(adatas):
         assert adm.get_anndata_id(adata) == i

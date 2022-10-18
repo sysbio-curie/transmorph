@@ -7,56 +7,56 @@ from transmorph.utils.matrix import center_matrix, scale_matrix
 
 def test_transform_standardize_nochange():
     # Tests standardize for all parameters sets
-    databank = load_test_datasets_small()
-    datasets = [adata.X for adata in databank.values()]
-    targets = [X.copy() for X in datasets]
+    datasets = list(load_test_datasets_small().values())
+    embeddings = [adata.X for adata in datasets]
+    targets = [X.copy() for X in embeddings]
     transform = Standardize(center=False, scale=False)
     Transformation.assert_transform_equals(
         transform,
-        databank.values(),
         datasets,
+        embeddings,
         targets,
     )
 
 
 def test_transform_standardize_center():
     # Tests standardize for all parameters sets
-    databank = load_test_datasets_small()
-    datasets = [adata.X for adata in databank.values()]
-    targets = [center_matrix(X) for X in datasets]
-    transform = Standardize(center=True, scale=False)
+    datasets = list(load_test_datasets_small().values())
+    embeddings = [adata.X for adata in datasets]
+    targets = [X.copy() for X in embeddings]
+    transform = Standardize(center=False, scale=False)
     Transformation.assert_transform_equals(
         transform,
-        databank.values(),
         datasets,
+        embeddings,
         targets,
     )
 
 
 def test_transform_standardize_scale():
     # Tests standardize for all parameters sets
-    databank = load_test_datasets_small()
-    datasets = [adata.X for adata in databank.values()]
-    targets = [scale_matrix(X) for X in datasets]
-    transform = Standardize(center=False, scale=True)
+    datasets = list(load_test_datasets_small().values())
+    embeddings = [scale_matrix(adata.X) for adata in datasets]
+    targets = [center_matrix(X.copy()) for X in embeddings]
+    transform = Standardize(center=True, scale=True)
     Transformation.assert_transform_equals(
         transform,
-        databank.values(),
         datasets,
+        embeddings,
         targets,
     )
 
 
 def test_transform_standardize_centerscale():
     # Tests standardize for all parameters sets
-    databank = load_test_datasets_small()
-    datasets = [adata.X for adata in databank.values()]
-    targets = [scale_matrix(center_matrix(X)) for X in datasets]
+    datasets = list(load_test_datasets_small().values())
+    embeddings = [adata.X for adata in datasets]
+    targets = [scale_matrix(center_matrix(X)) for X in embeddings]
     transform = Standardize(center=True, scale=True)
     Transformation.assert_transform_equals(
         transform,
-        databank.values(),
         datasets,
+        embeddings,
         targets,
     )
 

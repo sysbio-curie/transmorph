@@ -5,7 +5,7 @@ import numpy as np
 import anndata
 import random
 import string
-from typing import Any, Optional, Union, Tuple, Type
+from typing import Any, Union, Tuple, Type
 
 MAX_ITER = 500
 
@@ -28,34 +28,34 @@ def rand_str(ln: int) -> str:
     return "".join(random.choices(string.ascii_letters, k=ln))
 
 
-def generate_features(
+def generate_str_elements(
     n: int = 100,
     ln: int = 8,
-    leave_duplicates: bool = False,
-) -> np.ndarray:
+    conserve_duplicates: bool = False,
+) -> np.ndarray[str]:
     # Helper function generating random features
-    features = np.array([rand_str(ln) for _ in range(n)])
-    if leave_duplicates:
-        return features
-    return np.unique(features)
+    elements = np.array([rand_str(ln) for _ in range(n)])
+    if conserve_duplicates:
+        return elements
+    return np.unique(elements)
 
 
 def generate_anndata(
-    nobs: int,
-    nvars: int,
-    features_set: Optional[np.ndarray] = None,
-    force_shape: bool = False,
+    obs: Union[int, np.ndarray[str]] = 100,
+    var: Union[int, np.ndarray[str]] = 20,
+    target_sparsity: float = 0.8,
 ):
-    # Helper function generating random anndatas of size approx.
-    # nobs x nvars
-    if features_set is None:
-        features_set = np.unique(generate_features(nobs * 10, 10))
-    for _ in range(MAX_ITER):
-        features = np.unique(random.choices(features_set, k=nvars))
-        X = np.random.random(size=(nobs, features.shape[0]))
-        adata = anndata.AnnData(X, dtype=X.dtype)
-        adata.var[None] = features
-        adata.var = adata.var.set_index(None)
-        if not force_shape or adata.X.shape == (nobs, nvars):
-            return adata
-    raise ValueError("Could not generate an AnnData of the requested shape.")
+    # Helper function generating random anndatas.
+    if isinstance(obs, int):
+        obs = np.unique(generate_str_elements(obs, 6))
+    if isinstance(var, int):
+        var = np.unique(generate_str_elements(var, 6))
+    nobs, nvar = obs.shape[0], var.shape[0]
+    X = np.random.random(size=(nobs, nvar))
+    X = X * (np.random.random(size=X.shape) > target_sparsity)
+    adata = anndata.AnnData(X, dtype=X.dtype)
+    adata.obs[None] = obs
+    adata.obs = adata.obs.set_index(None)
+    adata.var[None] = var
+    adata.var = adata.var.set_index(None)
+    return adata

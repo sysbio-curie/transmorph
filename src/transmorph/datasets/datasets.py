@@ -17,6 +17,7 @@ from typing import Dict, Optional
 
 from .databank_api import check_files, download_dataset, remove_dataset, unzip_file
 from .._logging import logger
+from ..utils.misc import generate_anndata, generate_str_elements
 
 # Datasets are stored in data/ subdirectory.
 DPATH_DATASETS = dirname(__file__) + "/data/"
@@ -30,6 +31,25 @@ def load_dataset(source, filename, is_sparse=False) -> np.ndarray:
     if not is_sparse:
         return np.loadtxt(source + filename, delimiter=",")
     return load_npz(source + filename).toarray()
+
+
+def load_test_datasets_random(
+    n_adata: int = 5, n_obs: int = 100, n_var: int = 20
+) -> Dict[str, AnnData]:
+    """
+    Loads a handful of random datasets for testing purposes.
+    """
+    commonf = generate_str_elements(int(n_var * 0.5))
+    return {
+        f"batch_{i}": generate_anndata(
+            n_obs,
+            np.concatenate(
+                (commonf, generate_str_elements(n_var - commonf.shape[0])),
+                axis=0,
+            ),
+        )
+        for i in range(n_adata)
+    }
 
 
 def load_test_datasets_small() -> Dict[str, AnnData]:

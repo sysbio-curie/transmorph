@@ -2,25 +2,24 @@
 
 import numpy as np
 
-from transmorph.datasets import load_travaglini_10x
+from transmorph.datasets import load_test_datasets_random
 from transmorph.engine.transforming import CommonFeatures, Transformation
 
 
 def test_transform_commonfeatures():
     # Tests standardize for all parameters sets
-    databank = load_travaglini_10x()
-    adatas = [adata for adata in databank.values()]
+    datasets = list(load_test_datasets_random().values())
     # Computing target matrices
-    common_features = adatas[0].var_names
-    for adata in adatas[1:]:
+    common_features = datasets[0].var_names
+    for adata in datasets[1:]:
         common_features = common_features.intersection(adata.var_names)
-    targets = [adata[:, np.sort(common_features)].X.copy() for adata in adatas]
+    targets = [adata[:, np.sort(common_features)].X.copy() for adata in datasets]
     # Building Transformation object
     transform = CommonFeatures()
-    transform.retrieve_common_features(adatas, is_feature_space=True)
+    transform.retrieve_common_features(datasets, is_feature_space=True)
     # Source datasets
-    datasets = [adata.X for adata in adatas]
-    Transformation.assert_transform_equals(transform, adatas, datasets, targets)
+    embeddings = [adata.X for adata in datasets]
+    Transformation.assert_transform_equals(transform, datasets, embeddings, targets)
 
 
 if __name__ == "__main__":

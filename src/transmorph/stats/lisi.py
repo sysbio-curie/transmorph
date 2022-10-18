@@ -8,7 +8,7 @@ from typing import List, Dict, Optional, Union
 
 from ..utils.dimred import pca
 from ..utils.matrix import sort_sparse_matrix, extract_chunks
-from ..utils.graph import nearest_neighbors
+from ..utils.graph import nearest_neighbors_custom
 
 
 def lisi(
@@ -97,7 +97,9 @@ def compute_lisi(
     """
 
     # n_neighbors >= 3*perplexity
-    connectivity = nearest_neighbors(X, mode="edges", n_neighbors=int(perplexity * 3))
+    connectivity = nearest_neighbors_custom(
+        X, mode="edges", n_neighbors=int(perplexity * 3)
+    )
     indices, _ = sort_sparse_matrix(connectivity)
     label_per_nb = labels[indices]
 

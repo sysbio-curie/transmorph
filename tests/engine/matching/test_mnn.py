@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from transmorph.datasets import load_test_datasets_small, load_travaglini_10x
+from transmorph.datasets import load_test_datasets_small, load_test_datasets_random
 from transmorph.engine.matching import MNN
 from transmorph.stats import edge_accuracy
 
@@ -18,7 +18,7 @@ def test_matching_mnn_accuracy():
 
 def test_matching_mnn_commonfeatures():
     # Tests the UsesCommonFeatures trait
-    datasets = list(load_travaglini_10x().values())
+    datasets = list(load_test_datasets_random().values())
     mt = MNN(common_features_mode="pairwise")
     mt.retrieve_common_features(datasets, True)
     for i, j in [(0, 1), (0, 2), (1, 2)]:
