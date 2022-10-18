@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from transmorph.datasets import load_test_datasets_small, load_travaglini_10x
+from transmorph.datasets import load_test_datasets_small, load_test_datasets_random
 from transmorph.engine.checking import NeighborEntropy
 from transmorph.engine.layers import (
     LayerInput,
@@ -80,8 +80,7 @@ def test_model_largedata_simple():
     # Tests a simple match -> merge model on a
     # data bank with few, large datasets. This allows to
     # test integration with subsampling.
-    return
-    datasets = list(load_travaglini_10x().values())
+    datasets = list(load_test_datasets_random().values())
     linput = LayerInput()
     ltransformation = LayerTransformation()
     ltransformation.add_transformation(CommonFeatures())

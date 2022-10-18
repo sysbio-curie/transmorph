@@ -20,7 +20,7 @@ def test_merging_barycenter():
     mg = Barycenter()
     mg.retrieve_reference_index(datasets)
     mg.set_matchings(T)
-    Xs_out = mg.transform([adata.X for adata in datasets])
+    Xs_out = mg.transform(datasets, [adata.X for adata in datasets])
     for adata, X_out in zip(datasets, Xs_out):
         adm.set_value(
             adata=adata,

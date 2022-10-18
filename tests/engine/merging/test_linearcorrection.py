@@ -28,7 +28,7 @@ def test_merging_linearcorrection():
     mg = LinearCorrection(n_neighbors=1)
     mg.retrieve_reference_index(datasets)
     mg.set_matchings(T)
-    Xs_out = mg.transform([adata.X for adata in datasets])
+    Xs_out = mg.transform(datasets, [adata.X for adata in datasets])
     print(Xs_out)
     for adata, X_out in zip(datasets, Xs_out):
         adm.set_value(

@@ -25,7 +25,7 @@ def test_merging_umap():
     T = matching.fit([adata.X for adata in datasets])
     mg = GraphEmbedding(optimizer="umap", n_neighbors=3)
     mg.set_matchings(T)
-    Xs_out = mg.transform([adata.X for adata in datasets])
+    Xs_out = mg.transform(datasets, [adata.X for adata in datasets])
     for adata, X_out in zip(datasets, Xs_out):
         adm.set_value(
             adata=adata,
@@ -52,7 +52,7 @@ def test_merging_mde():
     T = matching.fit([adata.X for adata in datasets])
     mg = GraphEmbedding(optimizer="mde", n_neighbors=3)
     mg.set_matchings(T)
-    Xs_out = mg.transform([adata.X for adata in datasets])
+    Xs_out = mg.transform(datasets, [adata.X for adata in datasets])
     for adata, X_out in zip(datasets, Xs_out):
         adm.set_value(
             adata=adata,

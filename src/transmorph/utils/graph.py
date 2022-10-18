@@ -36,9 +36,9 @@ def nearest_neighbors_custom(
     """
     nn_model = skn.NearestNeighbors(n_neighbors=n_neighbors).fit(X)
     if mode == "edges":
-        return csr_matrix(nn_model.kneighbors_graph(X, mode="connectivity").toarray())
+        return nn_model.kneighbors_graph(X, mode="connectivity")
     elif mode == "distances":
-        return csr_matrix(nn_model.kneighbors_graph(X, mode="distance").toarray())
+        return nn_model.kneighbors_graph(X, mode="distance").toarray()
     else:
         raise ValueError(f"Unrecognized mode: {mode}")
 
@@ -46,7 +46,7 @@ def nearest_neighbors_custom(
 def nearest_neighbors(
     adata: ad.AnnData,
     mode: Literal["edges", "distances", "connectivities"],
-    neigbhbors_key: str = "neighbors",
+    neighbors_key: str = "neighbors",
     n_neighbors: int = 15,
     metric: str = "euclidean",
     metric_kwargs: Dict = {},
@@ -88,9 +88,9 @@ def nearest_neighbors(
     ), f"AnnData expected, found {type(adata).__name__}."
     assert mode in ["edges", "distances", "connectivities"]
     if (
-        neigbhbors_key not in adata.uns
-        or adata.uns[neigbhbors_key]["params"]["n_neighbors"] < n_neighbors
-        or adata.uns[neigbhbors_key]["params"]["metric"] != metric
+        neighbors_key not in adata.uns
+        or adata.uns[neighbors_key]["params"]["n_neighbors"] < n_neighbors
+        or adata.uns[neighbors_key]["params"]["metric"] != metric
     ):
         from .._settings import settings, use_setting
 
@@ -528,7 +528,7 @@ def cluster_anndatas(
         [adata.obsm[use_rep] for adata in datasets],
         axis=0,
     )
-    adj_matrix = nearest_neighbors_custom(X, n_neighbors=n_neighbors)
+    adj_matrix = nearest_neighbors_custom(X, mode="edges", n_neighbors=n_neighbors)
     sources, targets = adj_matrix.nonzero()
     edgelist = zip(sources.tolist(), targets.tolist())
     partition = np.array(

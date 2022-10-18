@@ -96,10 +96,10 @@ class Transformation(ABC, CanLog, IsProfilable):
             print(f"> decimal: {decimal}")
         assert_type(transformation, Transformation)
         # To ensure transform does not change initial matrices
-        initial_Xs = [X.copy() for X in datasets]
+        initial_Xs = [X.copy() for X in embeddings]
         transformed_Xs = transformation.transform(
             datasets=datasets,
-            embeddings=embeddings,
+            embeddings=initial_Xs,
         )
         for X_tra, X_tar in zip(transformed_Xs, targets):
             # Transformed are correct
@@ -107,7 +107,7 @@ class Transformation(ABC, CanLog, IsProfilable):
                 print(f"> X transform: {type(X_tra)}, {X_tra.shape}, {X_tra.dtype}")
                 print(f"> X target: {type(X_tar)}, {X_tar.shape}, {X_tar.dtype}")
             testing.assert_array_almost_equal(X_tra, X_tar, decimal=decimal)
-        for X_ini, X_dat in zip(initial_Xs, datasets):
+        for X_ini, X_dat in zip(initial_Xs, embeddings):
             # Initial datasets unchanged
             testing.assert_array_equal(X_ini, X_dat)
             if print_debug:
