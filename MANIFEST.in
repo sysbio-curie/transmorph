@@ -1,2 +1,2 @@
-recursive-include src/transmorph/datasets/data/spirals/ *.csv
-recursive-include src/transmorph/datasets/ *.json
+include src/transmorph/datasets/data/spirals/*.csv
+include src/transmorph/datasets/*.json

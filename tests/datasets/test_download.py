@@ -3,7 +3,7 @@
 from transmorph.datasets import load_bank, remove_bank
 
 
-to_test = False
+to_test = True
 
 
 def test_download_chen10x():
