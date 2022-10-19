@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="transmorph",
-    version="0.2.2",
+    version="0.2.3",
     author="Aziz Fouché, Loïc Chadoutaud, Andrei Zinovyev (Institut Curie, Paris)",
     author_email="aziz.fouche@curie.fr",
     description="A unifying data integration framework.",
@@ -24,6 +24,7 @@ setuptools.setup(
     include_package_data=True,
     install_requires=[
         "anndata>=0.8.0",
+        "cython",
         "igraph",
         "leidenalg",
         "numpy>=1.17",
