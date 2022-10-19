@@ -27,7 +27,7 @@ setuptools.setup(
         "cython",
         "igraph",
         "leidenalg",
-        "numpy>=1.17",
+        "numpy>=1.22",
         "pre-commit",
         "pot",
         "pymde",
