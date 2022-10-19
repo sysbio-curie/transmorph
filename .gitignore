@@ -4,7 +4,6 @@
 Pipfile
 Pipfile.lock
 build/
-docs/_build/
 src/transmorph.egg-info
 src/transmorph/__pycache__/
 src/transmorph/datasets/data/
@@ -13,3 +12,5 @@ src/transmorph/datasets/data/
 **/figures/**
 **/logs/**
 **/.ipynb_checkpoints/**
+docs/_build/
+.testmondata
