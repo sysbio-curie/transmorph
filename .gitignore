@@ -14,3 +14,6 @@ src/transmorph/datasets/data/
 **/.ipynb_checkpoints/**
 docs/_build/
 .testmondata
+dist/
+docs/.auctex-auto/
+docs/sections/notebooks/data/
