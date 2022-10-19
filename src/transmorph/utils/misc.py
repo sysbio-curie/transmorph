@@ -32,7 +32,7 @@ def generate_str_elements(
     n: int = 100,
     ln: int = 8,
     conserve_duplicates: bool = False,
-) -> np.ndarray[str]:
+) -> np.ndarray:
     # Helper function generating random features
     elements = np.array([rand_str(ln) for _ in range(n)])
     if conserve_duplicates:
@@ -41,8 +41,8 @@ def generate_str_elements(
 
 
 def generate_anndata(
-    obs: Union[int, np.ndarray[str]] = 100,
-    var: Union[int, np.ndarray[str]] = 20,
+    obs: Union[int, np.ndarray] = 100,
+    var: Union[int, np.ndarray] = 20,
     target_sparsity: float = 0.8,
 ):
     # Helper function generating random anndatas.

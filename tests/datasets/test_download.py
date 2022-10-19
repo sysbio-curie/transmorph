@@ -2,33 +2,32 @@
 
 from transmorph.datasets import load_bank, remove_bank
 
-
-to_test = True
+ENABLE = False
 
 
 def test_download_chen10x():
-    if not to_test:
+    if not ENABLE:
         return
     remove_bank("chen_10x")
     _ = load_bank("chen_10x")
 
 
 def test_download_pal10x():
-    if not to_test:
+    if not ENABLE:
         return
     remove_bank("pal_10x")
     _ = load_bank("pal_10x")
 
 
 def test_download_travaglini10x():
-    if not to_test:
+    if not ENABLE:
         return
     remove_bank("travaglini_10x")
     _ = load_bank("travaglini_10x")
 
 
 def test_download_zhou10x():
-    if not to_test:
+    if not ENABLE:
         return
     remove_bank("zhou_10x")
     _ = load_bank("zhou_10x")
