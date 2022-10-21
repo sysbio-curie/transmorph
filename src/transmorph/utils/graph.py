@@ -387,6 +387,8 @@ def _generate_membership_matrix_njit(
     """
     Numba accelerated helper
     """
+    distances = distances.copy()
+
     n1 = distances.shape[0]
     # Binary search
     for row_i in range(n1):
