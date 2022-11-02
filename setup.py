@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="transmorph",
-    version="0.2.3",
+    version="0.2.4",
     author="Aziz Fouché, Loïc Chadoutaud, Andrei Zinovyev (Institut Curie, Paris)",
     author_email="aziz.fouche@curie.fr",
     description="A unifying data integration framework.",
@@ -36,7 +36,7 @@ setuptools.setup(
         "sccover",
         "scikit-learn",
         "scipy",
-        "stabilized-ica",
+        "stabilized-ica>=2.0",
         "umap-learn",
     ],
     python_requires=">=3.9",
