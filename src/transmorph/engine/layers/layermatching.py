@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from anndata import AnnData
 from scipy.sparse import csr_matrix
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 
 from . import Layer
@@ -63,6 +63,7 @@ class LayerMatching(
         matching: Matching,
         subsampling: Optional[Subsampling] = None,
         obs_class: Optional[str] = None,
+        unsubsampling_scheme: Literal["raw", "transitive"] = "transitive",
     ) -> None:
         Layer.__init__(
             self,
@@ -76,6 +77,7 @@ class LayerMatching(
         self.matching = matching
         self.matching_matrices: Optional[_TypeMatchingSet] = None
         self.obs_class = obs_class
+        self.unsubsampling_scheme = unsubsampling_scheme
 
     @profile_method
     def fit(self, datasets: List[AnnData]) -> List[Layer]:
@@ -129,13 +131,22 @@ class LayerMatching(
         self.matching_matrices = {}
         for key, T in self.matching.fit(Xs).items():
             i, j = key
-            T = self.unsubsample_matrix(T, i, j)
+            if self.is_subsampled:
+                if self.unsubsampling_scheme == "raw":
+                    T = self.unsubsample_matrix_exact(T, i, j)
+                elif self.unsubsampling_scheme == "transitive":
+                    T = self.unsubsample_matrix_transitive(T, datasets[i], datasets[j])
+                else:
+                    self.raise_error(
+                        f"Unknown unsubsampling scheme: {self.unsubsampling_scheme}"
+                    )
             assert isinstance(T, csr_matrix)
             self.matching_matrices[i, j] = T
             self.log(f"Datasets {key}, found {T.data.shape[0]} edges.")
 
         # if some labels are available, prune edges
         if self.obs_class is not None:
+            self.info(f"Pruning matching edges using {self.obs_class} labels...")
             labels = [datasets[i].obs[self.obs_class] for i in range(len(datasets))]
             self.matching_matrices = prune_edges_supervised(
                 self.matching_matrices,
