@@ -13,3 +13,12 @@ Running pre-built models
     notebooks/em_chen_integration
     notebooks/lc_chen_integration
     notebooks/cell_cycle_integration
+
+
+Using the model API
+-------------------
+
+.. toctree::
+    :maxdepth: 2
+
+    notebooks/create_model
