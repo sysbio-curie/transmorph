@@ -59,3 +59,17 @@ scatter_plot(chen_10x, use_rep="transmorph", color_by="class")
 ```
 
 [Chen 2020] [Chen, Y. P., Yin, J. H., Li, W. F., Li, H. J., Chen, D. P., Zhang, C. J., ... & Ma, J. (2020). Single-cell transcriptomics reveals regulators underlying immune cell diversity and immune subtypes associated with prognosis in nasopharyngeal carcinoma. Cell research, 30(11), 1024-1042.](https://www.nature.com/articles/s41422-020-0374-x)
+
+## Citing transmorph
+
+If you find transmorph useful for your research, please consider citing our pre-print
+which can be found on [bioRxiv](https://www.biorxiv.org/content/10.1101/2022.11.02.514912v1).
+
+```bibtex
+@article{fouche2022transmorph,
+  title={transmorph: a unifying computational framework for single-cell data integration},
+  author={Fouch{\'e}, Aziz, Chadoutaud, Lo{\¨i}c, Delattre, Olivier and Zinovyev, Andrei},
+  journal={bioRxiv},
+  year={2022}
+}
+```
