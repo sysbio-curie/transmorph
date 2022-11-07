@@ -39,7 +39,7 @@ a common abstract 2D space.
 ```python
 from transmorph.models import EmbedMNN
 model = EmbedMNN()
-model.fit(chen_10x)
+model.transform(chen_10x)
 ```
 
 Integration embedding coordinates can be gathered in each AnnData object,
