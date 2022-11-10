@@ -23,3 +23,4 @@ Using the model API
 
     notebooks/create_model
     notebooks/model_api_transformations
+    notebooks/model_api_matchings
