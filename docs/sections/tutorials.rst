@@ -22,3 +22,4 @@ Using the model API
     :maxdepth: 2
 
     notebooks/create_model
+    notebooks/model_api_transformation
