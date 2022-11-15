@@ -74,7 +74,7 @@ class Pooling(Transformation):
                 "edges",
                 n_neighbors=self.n_neighbors,
             )
-            indices, _ = sort_sparse_matrix(nn_matrix)
+            indices, _ = sort_sparse_matrix(nn_matrix, fill_empty=True)
             X_pooled = pooling(X_all, indices)
             if self.transformation_rate <= 1.0:
                 X_pooled *= self.transformation_rate

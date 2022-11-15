@@ -124,6 +124,7 @@ def scatter_plot(
     dataset_labels: Optional[List[str]] = None,
     labels_on_plot: bool = False,
     palette: str = "rainbow",
+    dot_size: float = 0.5,
     dpi: int = 100,
 ):
     """
@@ -165,6 +166,9 @@ def scatter_plot(
 
     palette: str, default = "rainbow"
         Matplotlib colormap to pick colors from.
+
+    dot_size: float, default = 0.5
+        Scatter "size" parameter.
 
     dpi: int, default = 200,
         Dot per inch to use for the figure.
@@ -221,7 +225,6 @@ def scatter_plot(
             isinstance(y, Number) for y in all_labels
         )
 
-    dot_size = 0.5
     dot_alpha = 1
     n_labels = len(all_labels)
     n_datasets = len(datasets)
@@ -307,14 +310,15 @@ def scatter_plot(
         order = np.argsort(labels)
         for label in order:
             ax_legend.scatter([], [], label=label)
-        ax_legend.legend(
+        legend = ax_legend.legend(
             [handles[idx] for idx in order],
             [labels[idx] for idx in order],
             fontsize=12,
-            markerscale=12,
             ncols=(1 + len(order) // 10),
             loc="center left",
         )
+        legend.legendHandles[0]._sizes = [15]
+        legend.legendHandles[1]._sizes = [15]
         ax_legend.axis("off")
 
     # Adding text pieces

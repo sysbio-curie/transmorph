@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import numba
 import numpy as np
+import sccover
 
 from anndata import AnnData
 from scipy.sparse import csr_matrix
@@ -11,15 +13,42 @@ from ..traits.utils import preprocess_traits
 from ...utils.anndata_manager import anndata_manager as adm, AnnDataKeyIdentifiers
 
 
+@numba.njit
+def _get_cell_anchor_matrix_njit(nx, na, anchors, connectivities):
+    T = np.zeros((nx, na))
+    for i in range(nx):
+        for anchor_ind in range(na):
+            T[i, anchor_ind] = connectivities[i, anchors[anchor_ind]]
+    return T
+
+
+def get_cell_anchor_matrix(adata):
+    subsampling_set_key = adm.gen_keystring(AnnDataKeyIdentifiers.SubsamplingAnchors)
+    sccover.get_closest_anchor(adata, key_set=subsampling_set_key)
+    nx = adata.n_obs
+    anchors = np.arange(nx)[adata.obs[subsampling_set_key].astype(bool)]
+    na = anchors.shape[0]
+    T = _get_cell_anchor_matrix_njit(
+        nx, na, anchors, adata.obsp["connectivities"].toarray()
+    )
+    T_norm = T.sum(axis=1)
+    T_norm[T_norm == 0.0] = 1.0
+    return T / T_norm[:, None]
+
+
 class UsesSubsampling:
     """
     This trait allows a class to host a subsampling algorithm, and manipulate
     subsampled matrices. This is a key trait for performance-hungry components.
     """
 
-    def __init__(self, subsampling: Optional[Subsampling] = None) -> None:
+    def __init__(
+        self,
+        subsampling: Optional[Subsampling] = None,
+    ) -> None:
         if subsampling is None:
             subsampling = KeepAll()
+        self.is_subsampled = not isinstance(subsampling, KeepAll)
         self.subsampling = subsampling
         self.references: List[np.ndarray] = []
 
@@ -176,7 +205,7 @@ class UsesSubsampling:
             result.append(self.subsample_matrix(X, i, pairwise=pairwise))
         return result
 
-    def unsubsample_matrix(
+    def unsubsample_matrix_exact(
         self,
         matrix: Union[csr_matrix, np.ndarray],
         idx: int,
@@ -197,7 +226,7 @@ class UsesSubsampling:
 
         idx_2: Optional[int]
             In case of pairwise matrix between different datasets, subsampling
-            index of the second matrix.
+            index of the second dataset.
         """
         # Sanity check
         if self.has_subsampling is False:
@@ -235,3 +264,19 @@ class UsesSubsampling:
                 for idx_j, coord_j in enumerate(s_to_S2):
                     X[coord_i, coord_j] = matrix[idx_i, idx_j]
             return X
+
+    def unsubsample_matrix_transitive(
+        self,
+        matrix: csr_matrix,
+        adata_src: AnnData,
+        adata_ref: AnnData,
+    ) -> csr_matrix:
+        """
+        TODO
+        """
+        Tx = get_cell_anchor_matrix(adata_src)
+        Ty = get_cell_anchor_matrix(adata_ref)
+        T_tot = Tx @ matrix @ Ty.T
+        T_tot_norm = T_tot.sum(axis=1)
+        T_tot_norm[T_tot_norm == 0.0] = 1.0
+        return csr_matrix(T_tot / T_tot_norm[:, None])

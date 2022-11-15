@@ -9,7 +9,11 @@ from ..matching import Matching, _TypeMatchingSet
 from ...traits.isprofilable import profile_method
 from ...traits.usescommonfeatures import UsesCommonFeatures
 from ...traits.usesreference import UsesReference
-from ....utils.graph import generate_qtree, qtree_k_nearest_neighbors
+from ....utils.graph import (
+    generate_qtree,
+    qtree_k_nearest_neighbors,
+    nearest_neighbors_custom,
+)
 
 
 class BKNN(Matching, UsesCommonFeatures, UsesReference):
@@ -68,7 +72,6 @@ class BKNN(Matching, UsesCommonFeatures, UsesReference):
         """
         Computes BKNN between pairs of datasets.
         """
-        qtrees = [generate_qtree(X, self.metric, self.metric_kwargs) for X in datasets]
         ndatasets = len(datasets)
         results: _TypeMatchingSet = {}
         reference = self.reference_index
@@ -76,20 +79,30 @@ class BKNN(Matching, UsesCommonFeatures, UsesReference):
             target_indices = np.arange(ndatasets)
         else:
             target_indices = [reference]
+        small_scale_problem = all(X.shape[0] < 100 for X in datasets)
+        if not small_scale_problem:
+            qtrees = [
+                generate_qtree(X, self.metric, self.metric_kwargs) for X in datasets
+            ]
         for i in range(ndatasets):
             for j in target_indices:
                 if i == j:
                     continue
-                Xi, _ = self.slice_features(
+                Xi, Yi = self.slice_features(
                     X1=datasets[i],
                     X2=datasets[j],
                     idx_1=i,
                     idx_2=j,
                 )
-                Tij = qtree_k_nearest_neighbors(
-                    Xi,
-                    qtrees[j],
-                    n_neighbors=self.n_neighbors,
-                )
+                if small_scale_problem:
+                    Tij = nearest_neighbors_custom(
+                        Xi, mode="edges", n_neighbors=self.n_neighbors, Y=Yi
+                    )
+                else:
+                    Tij = qtree_k_nearest_neighbors(
+                        Xi,
+                        qtrees[j],
+                        n_neighbors=self.n_neighbors,
+                    )
                 results[i, j] = csr_matrix(Tij)
         return results

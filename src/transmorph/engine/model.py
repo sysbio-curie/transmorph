@@ -262,7 +262,9 @@ class Model(CanLog):
             npoints = sum(adata.n_obs for adata in datasets)
             ndims = loutput.get_representation(datasets[0]).shape[1]
             self.info(f"Terminated. Total embedding shape: {(npoints, ndims)}")
-            self.info("Results have been written in AnnData.obsm['transmorph'].")
+            self.info(
+                f"Results have been written in AnnData.obsm['{output_representation}']."
+            )
         self.log(
             "### REPORT_START ###\n"
             + profiler.log_stats()

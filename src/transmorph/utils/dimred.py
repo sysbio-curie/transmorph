@@ -87,18 +87,16 @@ def ica(
     """
     Computes an ICA representation of the data using StablilizedICA.
     """
-    sica = StabilizedICA(n_components=n_components, max_iter=max_iter, n_jobs=-1)
+    sica = StabilizedICA(
+        n_components=n_components,
+        max_iter=max_iter,
+        n_runs=n_runs,
+        n_jobs=-1,
+    )
     if normalize_features:
         X = scale_matrix(X, axis=0, std_mode=False)
-    sica.fit(
-        X.T,
-        n_runs=n_runs,
-        normalize=True,
-        plot=False,
-        fun="logcosh",
-        pca_solver="auto",
-    )
-    return sica.A_
+
+    return sica.fit_transform(X)
 
 
 def umap(X: np.ndarray, embedding_dimension: int = 2) -> np.ndarray:

@@ -30,11 +30,14 @@ def nearest_neighbors_custom(
     X: np.ndarray,
     mode: Literal["edges", "distances"],
     n_neighbors: int = 15,
+    Y: Optional[np.ndarray] = None
 ) -> csr_matrix:
     """
     Wraps sklearn.neighbors.NearestNeighbors class.
     """
-    nn_model = skn.NearestNeighbors(n_neighbors=n_neighbors).fit(X)
+    if Y is None:
+        Y = X
+    nn_model = skn.NearestNeighbors(n_neighbors=n_neighbors).fit(Y)
     if mode == "edges":
         return nn_model.kneighbors_graph(X, mode="connectivity")
     elif mode == "distances":
@@ -387,6 +390,8 @@ def _generate_membership_matrix_njit(
     """
     Numba accelerated helper
     """
+    distances = distances.copy()
+
     n1 = distances.shape[0]
     # Binary search
     for row_i in range(n1):
