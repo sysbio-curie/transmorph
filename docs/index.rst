@@ -52,9 +52,25 @@ Contributors
 + Loïc Chadoutaud, Institut Curie Paris, Mines ParisTech 
 + Andrei Zinovyev, Institut Curie Paris, Mines ParisTech
 
+Citing
+======
+
+If you find transmorph useful for your research, please consider citing our pre-print
+which can be found on `bioRxiv`_.
+
+.. code-block:: bibtex
+   
+    @article{fouche2022transmorph,
+        title={transmorph: a unifying computational framework for single-cell data integration},
+        author={Fouch{\'e}, Aziz, Chadoutaud, Lo{\¨i}c, Delattre, Olivier and Zinovyev, Andrei},
+        journal={bioRxiv},
+        year={2022}
+    }
+
 .. _anndata: https://anndata.readthedocs.io/en/latest/
 .. _scanpy: https://scanpy.readthedocs.io/en/stable/
 .. _GitHub: https://github.com/Risitop/transmorph 
+.. _bioRxiv: https://www.biorxiv.org/content/10.1101/2022.11.02.514912v1
 
 .. |pic_zhou_before| image:: pics/zhou_before_type.png
    :width: 45%
