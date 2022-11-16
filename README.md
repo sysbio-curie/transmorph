@@ -1,4 +1,4 @@
-# [<img alt="Transmorph" src="img/logo_v2.png" height="90">](https://transmorph.readthedocs.io/en/latest/index.html)
+# [<img alt="Transmorph logo" src="img/logo_v2.png" height="90">](https://transmorph.readthedocs.io/en/latest/index.html)
 
 [![PyPI version](https://badge.fury.io/py/transmorph.svg)](https://badge.fury.io/py/transmorph)
 [![GitHub license](https://img.shields.io/github/license/Risitop/transmorph.svg)](https://github.com/Risitop/transmorph/blob/main/LICENSE)
@@ -7,6 +7,8 @@
 [![Downloads](https://pepy.tech/badge/transmorph/month)](https://pepy.tech/project/transmorph)
 
 **transmorph** is a python framework dedicated to data integration, with a focus on single-cell applications. Dataset integration describes the problem of embedding two or more datasets together, across different batches or feature spaces, so that similar samples end up close from one another. In transmorph we aim to provide a comprehensive framework to design, apply, report and benchmark data integration models using a system of interactive building blocks supported by statistical and plotting tools. We included pre-built models as well as benchmarking databanks in order to easily set up integration tasks. This package can be used in compatibility with **scanpy** and **anndata** packages, and works in jupyter notebooks.
+
+<img alt="Transmorph workflow" src="img/fig_presentation_github.png" height="90">
 
 Transmorph is also computationally efficient, and can scale to large datasets with competitive integration quality. 
 
@@ -22,9 +24,8 @@ See the instructions: [https://transmorph.readthedocs.io/en/latest/sections/inst
 
 ### Quick starting with a pre-built model
 
-All **transmorph** models take a list of AnnData objects as input
-for data integration. Let us start by loading some benchmarking 
-data, gathered from [Chen 2020] (3.4GB size).
+All **transmorph** models take a list or a dictionary containing AnnData objects as input
+for data integration. Let us start by loading some benchmarking data, gathered from [Chen 2020] (3.4GB size).
 
 ```python
 from transmorph.datasets import load_chen_10x
@@ -43,10 +44,10 @@ model.transform(chen_10x)
 ```
 
 Integration embedding coordinates can be gathered in each AnnData object,
-in AnnData.obsm['transmorph'].
+in AnnData.obsm['X_transmorph'].
 
 ```python
-chen_10x['P01'].obsm['transmorph']
+chen_10x['P01'].obsm['X_transmorph']
 ```
 
 One can for instance use a plotting function from transmorph to display integration results.

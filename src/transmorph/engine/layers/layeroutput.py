@@ -12,7 +12,7 @@ class LayerOutput(Layer, CanCatchChecking, IsRepresentable):
     """
     A LayerOutput is the final step of any model. Its only role
     is to retrieve last computed representation, and write it
-    durably in AnnDatas under the entry .obsm['transmorph'].
+    durably in AnnDatas under the entry .obsm['X_transmorph'].
     """
 
     def __init__(self) -> None:

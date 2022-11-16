@@ -98,6 +98,8 @@ def slice_common_features(datasets: List[AnnData]) -> List[np.ndarray]:
     return [adata.X[:, sl] for adata, sl in zip(datasets, slices)]
 
 
+# FIXME: this will cause issues in the future.
+# It was bad design
 class AnnDataKeyIdentifiers(Enum):
     """
     String constants to pass to AnnDataManager to easily manage
@@ -109,7 +111,7 @@ class AnnDataKeyIdentifiers(Enum):
 
     # Default representation keys
     BaseRepresentation = "tr_base_representation"
-    TransmorphRepresentation = "transmorph"
+    TransmorphRepresentation = "X_transmorph"
 
     # AnnData metadata
     AnnDataId = "tr_adata_id"

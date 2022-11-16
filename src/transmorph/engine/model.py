@@ -61,7 +61,7 @@ class Model(CanLog):
     Integration result for every dataset has been written under
     'transmorph' entry of the .obsm field, as a numpy ndarray.
 
-    >>> print(adata1.obsm['transmorph'])
+    >>> print(adata1.obsm['X_transmorph'])
     [[-0.06452738, -0.15287925],
     [-0.06452738,  0.17531697],
     [-0.06452738,  0.9535402],
@@ -143,11 +143,11 @@ class Model(CanLog):
         datasets: Union[List[AnnData], Dict[str, AnnData]],
         reference: Optional[AnnData] = None,
         use_representation: Optional[str] = None,
-        output_representation: str = "transmorph",
+        output_representation: Optional[str] = None,
     ):
         """
         Runs the Model given a list of AnnData datasets, and writes integration
-        results in each AnnData object under the entry .obsm['transmorph']. A
+        results in each AnnData object under the entry .obsm['X_transmorph']. A
         reference dataset, or a specific dataset .obsm representation can be
         set if needed.
 
@@ -219,6 +219,9 @@ class Model(CanLog):
                     value=adata.obsm[use_representation],
                     persist="pipeline",
                 )
+
+        if output_representation is None:
+            output_representation = AnnDataKeyIdentifiers.TransmorphRepresentation.value
         for layer in self.output_layers:
             layer.repr_key = output_representation
 

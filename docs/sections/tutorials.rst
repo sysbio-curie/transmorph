@@ -3,8 +3,17 @@
 Tutorials 
 =========
 
-Running pre-built models
-------------------------
+Using transmorpg within a scanpy pipeline
+-----------------------------------------
+
+.. toctree::
+    :maxdepth: 2
+
+    notebooks/with_scanpy
+
+
+Presenting the pre-built models
+-------------------------------
 
 .. toctree::
     :maxdepth: 2
@@ -15,8 +24,8 @@ Running pre-built models
     notebooks/cell_cycle_integration
 
 
-Using the model API
--------------------
+Building models with the model API
+----------------------------------
 
 .. toctree::
     :maxdepth: 2

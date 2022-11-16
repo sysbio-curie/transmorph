@@ -157,7 +157,7 @@ class EmbedMNN(Model):
         self,
         datasets: List[AnnData],
         use_representation: Optional[str] = None,
-        output_representation: str = "transmorph",
+        output_representation: Optional[str] = None,
     ) -> None:
         """
         Carries out the model on a list of AnnData objects. Writes the result in

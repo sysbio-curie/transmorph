@@ -30,7 +30,7 @@ def nearest_neighbors_custom(
     X: np.ndarray,
     mode: Literal["edges", "distances"],
     n_neighbors: int = 15,
-    Y: Optional[np.ndarray] = None
+    Y: Optional[np.ndarray] = None,
 ) -> csr_matrix:
     """
     Wraps sklearn.neighbors.NearestNeighbors class.
@@ -92,6 +92,9 @@ def nearest_neighbors(
     assert mode in ["edges", "distances", "connectivities"]
     if (
         neighbors_key not in adata.uns
+        or "params" not in adata.uns[neighbors_key]
+        or "n_neighbors" not in adata.uns[neighbors_key]["params"]
+        or "metric" not in adata.uns[neighbors_key]["params"]
         or adata.uns[neighbors_key]["params"]["n_neighbors"] < n_neighbors
         or adata.uns[neighbors_key]["params"]["metric"] != metric
     ):

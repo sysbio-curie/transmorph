@@ -362,6 +362,8 @@ def plot_matching_eval(
     matshow_kwargs: Dict[str, Any], default = {}
         Additional matshow parameters.
     """
+    if isinstance(datasets, AnnData):
+        datasets = {"Batch": datasets}
     if isinstance(datasets, Dict):
         dataset_keys = list(datasets.keys())
         datasets = list(datasets.values())
