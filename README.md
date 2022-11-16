@@ -8,7 +8,7 @@
 
 **transmorph** is a python framework dedicated to data integration, with a focus on single-cell applications. Dataset integration describes the problem of embedding two or more datasets together, across different batches or feature spaces, so that similar samples end up close from one another. In transmorph we aim to provide a comprehensive framework to design, apply, report and benchmark data integration models using a system of interactive building blocks supported by statistical and plotting tools. We included pre-built models as well as benchmarking databanks in order to easily set up integration tasks. This package can be used in compatibility with **scanpy** and **anndata** packages, and works in jupyter notebooks.
 
-<img alt="Transmorph workflow" src="img/fig_presentation_github.png" height="90">
+<img alt="Transmorph workflow" src="img/fig_presentation_github.png" height="600">
 
 Transmorph is also computationally efficient, and can scale to large datasets with competitive integration quality. 
 
