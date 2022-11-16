@@ -3,7 +3,7 @@
 Tutorials 
 =========
 
-Using transmorpg within a scanpy pipeline
+Using transmorph within a scanpy pipeline
 -----------------------------------------
 
 .. toctree::
