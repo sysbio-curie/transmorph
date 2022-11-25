@@ -3,7 +3,7 @@ igraph
 jupyter
 leidenalg
 nbsphinx
-numpy<1.21,>=1.17
+numpy<1.24,>=1.22
 pre-commit
 pot
 pymde
