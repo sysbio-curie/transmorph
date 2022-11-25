@@ -80,9 +80,9 @@
         "name": "cell_cycle",
         "reference": "multiple, see documentation",
         "type": "Cell cycle coordinates",
-        "zip_link": "https://1drv.ms/u/s!Al03Ky07bKkGheYuVdA7Eyhb4fHUNw?e=hPd9Nm",
+        "zip_link": "https://1drv.ms/u/s!Al03Ky07bKkGhe1vws1UTlKQ-W3dzg?e=iGq30X",
         "zip_name": "cell_cycle.zip",
-        "md5_hash": "f39fa350d590a7539cbb656bd6d1a56a",
+        "md5_hash": "62209c347880df03287919f9a766f19a",
         "n_files": 4,
         "files": [
             "U2OS.h5ad",

@@ -91,7 +91,7 @@ class LinearCorrection(Merging, UsesReference):
             ref_locations[corrected_idx] - X_src[corrected_idx]
         )
 
-        indices, distances = sort_sparse_matrix(nn_src)
+        indices, distances = sort_sparse_matrix(nn_src, fill_empty=True)
         references = get_nearest_vertex_from_set(indices, distances, corrected_idx)
         unreferenced = references == -1
         nunreferenced = sum(unreferenced)
