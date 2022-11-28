@@ -28,9 +28,9 @@
         "name": "pal_10x",
         "reference": "https://embopress.org/doi/full/10.15252/embj.2020107333",
         "type": "single-cell RNA-seq 10x",
-        "zip_link": "https://1drv.ms/u/s!Al03Ky07bKkGheMM3FETrabb7Iv3Rw?e=iQp4cS",
+        "zip_link": "https://1drv.ms/u/s!Al03Ky07bKkGhe1zpM95A6_RSlXi5w?e=o1DRJv",
         "zip_name": "pal_10x.zip",
-        "md5_hash": "b1e5a3498d0a93ff9304644d91e2ecb2",
+        "md5_hash": "7bb3471fc4a69e999d68f28b815157d3",
         "n_files": 5,
         "files": [
             "patient_1.h5ad",
