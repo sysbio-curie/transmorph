@@ -4,4 +4,7 @@ from .embedmnn import EmbedMNN
 from .mnncorrection import MNNCorrection
 from .transportcorrection import TransportCorrection
 
-__all__ = ["EmbedMNN", "MNNCorrection", "TransportCorrection"]
+from .harmony import Harmony
+from .scvi_vae import VAE
+
+__all__ = ["EmbedMNN", "Harmony", "MNNCorrection", "TransportCorrection", "VAE"]

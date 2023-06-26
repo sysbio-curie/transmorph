@@ -9,7 +9,7 @@ from anndata import AnnData
 from matplotlib import cm
 from numbers import Number
 from scipy.sparse import csr_matrix
-from typing import Dict, List, Literal, Optional, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 
 
 from ..engine import Model
@@ -124,8 +124,11 @@ def scatter_plot(
     dataset_labels: Optional[List[str]] = None,
     labels_on_plot: bool = False,
     palette: str = "rainbow",
-    dot_size: float = 0.5,
+    figsize: Tuple[int, int] = (5, 5),
+    s: float = 1.0,
+    marker: str = ".",
     dpi: int = 100,
+    **kwargs,
 ):
     """
     Advanced plotting function for transmorph results.
@@ -167,11 +170,11 @@ def scatter_plot(
     palette: str, default = "rainbow"
         Matplotlib colormap to pick colors from.
 
-    dot_size: float, default = 0.5
-        Scatter "size" parameter.
-
     dpi: int, default = 200,
         Dot per inch to use for the figure.
+
+    **kwargs:
+        Additional keyword arguments to pass to plt.scatter.
     """
     if isinstance(datasets, AnnData):
         datasets = [datasets]
@@ -193,7 +196,10 @@ def scatter_plot(
     default_xlabel = "Feature 1"
     default_ylabel = "Feature 2"
     if not all(adm.isset_value(adata, key=use_rep) for adata in datasets):
-        representations = [adata.X for adata in datasets]
+        if all(use_rep in adata.obsm for adata in datasets):
+            representations = [adata.obsm[use_rep] for adata in datasets]
+        else:
+            representations = [adata.X for adata in datasets]
     else:
         representations = [adm.get_value(adata, key=use_rep) for adata in datasets]
         reducer = adm.get_value(datasets[0], key=f"reducer_{use_rep}")
@@ -203,6 +209,10 @@ def scatter_plot(
         elif reducer == "pca":
             default_xlabel = "PC1"
             default_ylabel = "PC2"
+
+    for i, X in enumerate(representations):
+        if X.shape[1] > 2:
+            representations[i] = X[:, :2].copy()
 
     if xlabel is None:
         xlabel = default_xlabel
@@ -225,7 +235,6 @@ def scatter_plot(
             isinstance(y, Number) for y in all_labels
         )
 
-    dot_alpha = 1
     n_labels = len(all_labels)
     n_datasets = len(datasets)
 
@@ -233,8 +242,8 @@ def scatter_plot(
     cmap = cm.get_cmap(palette, n_labels)
 
     # Do the plotting
-    fig = plt.figure(dpi=dpi)
-    ax_scatter = fig.add_subplot(111, aspect="equal")
+    fig = plt.figure(dpi=dpi, figsize=figsize)
+    ax_scatter = fig.add_subplot(111)
 
     scatter = None
     for i, adata in enumerate(datasets):
@@ -245,15 +254,21 @@ def scatter_plot(
             else:
                 color = cmap(i / (n_datasets - 1))
             scatter = ax_scatter.scatter(
-                *X.T, s=dot_size, alpha=dot_alpha, color=color, label=all_labels[i]
+                *X.T,
+                s=s,
+                marker=marker,
+                color=color,
+                label=all_labels[i],
+                **kwargs,
             )
         elif continuous_palette:
             scatter = ax_scatter.scatter(
                 *X.T,
                 c=adata.obs[color_by],
-                alpha=dot_alpha,
-                s=dot_size,
+                s=s,
+                marker=marker,
                 cmap=palette,
+                **kwargs,
             )
         else:
             for k, label in enumerate(all_labels):
@@ -264,17 +279,19 @@ def scatter_plot(
                 if i == 0:
                     scatter = ax_scatter.scatter(
                         *X[adata.obs[color_by] == label].T,
-                        alpha=dot_alpha,
-                        s=dot_size,
+                        s=s,
+                        marker=marker,
                         color=color,
                         label=label,
+                        **kwargs,
                     )
                 else:
                     scatter = ax_scatter.scatter(
                         *X[adata.obs[color_by] == label].T,
-                        alpha=dot_alpha,
-                        s=dot_size,
+                        s=s,
+                        marker=marker,
                         color=color,
+                        **kwargs,
                     )
 
     if continuous_palette:
@@ -305,7 +322,7 @@ def scatter_plot(
             )
     else:
         divider = make_axes_locatable(ax_scatter)
-        ax_legend = divider.append_axes("right", size="5%", pad=0.1)
+        ax_legend = divider.append_axes("right", size="0%", pad=0.1)
         handles, labels = ax_scatter.get_legend_handles_labels()
         order = np.argsort(labels)
         for label in order:
@@ -314,11 +331,11 @@ def scatter_plot(
             [handles[idx] for idx in order],
             [labels[idx] for idx in order],
             fontsize=12,
-            ncols=(1 + len(order) // 10),
+            ncols=(1 + len(order) // 15),
             loc="center left",
         )
-        legend.legendHandles[0]._sizes = [15]
-        legend.legendHandles[1]._sizes = [15]
+        for handle in legend.legendHandles:
+            handle._sizes = [60]
         ax_legend.axis("off")
 
     # Adding text pieces
@@ -326,9 +343,7 @@ def scatter_plot(
     ax_scatter.set_ylabel(ylabel, fontsize=16)
     ax_scatter.set_xticks([])
     ax_scatter.set_yticks([])
-
-    if title is not None:
-        ax_scatter.set_title(title, fontsize=18)
+    ax_scatter.set_title(title, fontsize=18)
 
     plt.show()
     plt.close()
