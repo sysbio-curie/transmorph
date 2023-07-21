@@ -67,11 +67,15 @@ If you find transmorph useful for your research, please consider citing our pre-
 which can be found on [bioRxiv](https://www.biorxiv.org/content/10.1101/2022.11.02.514912v1).
 
 ```bibtex
-@article{fouche2022transmorph,
-  title={transmorph: a unifying computational framework for single-cell data integration},
-  author={Fouch{\'e}, Aziz, Chadoutaud, Lo{\¨i}c, Delattre, Olivier and Zinovyev, Andrei},
-  journal={bioRxiv},
-  year={2022}
+@article{fouche2023transmorph,
+  title={Transmorph: a unifying computational framework for modular single-cell RNA-seq data integration},
+  author={Fouch{\'e}, Aziz and Chadoutaud, Lo{\"\i}c and Delattre, Olivier and Zinovyev, Andrei},
+  journal={NAR Genomics and Bioinformatics},
+  volume={5},
+  number={3},
+  pages={lqad069},
+  year={2023},
+  publisher={Oxford University Press}
 }
 ```
 
