@@ -63,8 +63,7 @@ scatter_plot(chen_10x, use_rep="X_transmorph", color_by="class")
 
 ## Citing transmorph
 
-If you find transmorph useful for your research, please consider citing our pre-print
-which can be found on [bioRxiv](https://www.biorxiv.org/content/10.1101/2022.11.02.514912v1).
+If you find transmorph useful for your research, please consider citing our [article](https://academic.oup.com/nargab/article/5/3/lqad069/7223068?login=false) published in NAR Genomics & Bioinformatics.
 
 ```bibtex
 @article{fouche2023transmorph,
